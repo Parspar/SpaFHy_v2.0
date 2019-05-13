@@ -102,3 +102,12 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# folders
+/figures
+/results
+/data
+
+# sandbucket, sandbox
+sand*.py
+sand*.ipynb
