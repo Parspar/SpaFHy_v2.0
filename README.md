@@ -1,8 +1,8 @@
 # SpaFHy-Peat
-*SpaFHy vesion for gridded simulation of drained peatland forest.*
+*SpaFHy version for gridded simulation of drained peatland forests.*
 
  - Canopy and mosslayer as in SpaFHy
- - Soil water storage based on equilibrium state and Hooghoudt's draingge equation.
+ - Soil water storage based on equilibrium state and Hooghoudt's drainage equation.
 
 ### Example for running model and plotting some results
 Data for example simulation in folder testcase_inputs (1000 nodes)
