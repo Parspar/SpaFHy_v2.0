@@ -350,6 +350,9 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
     date_dimension = None
     i_dimension, j_dimension = np.shape(cmask)
 
+    if not os.path.exists(filepath):
+        os.makedirs(filepath)
+
     ff = os.path.join(filepath, filename)
 
     # create dataset and dimensions
