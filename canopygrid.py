@@ -137,6 +137,9 @@ class CanopyGrid():
         """ --- update deciduous leaf area index --- """
         laifract = self._lai_dynamics(doy)
 
+# TEST
+#        fPheno = self._LAIconif/self.LAI * fPheno + self._LAIdecid/self.LAI * np.minimum(self._LAIdecid/self._LAIdecid_max-self.phenopara['lai_decid_min'],fPheno)
+
         """ --- aerodynamic conductances --- """
         Ra, Rb, Ras, ustar, Uh, Ug = aerodynamics(self.LAI, self.hc, U, w=0.01, zm=self.zmeas,
                                                   zg=self.zground, zos=self.zo_ground)
@@ -148,6 +151,7 @@ class CanopyGrid():
         Transpi, Efloor, Gc = self.dry_canopy_et(VPD, Par, Rn, Ta, Ra=Ra, Ras=Ras, CO2=CO2, Rew=Rew, beta=beta, fPheno=fPheno)
 
         Transpi = Transpi * dt
+#        Transpi = (1.0 - Evap/(erate + eps)) * Transpi * dt
         Efloor = Efloor * dt
         ET = Transpi + Efloor
 
@@ -161,7 +165,9 @@ class CanopyGrid():
                 'snow_water_equivalent': self.SWE,  # [mm]
                 'water_closure': MBE,  # [mm d-1]
                 'phenostate': fPheno,  # [-]
-                'leaf_area_index': self.LAI  # [m2 m-2]
+                'leaf_area_index': self.LAI,  # [m2 m-2]
+                'stomatal_conductance': Gc,  # [m s-1]
+                'degree_day_sum': self.DDsum  # [degC]
                 }
 
         return results
@@ -294,15 +300,15 @@ class CanopyGrid():
         # fQ = 1./ kp * np.log((Qp + q50) / (Qp*np.exp(-kp*self.LAI) + q50))
 
         # soil moisture response: Lagergren & Lindroth, xxxx"""
-        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
-        # fRew = 1.0
+#        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
+        fRew = Rew
 
         # CO2 -response of canopy conductance, derived from APES-simulations
         # (Launiainen et al. 2016, Global Change Biology). relative to 380 ppm
         fCO2 = 1.0 - 0.387 * np.log(CO2 / 380.0)
 
         # leaf level light-saturated gs (m/s)
-        gs = 1.6*(1.0 + g1 / np.sqrt(D))*Amax / CO2 / rhoa
+        gs = np.minimum(1.6*(1.0 + g1 / np.sqrt(D))*Amax / CO2 / rhoa, 0.1)  # large values if D -> 0
 
         # canopy conductance
         Gc = gs * fQ * fRew * fCO2 * fPheno
@@ -370,7 +376,7 @@ class CanopyGrid():
             D = np.ones(gridshape) * D
             Ra = np.ones(gridshape) * Ra
 
-        Prec = Prec * dt  # mm
+#        Prec = Prec * dt  # mm
         # latent heat of vaporization (Lv) and sublimation (Ls) J kg-1
         Lv = 1e3 * (3147.5 - 2.37 * (T + 273.15))
         Ls = Lv + 3.3e5

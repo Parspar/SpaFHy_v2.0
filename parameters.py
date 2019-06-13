@@ -8,9 +8,9 @@ PARAMETERS
 def parameters():
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '1980-01-01',
-            'end_date': '1989-12-31',
-            'spinup_end': '1981-01-01',  # results after this are saved in result file
+            'start_date': '2006-01-01',
+            'end_date': '2019-01-01',
+            'spinup_end': '2007-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -18,23 +18,23 @@ def parameters():
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': True,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': r'testcase_input\parameters',
-            'forcing_file': r'testcase_input\forcing\Weather_id_[forcing_id].csv',
+            'gis_folder': r'sompa_data\parameters',
+            'forcing_file': r'sompa_data\forcing\Weather_id_[forcing_id].csv',
             'forcing_id': 0,  # used if spatial_forcing == False
-            'ncf_file': r'testcase.nc',
-            'results_folder': r'results',
-            'save_interval': 366,  # interval for writing results to file (decreases need for memory during computation)
+            'ncf_file': r'results.nc',
+            'results_folder': r'results\sompa',
+            'save_interval': 10000, #366,  # interval for writing results to file (decreases need for memory during computation)
             'variables':[  # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
                     ['parameters_lai_decid_max', 'leaf area index of decidious trees [m2 m-2]'],
                     ['parameters_hc', 'canopy height [m]'],
-                    ['parameters_cf', 'canopy closure'],
+                    ['parameters_cf', 'canopy closure [-]'],
                     ['parameters_soil_id', 'soil class index'],
                     ['parameters_ditch_depth', 'ditch depth [m]'],
                     ['parameters_ditch_spacing', 'ditch spacing [m]'],
                     ['parameters_lat', 'latitude [deg]'],
                     ['parameters_lon', 'longitude [deg]'],
-                    ['forcing_air_temperature', 'above canopy air temperature [degC]'],
+                    ['forcing_air_temperature', 'air temperature [degC]'],
                     ['forcing_precipitation', 'precipitation [mm d-1]'],
                     ['forcing_vapor_pressure_deficit', 'vapor pressure deficit [kPa]'],
                     ['forcing_global_radiation', 'global radiation [Wm-2]'],
@@ -46,17 +46,23 @@ def parameters():
                     ['soil_evaporation', 'evaporation from soil surface [mm d-1]'],
                     ['soil_drainage', 'subsurface drainage [mm d-1]'],
                     ['soil_moisture_top', 'volumetric water content of moss layer [m3 m-3]'],
+                    ['soil_rootzone_moisture', 'volumetric water content of rootzone [m3 m-3]'],
                     ['soil_water_closure', 'soil water balance error [mm d-1]'],
+                    ['soil_transpiration_limitation', 'transpiration limitation [-]'],
                     ['canopy_interception', 'canopy interception [mm d-1]'],
                     ['canopy_evaporation', 'evaporation from interception storage [mm d-1]'],
                     ['canopy_transpiration','transpiration [mm d-1]'],
+                    ['canopy_stomatal_conductance','stomatal conductance [m s-1]'],
                     ['canopy_throughfall', 'throughfall to moss or snow [mm d-1]'],
                     ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
                     ['canopy_water_closure', 'canopy water balance error [mm d-1]'],
                     ['canopy_phenostate', 'canopy phenological state [-]'],
                     ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
+                    ['canopy_degree_day_sum', 'sum of degree days [degC]'],
                     ]
              }
+
+    f=1.0
 
     # canopygrid
     pcpy = {'flow' : {  # flow field
@@ -76,9 +82,9 @@ def parameters():
             'physpara': {
                         # canopy conductance
                         'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
-                        'g1_conif': 2.1, # stomatal parameter, conifers
-                        'g1_decid': 3.5, # stomatal parameter, deciduous
-                        'q50': 50.0, # light response parameter (Wm-2)
+                        'g1_conif': f * 2.1, # stomatal parameter, conifers
+                        'g1_decid': f * 3.5, # stomatal parameter, deciduous
+                        'q50': 60.0, # light response parameter (Wm-2) - HUOM! tämä oli 50
                         'kp': 0.6, # light attenuation parameter (-)
                         'rw': 0.20, # critical value for REW (-),
                         'rwmin': 0.02, # minimum relative conductance (-)
@@ -116,7 +122,7 @@ def parameters():
     # soil profile
     psp = {
             # soil profile, following properties are used if spatial_soil = False
-            'soil_id': 1.0,
+            'soil_id': 2.0,
             # drainage parameters, following properties are used if spatial_soil = False
             'ditch_depth': 1.0,  # ditch depth [m]
             'ditch_spacing': 45.0,  # ditch spacing [m]
@@ -154,11 +160,17 @@ def peat_soilprofiles():
             'soil_id': 2.0,
             'z': [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1., -1.5, -2.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.915, 0.905, 0.893, 0.893, 0.854, 0.854, 0.854, 0.854, 0.854, 0.854, 0.854, 0.854],
-                    'ThetaR': [0.058, 0.074, 0.083, 0.083, 0.063, 0.063, 0.063, 0.063, 0.063, 0.063, 0.063, 0.063],
-                    'alpha': [0.075, 0.051, 0.038, 0.038, 0.022, 0.022, 0.022, 0.022, 0.022, 0.022, 0.022, 0.022],
-                    'n': [1.335, 1.344, 1.341, 1.341, 1.283, 1.283, 1.283, 1.283, 1.283, 1.283, 1.283, 1.283]},
-            'saturated_conductivity': [30 * 2.07E-05, 20 * 1.09E-05, 10 * 5.75E-06, 5 * 5.75E-06, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07],
+                    'ThetaS': [0.943, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882],
+                    'ThetaR': [0.002, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104],
+                    'alpha': [0.202, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044],
+                    'n': [1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349]},
+            'saturated_conductivity': [30 * 4.97E-05, 10 * 3.21E-05, 2.07E-05, 1.34E-05, 8.63E-06, 5.57E-06, 3.60E-06, 2.32E-06, 1.50E-06, 9.68E-07, 2.61E-07, 1.00E-07]
+#            'pF': {  # vanGenuchten water retention parameters
+#                    'ThetaS': [0.915, 0.905, 0.893, 0.893, 0.854, 0.854, 0.854, 0.854, 0.854, 0.854, 0.854, 0.854],
+#                    'ThetaR': [0.058, 0.074, 0.083, 0.083, 0.063, 0.063, 0.063, 0.063, 0.063, 0.063, 0.063, 0.063],
+#                    'alpha': [0.075, 0.051, 0.038, 0.038, 0.022, 0.022, 0.022, 0.022, 0.022, 0.022, 0.022, 0.022],
+#                    'n': [1.335, 1.344, 1.341, 1.341, 1.283, 1.283, 1.283, 1.283, 1.283, 1.283, 1.283, 1.283]},
+#            'saturated_conductivity': [30 * 2.07E-05, 20 * 1.09E-05, 10 * 5.75E-06, 5 * 5.75E-06, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07, 8.43E-07],
                 }
             }
     return peatp

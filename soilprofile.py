@@ -58,6 +58,8 @@ class SoilGrid(object):
         self.gwl_to_drainage = spara['gwl_to_drainage']
         self.Wsto_max = apply_vectorized(self.gwl_to_wsto, 0.0)
 
+        self.gwl_to_rootmoist = spara['gwl_to_rootmoist']
+
         # drainage parameters
         self.ditch_depth = spara['ditch_depth']
         self.ditch_spacing = spara['ditch_spacing']
@@ -66,6 +68,11 @@ class SoilGrid(object):
         # soil profile
         self.gwl = spara['ground_water_level']
         self.Wsto = apply_vectorized(self.gwl_to_wsto, self.gwl)
+        self.rootmoist = apply_vectorized(self.gwl_to_rootmoist, self.gwl)
+        self.root_fc0 = apply_vectorized(self.gwl_to_rootmoist, -0.7 - 0.1)
+        self.root_fc1 = apply_vectorized(self.gwl_to_rootmoist, -1.2 - 0.1)
+        self.root_wp = apply_vectorized(self.gwl_to_rootmoist, -150.0 - 0.1)
+
         self.Rew = 1.0
 
         # toplayer storage and relative conductance for evaporation
@@ -76,6 +83,11 @@ class SoilGrid(object):
                 0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
         # pond storage
         self.h_pond = spara['pond_storage']
+
+#        # Koivusalo et al. 2008 HESS without wet side limit
+#        wt=np.array([-150.0, -1.2, -0.7, -0.15, 0.0])   #water table in m
+#        re=np.array([0.0, 0.5, 1.0, 1.0, 1.0])    #relative water uptake
+#        self.rew_drylimit = interp1d(wt,re,fill_value='extrapolate')
 
     def watbal(self, dt=1, rr=0.0, tr=0.0, evap=0.0):
 
@@ -143,6 +155,24 @@ class SoilGrid(object):
         self.Wliq_top = self.fc_top * self.Wsto_top / self.Wsto_top_max
         self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
 
+        new_moist =  apply_vectorized(self.gwl_to_rootmoist, self.gwl)
+
+#        self.rootmoist = np.minimum(new_moist,self.rootmoist + (infiltration - tr)/0.2)
+#        self.rootmoist = np.maximum(self.rootmoist,self.root_wp)
+#        self.Rew = np.minimum((self.rootmoist - self.root_wp)/(self.root_fc - self.root_wp), 1.0)
+        self.rootmoist = new_moist
+#        self.Rew = np.where(self.rootmoist > self.root_fc0, 1.0,
+#                            np.where(self.rootmoist > self.root_fc1,
+#                                     0.5*(1 + (self.rootmoist - self.root_fc1)/(self.root_fc0 - self.root_fc1)),
+#                                     0.5*(self.rootmoist - self.root_wp)/(self.root_fc1 - self.root_wp)
+#                                     )
+#                            )
+        self.Rew = np.where(self.rootmoist > self.root_fc1,
+                            np.minimum(1.0, 0.5*(1 + (self.rootmoist - self.root_fc1)/(self.root_fc0 - self.root_fc1))),
+                            np.maximum(0.0, 0.5*(self.rootmoist - self.root_wp)/(self.root_fc1 - self.root_wp))
+                            )
+#        self.Rew = self.rew_drylimit(self.gwl)
+
         # mass balance error [m]
         mbe = ((Wsto_top_ini - self.Wsto_top) + (Wsto_ini - self.Wsto) + (pond_ini - self.h_pond) +
                rr0 - drain - tr - surface_runoff - evap)
@@ -156,11 +186,13 @@ class SoilGrid(object):
                 'drainage': drain * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'water_closure':  mbe,  # [mm d-1]
+                'transpiration_limitation': self.Rew,  # [-]
+                'rootzone_moisture': self.rootmoist,  # [m3 m-3]
                 }
 
         return results
 
-def gwl_Wsto(z, pF):
+def gwl_Wsto(z, pF, root=False):
     r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
     function of water storage [m] and vice versa
 
@@ -185,18 +217,28 @@ def gwl_Wsto(z, pF):
     # --------- connection between gwl and water storage------------
     # gwl from ground surface gwl = 0 to gwl = -5
     gwl = np.arange(0.0, -5, -1e-3)
+    gwl[-1] = -150
     # solve water storage corresponding to gwls
     Wsto = [sum(h_to_cellmoist(pF, g - z_mid, dz) * dz) for g in gwl]
+
+    if root:
+        Wsto = Wsto/sum(dz)
 
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
 #    plt.figure()
 #    plt.plot(GwlToWsto(gwl), gwl)
+#    plt.xlabel('2-m profiilin vesivarasto (m)')
+#    plt.ylabel('Pohjavedenpinta (m)')
+#    plt.ylim([-1.5,0])
 
     del gwl, Wsto
 
-    return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
+    if root:
+        return {'to_rootmoist': GwlToWsto}
+    else:
+        return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
 
 def h_to_cellmoist(pF, h, dz):
     r""" Cell moisture based on vanGenuchten-Mualem soil water retention model.
@@ -254,7 +296,7 @@ def gwl_drainage(z, Ksat, DitchDepth, DitchSpacing, DitchWidth):
     gwl = np.zeros(len(z)+2)
     gwl[1:-1] = z
     gwl[-1] = -5.0
-    # solve water storage corresponding to gwls
+    # solve water storage corresponding to gwls [m/s]
     drainage = [sum(drainage_hooghoud(
             dz, Ksat, g, DitchDepth, DitchSpacing, DitchWidth) * dz) for g in gwl]
 
@@ -262,6 +304,9 @@ def gwl_drainage(z, Ksat, DitchDepth, DitchSpacing, DitchWidth):
     GwlToDrainage = interp1d(np.array(gwl), np.array(drainage), fill_value='extrapolate')
 #    plt.figure()
 #    plt.plot(GwlToDrainage(gwl)*1000*3600, gwl)
+#    plt.xlabel('Valunta (mm/h)')
+#    plt.ylabel('Pohjavedenpinta (m)')
+#    plt.ylim([-1.5,0])
 
     return GwlToDrainage
 

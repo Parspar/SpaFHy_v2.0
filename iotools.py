@@ -89,8 +89,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
     cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cf.dat'))
 
     # leaf area indices
-    LAI_pine, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_pine.dat'))
-    LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))
+    LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.dat'))
     LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
@@ -101,8 +100,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     # dict of all rasters
     gis = {'cmask': cmask,
-           'LAI_pine': LAI_pine, 'LAI_spruce': LAI_spruce,
-           'LAI_conif': LAI_pine + LAI_spruce,
+           'LAI_conif': LAI_conif,
            'LAI_decid': LAI_decid, 'hc': hc, 'cf': cf}
 
     for key in gis.keys():
@@ -174,6 +172,7 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
     data.update({'soiltype': np.empty(np.shape(gisdata['cmask']),dtype=object),
                  'wtso_to_gwl': np.full_like(gisdata['cmask'],nan_function,dtype=object),
                  'gwl_to_wsto': np.full_like(gisdata['cmask'],nan_function,dtype=object),
+                 'gwl_to_rootmoist': np.full_like(gisdata['cmask'],nan_function,dtype=object),
                  'gwl_to_drainage': np.full_like(gisdata['cmask'],nan_function,dtype=object)})
 
     if spatial == False:
@@ -187,8 +186,11 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
         c = value['soil_id']
         ix = np.where(data['soilclass'] == c)
         data['soiltype'][ix] = key
-        # interpolation funktion between wsto and gwl
+        # interpolation function between wsto and gwl
         value.update(gwl_Wsto(value['z'], value['pF']))
+
+        # interpolation function between root_wsto and gwl
+        value.update(gwl_Wsto(value['z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
 
     # go through all pixels to get interpolatefunction drainage=f(gwl)
     for i in range(np.shape(gisdata['cmask'])[0]):
@@ -197,12 +199,14 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
                 soiltype = data['soiltype'][i,j]
                 data['wtso_to_gwl'][i,j] = peatp[soiltype]['to_gwl']
                 data['gwl_to_wsto'][i,j] = peatp[soiltype]['to_wsto']
+                data['gwl_to_rootmoist'][i,j] = peatp[soiltype]['to_rootmoist']
                 data['gwl_to_drainage'][i,j] = gwl_drainage(
                         peatp[soiltype]['z'],
                         peatp[soiltype]['saturated_conductivity'],
                         data['ditch_depth'][i,j],
                         data['ditch_spacing'][i,j],
                         data['ditch_width'][i,j])
+
 
     return data
 
@@ -274,20 +278,36 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     ID = int(ID)
 
     # import forcing data
-    fmi = pd.read_csv(sourcefile, sep=';', header='infer',
-                      usecols=['OmaTunniste', 'Kunta', 'aika', 'longitude',
-                      'latitude', 't_mean', 't_max', 't_min', 'rainfall',
-                      'radiation', 'hpa', 'lamposumma_v', 'rainfall_v'],
-                      parse_dates=['aika'],encoding="ISO-8859-1")
+    try:
+        fmi = pd.read_csv(sourcefile, sep=';', header='infer',
+                          usecols=['OmaTunniste', 'Kunta', 'aika', 'longitude',
+                          'latitude', 't_mean', 't_max', 't_min', 'rainfall',
+                          'radiation', 'hpa', 'lamposumma_v', 'rainfall_v'],
+                          parse_dates=['aika'],encoding="ISO-8859-1")
 
-    fmi = fmi.rename(columns={'aika': 'date',
-                              'OmaTunniste': 'ID',
-                              't_mean': 'air_temperature',
-                              'rainfall': 'precipitation',
-                              'radiation': 'global_radiation',
-                              'hpa': 'h2o'})
+        fmi = fmi.rename(columns={'aika': 'date',
+                                  'OmaTunniste': 'ID',
+                                  't_mean': 'air_temperature',
+                                  'rainfall': 'precipitation',
+                                  'radiation': 'global_radiation',
+                                  'hpa': 'h2o'})
 
-    time = pd.to_datetime(fmi['date'], format='%Y%m%d')
+        time = pd.to_datetime(fmi['date'], format='%Y%m%d')
+    except:
+        try:
+            fmi = pd.read_csv(sourcefile, sep=';', header='infer',
+                              usecols=['x','y','date','temp_avg','prec',
+                              'wind_speed_avg','global_rad','vapour_press'],
+                              parse_dates=['date'],encoding="ISO-8859-1")
+
+            fmi = fmi.rename(columns={'temp_avg': 'air_temperature',
+                                      'prec': 'precipitation',
+                                      'global_rad': 'global_radiation',
+                                      'vapour_press': 'h2o',
+                                      'wind_speed_avg':'wind_speed'})
+            time = pd.to_datetime(fmi['date'], format='%Y-%m-%d')
+        except:
+            raise ValueError('Problem reading forcing data')
 
     fmi.index = time
     # get desired period and catchment
@@ -298,7 +318,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
 
     fmi['h2o'] = 1e-1*fmi['h2o']  # hPa-->kPa
     fmi['global_radiation'] = 1e3 / 86400.0*fmi['global_radiation']  # kJ/m2/d-1 to Wm-2
-    fmi['par'] = 0.5*fmi['global_radiation']
+    fmi['par'] = 0.45*fmi['global_radiation']
 
     # saturated vapor pressure
     esa = 0.6112*np.exp(
@@ -317,11 +337,18 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     # replace nan's in prec with 0.0
     dt = (fmi.index[1] - fmi.index[0]).total_seconds()
     fmi['precipitation'] = fmi['precipitation'].fillna(0.0)
-    fmi['precipitation'] = fmi['precipitation'] / dt  # mms-1
+#    fmi['precipitation'] = fmi['precipitation'] / dt  # mms-1
 
-    # add CO2 concentration to dataframe
-    fmi['CO2'] = float(CO2)
-    fmi['wind_speed'] = float(U)
+    # add CO2 and wind speed concentration to dataframe
+    if 'CO2' not in fmi:
+        fmi['CO2'] = float(CO2)
+    if 'wind_speed' not in fmi:
+        fmi['wind_speed'] = float(U)
+
+    fmi['wind_speed'] = fmi['wind_speed'].fillna(U)
+
+#    print("NaN values in forcing data:")
+#    print(fmi.isnull().any())
 
     dates = pd.date_range(start_date, end_date).tolist()
     if len(dates) != len(fmi):
@@ -640,3 +667,62 @@ def create_input_GIS(fpath, plotgrids=False):
 
     for key, gdata in GisData.items():
         write_AsciiGrid(os.path.join(fpath, key + '.dat'), gdata, info, fmt='%.6e')
+
+def rw_FMI_files(sourcefiles, out_path, plot=False):
+    """
+    reads and writes FMI interpolated daily weather data
+    """
+    frames = []
+    for sourcefile in sourcefiles:
+        sourcefile = os.path.join(sourcefile)
+
+        # import forcing data
+        try:
+            fmi = pd.read_csv(sourcefile, sep=',', header='infer',index_col=False,
+                              usecols=['pvm','latitude','longitude','t_mean','t_max','t_min',
+                                       'rainfall','radiation','hpa','site'],
+                              parse_dates=['pvm'],encoding="ISO-8859-1")
+
+            fmi = fmi.rename(columns={'pvm': 'date',
+                                      't_mean': 'temp_avg',
+                                      't_max': 'temp_max',
+                                      't_min': 'temp_min',
+                                      'rainfall': 'prec',
+                                      'radiation': 'global_rad',
+                                      'hpa': 'vapour_press',
+                                      'longitude':'x',
+                                      'latitude':'y'})
+            fmi = fmi[fmi['date']<'2016-07-03']
+        except:
+            try:
+                fmi = pd.read_csv(sourcefile, sep=',', header='infer',index_col=False,
+                                  usecols=['x','y','date','temp_avg','temp_min','temp_max',
+                                           'prec', 'wind_speed_avg','global_rad','vapour_press',
+                                           'snow_depth','pot_evap','site'],
+                                  parse_dates=['date'],encoding="ISO-8859-1")
+
+                fmi = fmi.rename(columns={})
+            except:
+                raise ValueError('Problem reading forcing data')
+
+        time = pd.to_datetime(fmi['date'], format='%Y-%m-%d')
+        fmi.index=time
+
+        frames.append(fmi.copy())
+
+    fmi = pd.concat(frames, sort=False)
+
+    sites = list(set(fmi['site']))
+    sites.sort()
+    index = 0
+    readme = 'Indices of weather files'
+    for site in sites:
+        fmi[fmi['site']==site].to_csv(path_or_buf=out_path + 'weather_id_' + str(index) + '.csv', sep=';', na_rep='NaN', index=False)
+        readme += '\n'+ str(index) + ':' + site
+        index+=1
+        if plot:
+            fmi[fmi['site']==site].plot(subplots=True)
+    outF = open(out_path + "weather_readme.txt", "w")
+    print(readme, file=outF)
+    outF.close()
+    return fmi
