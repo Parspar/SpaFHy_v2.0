@@ -66,9 +66,11 @@ class CanopyGrid():
         self._LAIdecid_max = state['lai_decid_max'] + epsi # m2m-2
 
         # senescence starts at first doy when daylength < self.phenopara['sdl']
-        self.phenopara['sso'] = np.empty(np.shape(self.latitude))
+        self.phenopara['sso'] = np.ones(np.shape(self.latitude))*np.nan
         doy = np.arange(1, 366)
         for lat in np.unique(self.latitude):
+            if np.isnan(lat):
+                break
             # senescence starts at first doy when daylength < self.phenopara['sdl']
             dl = daylength(lat, doy)
             ix = np.max(np.where(dl > self.phenopara['sdl']))

@@ -4,9 +4,10 @@ Indices of weather files
 2: jaakkoinsuo
 3: juuka
 4: lettosuo
-5: mouhijarvi
-6: paroni
-7: ranskalankorpi
-8: rouvanlehto
-9: sinilammenneva
-10: vesijako
+5: lintupirtti
+6: mouhijarvi
+7: paroni
+8: ranskalankorpi
+9: rouvanlehto
+10: sinilammenneva
+11: vesijako

@@ -149,11 +149,13 @@ def preprocess_forcing(pgen):
 
     dims = ['date','i','j']
     dates = pd.date_range(pgen['start_date'], pgen['end_date']).tolist()
-    empty_array = np.empty((len(dates),) + np.shape(indices))
+    empty_array = np.ones((len(dates),) + np.shape(indices)) * np.nan
 
     ddict = {var: (dims, empty_array.copy()) for var in variables}
 
     for index in np.unique(indices):
+        if np.isnan(index):
+            break
         fp = pgen['forcing_file'].replace('[forcing_id]',str(int(index)))
         df = read_FMI_weather(pgen['start_date'],
                               pgen['end_date'],
