@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile import gwl_Wsto, gwl_drainage, nan_function
+from soilprofile import gwl_Wsto, gwl_drainage, gwl_Ksat, nan_function
 from koordinaattimuunnos import koordTG
 
 eps = np.finfo(float).eps  # machine epsilon
@@ -171,9 +171,11 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = psp.copy()
     data.update((x, y * gisdata['cmask']) for x, y in data.items())
+
     data.update({'soiltype': np.empty(np.shape(gisdata['cmask']),dtype=object),
-                 'wtso_to_gwl': np.full_like(gisdata['cmask'],nan_function,dtype=object),
-                 'gwl_to_wsto': np.full_like(gisdata['cmask'],nan_function,dtype=object),
+                 'depth_id': np.empty(np.shape(gisdata['cmask']),dtype=int),
+#                 'wtso_to_gwl': np.full_like(np.shape(gisdata['cmask']),nan_function,dtype=object),
+#                 'gwl_to_wsto': np.full_like(np.shape(gisdata['cmask']),nan_function,dtype=object),
                  'gwl_to_drainage': np.full_like(gisdata['cmask'],nan_function,dtype=object)})
 
     if spatial == False:
@@ -183,26 +185,47 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
         data['ditch_depth'] = gisdata['ditch_depth']
         data['ditch_spacing'] = gisdata['ditch_spacing']
 
+    data['gwl_to_Ksat'] = np.full(
+            len(peatp)*len(np.unique(np.round(data['ditch_depth'],2))),
+            nan_function, dtype=object)
+
+    i = 0
     for key, value in peatp.items():
         c = value['soil_id']
         ix = np.where(data['soilclass'] == c)
         data['soiltype'][ix] = key
-        # interpolation funktion between wsto and gwl
+        # interpolation function between wsto and gwl
         value.update(gwl_Wsto(value['z'], value['pF']))
+
+        for depth in np.unique(np.round(data['ditch_depth'][ix],3)):
+            data['gwl_to_Ksat'][i] = gwl_Ksat(value['z'],
+                    value['saturated_conductivity'], depth)
+            ixx = np.where((np.round(data['ditch_depth'],3) == depth) &
+                           (data['soiltype'] == key))
+            data['depth_id'][ixx] = i
+            print(i, np.shape(ixx), key, depth)
+            i=i+1
+
+
+    data['gwl_to_Ksat'] = data['gwl_to_Ksat'][:i]
+    print('a',len(data['gwl_to_Ksat'][:i]),np.unique(data['depth_id']))
 
     # go through all pixels to get interpolatefunction drainage=f(gwl)
     for i in range(np.shape(gisdata['cmask'])[0]):
         for j in range(np.shape(gisdata['cmask'])[1]):
             if np.isfinite(gisdata['cmask'][i,j]):
                 soiltype = data['soiltype'][i,j]
-                data['wtso_to_gwl'][i,j] = peatp[soiltype]['to_gwl']
-                data['gwl_to_wsto'][i,j] = peatp[soiltype]['to_wsto']
+#                data['wtso_to_gwl'][i,j] = peatp[soiltype]['to_gwl']
+#                data['gwl_to_wsto'][i,j] = peatp[soiltype]['to_wsto']
                 data['gwl_to_drainage'][i,j] = gwl_drainage(
                         peatp[soiltype]['z'],
                         peatp[soiltype]['saturated_conductivity'],
                         data['ditch_depth'][i,j],
                         data['ditch_spacing'][i,j],
                         data['ditch_width'][i,j])
+
+    data['wtso_to_gwl'] = {soiltype: peatp[soiltype]['to_gwl'] for soiltype in peatp.keys()}
+    data['gwl_to_wsto'] = {soiltype: peatp[soiltype]['to_wsto'] for soiltype in peatp.keys()}
 
     return data
 

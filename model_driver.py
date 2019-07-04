@@ -11,11 +11,10 @@ import pandas as pd
 from spafhy_peat import SpaFHy
 from iotools import read_FMI_weather, initialize_netcdf, write_ncf
 import matplotlib.pyplot as plt
-import profiler
 
 eps = np.finfo(float).eps
 
-@profile
+#@profile
 def driver(create_ncf=False, output=True):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
