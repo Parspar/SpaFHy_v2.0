@@ -193,12 +193,19 @@ def gwl_Wsto(z, pF):
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
 
-#    plt.figure()
-#    plt.plot(GwlToWsto(gwl), gwl)
+## test
+#    polyp1 = np.poly1d(np.polyfit(np.array(Wsto), np.array(gwl), 30))
+#    polyp2 = np.poly1d(np.polyfit(np.array(gwl), np.array(Wsto), 30))
+
+    plt.figure()
+    plt.plot(Wsto, gwl,'.k')
+    plt.plot(GwlToWsto(gwl), gwl)
+#    plt.plot(polyp2(gwl), gwl)
 
     del gwl, Wsto
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
+#    return {'to_gwl': polyp1, 'to_wsto': polyp2}
 
 def h_to_cellmoist(pF, h, dz):
     r""" Cell moisture based on vanGenuchten-Mualem soil water retention model.
@@ -262,12 +269,16 @@ def gwl_drainage(z, Ksat, DitchDepth, DitchSpacing, DitchWidth):
 
     # interpolate functions
     GwlToDrainage = interp1d(np.array(gwl), np.array(drainage), fill_value='extrapolate')
+#test!
+#    polyp = np.poly1d(np.polyfit(np.array(gwl), np.array(drainage), 10))
 
 # CAREFUL!!!
 #    plt.figure()
 #    plt.plot(GwlToDrainage(gwl)*1000*3600, gwl)
+#    plt.plot(polyp(gwl)*1000*3600, gwl)
 
     return GwlToDrainage
+#    return polyp
 
 def drainage_hooghoud(dz, Ksat, gwl, DitchDepth, DitchSpacing, DitchWidth, Zbot=None,
                       below_ditch_drain=False):
