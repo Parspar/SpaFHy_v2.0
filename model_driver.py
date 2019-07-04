@@ -212,3 +212,9 @@ def _append_results(group, step_results, results, step=None):
                 results[key][step] = res
 
     return results
+
+if __name__ == '__main__':
+
+    outputfile = driver(create_ncf=True)
+
+    print(outputfile)

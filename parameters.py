@@ -9,7 +9,7 @@ def parameters():
 
     pgen = {'description': 'testcase',  # description written in result file
             'start_date': '1980-01-01',
-            'end_date': '1989-12-31',
+            'end_date': '1981-12-31',
             'spinup_end': '1981-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
