@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 eps = np.finfo(float).eps
 
-def driver(create_ncf=False):
+def driver(create_ncf=False, output=True):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -92,10 +92,12 @@ def driver(create_ncf=False):
         ncf.close()
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
         print('--- Results are in file: ' + outputfile + ' ---')
-        return outputfile
+        if output:
+            return outputfile
     else:
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
-        return results
+        if output:
+            return results
 
 def preprocess_parameters():
     """

@@ -139,6 +139,7 @@ class SoilGrid(object):
         # soil profile
         self.gwl = apply_vectorized(self.wsto_to_gwl, self.Wsto)  # ground water depth corresponding to Wsto
 
+
         # organic top layer; maximum that can be hold is Fc
         self.Wliq_top = self.fc_top * self.Wsto_top / self.Wsto_top_max
         self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
@@ -191,6 +192,7 @@ def gwl_Wsto(z, pF):
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
+
 #    plt.figure()
 #    plt.plot(GwlToWsto(gwl), gwl)
 
@@ -260,11 +262,12 @@ def gwl_drainage(z, Ksat, DitchDepth, DitchSpacing, DitchWidth):
 
     # interpolate functions
     GwlToDrainage = interp1d(np.array(gwl), np.array(drainage), fill_value='extrapolate')
+
+# CAREFUL!!!
 #    plt.figure()
 #    plt.plot(GwlToDrainage(gwl)*1000*3600, gwl)
 
     return GwlToDrainage
-
 
 def drainage_hooghoud(dz, Ksat, gwl, DitchDepth, DitchSpacing, DitchWidth, Zbot=None,
                       below_ditch_drain=False):
