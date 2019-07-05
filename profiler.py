@@ -17,7 +17,8 @@ def profile(fnc):
         retval = fnc(*args, **kwargs)
         pr.disable()
         s = io.StringIO()
-        sortby = SortKey.CUMULATIVE
+#        sortby = SortKey.CUMULATIVE
+        sortby = SortKey.TIME
         ps = pstats.Stats(pr, stream=s).strip_dirs().sort_stats(sortby)
         ps.print_stats(0.05)
         print(s.getvalue())

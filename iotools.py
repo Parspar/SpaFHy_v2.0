@@ -320,7 +320,6 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     # replace nan's in prec with 0.0
     dt = (fmi.index[1] - fmi.index[0]).total_seconds()
     fmi['precipitation'] = fmi['precipitation'].fillna(0.0)
-    fmi['precipitation'] = fmi['precipitation'] / dt  # mms-1
 
     # add CO2 concentration to dataframe
     fmi['CO2'] = float(CO2)

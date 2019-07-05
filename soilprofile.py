@@ -98,16 +98,10 @@ class SoilGrid(object):
             results (dict)
 
         """
-        rr0 = rr.copy()
 
-        # initial state
-        Wsto_ini = self.Wsto.copy()
-        Wsto_top_ini = self.Wsto_top.copy()
-        pond_ini = self.h_pond.copy()
-
-        # add current pond storage to rr & update storage
-        rr += pond_ini
-        self.h_pond -= pond_ini
+        state0 = self.Wsto + self.Wsto_top + self.h_pond + rr
+        rr += self.h_pond
+        self.h_pond = 0.0
 
         # top layer interception & water balance
         interc = np.maximum(0.0, (self.Wsto_top_max - self.Wsto_top))\
@@ -156,9 +150,8 @@ class SoilGrid(object):
         self.Wliq_top = self.fc_top * self.Wsto_top / self.Wsto_top_max
         self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
 
-        # mass balance error [m]
-        mbe = ((Wsto_top_ini - self.Wsto_top) + (Wsto_ini - self.Wsto) + (pond_ini - self.h_pond) +
-               rr0 - drain - tr - surface_runoff - evap)
+        mbe = (state0  - self.Wsto_top - self.Wsto - self.h_pond -
+               drain - tr - surface_runoff - evap)
 
         results = {
                 'pond_storage': self.h_pond,  # [m]
