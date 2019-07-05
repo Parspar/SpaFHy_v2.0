@@ -24,3 +24,14 @@ def profile(fnc):
         return retval
 
     return inner
+
+@profile
+def profiler_run(create_ncf=False):
+
+    from model_driver import driver
+
+    outputfile = driver(create_ncf)
+
+if __name__ == '__main__':
+
+    profiler_run(create_ncf=True)
