@@ -113,3 +113,5 @@ sand*.py
 sand*.ipynb
 
 *.sh
+*.out
+*.err
