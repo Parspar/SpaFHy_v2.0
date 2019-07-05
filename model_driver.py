@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 eps = np.finfo(float).eps
 
-#@profile
+@profile
 def driver(create_ncf=False, output=True):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
