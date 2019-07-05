@@ -57,7 +57,7 @@ class SoilGrid(object):
         self.wsto_to_gwl = spara['wtso_to_gwl']
         self.gwl_to_wsto = spara['gwl_to_wsto']
         self.gwl_to_Ksat = spara['gwl_to_Ksat']
-        self.gwl_to_drainage = spara['gwl_to_drainage']
+#        self.gwl_to_drainage = spara['gwl_to_drainage']
 
         self.Wsto_max = np.full_like(self.h_pond_max,0.0)
         for key, value in self.gwl_to_wsto.items():
@@ -119,7 +119,6 @@ class SoilGrid(object):
         self.Wsto_top -= evap
 
         # drainage [m s-1]
-#        drain = apply_vectorized(self.gwl_to_drainage, self.gwl) * dt  # [m]
         for i in range(len(self.gwl_to_Ksat)):
             self.Ksat[self.depth_id == i] = self.gwl_to_Ksat[i](self.gwl[self.depth_id == i])
 
@@ -208,19 +207,13 @@ def gwl_Wsto(z, pF):
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
 
-## test
-#    polyp1 = np.poly1d(np.polyfit(np.array(Wsto), np.array(gwl), 30))
-#    polyp2 = np.poly1d(np.polyfit(np.array(gwl), np.array(Wsto), 30))
-
 #    plt.figure()
 #    plt.plot(Wsto, gwl,'.k')
 #    plt.plot(GwlToWsto(gwl), gwl)
-#    plt.plot(polyp2(gwl), gwl)
 
     del gwl, Wsto
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
-#    return {'to_gwl': polyp1, 'to_wsto': polyp2}
 
 def h_to_cellmoist(pF, h, dz):
     r""" Cell moisture based on vanGenuchten-Mualem soil water retention model.
@@ -275,25 +268,21 @@ def gwl_drainage(z, Ksat, DitchDepth, DitchSpacing, DitchWidth):
 
     # --------- connection between gwl and drainage------------
     # gwl from ground surface gwl = 0 to gwl = -5
-    gwl = np.zeros(len(z)+2)
-    gwl[1:-1] = z
-    gwl[-1] = -5.0
+    gwl = np.arange(0.0, -DitchDepth-0.1, -1e-2)
+    gwl[-1]=-5.0
     # solve water storage corresponding to gwls
     drainage = [sum(drainage_hooghoud(
             dz, Ksat, g, DitchDepth, DitchSpacing, DitchWidth) * dz) for g in gwl]
 
     # interpolate functions
     GwlToDrainage = interp1d(np.array(gwl), np.array(drainage), fill_value='extrapolate')
-#test!
-#    polyp = np.poly1d(np.polyfit(np.array(gwl), np.array(drainage), 10))
 
 # CAREFUL!!!
-#    plt.figure()
+#    plt.figure(99)
 #    plt.plot(GwlToDrainage(gwl)*1000*3600, gwl)
 #    plt.plot(polyp(gwl)*1000*3600, gwl)
 
     return GwlToDrainage
-#    return polyp
 
 def gwl_Ksat(z, Ksat, DitchDepth):
     r""" Forms interpolated function for drainage vs gwl
@@ -304,14 +293,17 @@ def gwl_Ksat(z, Ksat, DitchDepth):
 
     # --------- connection between gwl and drainage------------
     # gwl from ground surface gwl = 0 to gwl = -5
-    gwl = np.zeros(len(z)+2)
-    gwl[1:-1] = z
-    gwl[-1] = -5.0
+    gwl = np.arange(0.0, -DitchDepth-0.1, -1e-2)
+    gwl[-1]=-5.0
     # solve water storage corresponding to gwls
     Ka = [Ksat_layer(dz, Ksat, g, DitchDepth) for g in gwl]
 
     # interpolate functions
     GwlToKsat = interp1d(np.array(gwl), np.array(Ka), fill_value='extrapolate')
+
+#    plt.figure(100)
+#    plt.plot(Ka, gwl,'.k')
+#    plt.plot(GwlToKsat(gwl), gwl)
 
     return GwlToKsat
 
@@ -338,6 +330,7 @@ def drainage_hooghoud(dz, Ksat, gwl, DitchDepth, DitchSpacing, DitchWidth, Zbot=
     Samuli Launiainen, Metla 3.11.2014.; converted to Python 14.9.2016
     Kersti Haahti, 29.12.2017. Code checked, small corrections
     """
+    # depth of midpoint
     z = dz / 2 - np.cumsum(dz)
     N = len(z)
     Qz_drain = np.zeros(N)
@@ -357,13 +350,20 @@ def drainage_hooghoud(dz, Ksat, gwl, DitchDepth, DitchSpacing, DitchWidth, Zbot=
 
         """ drainage from saturated layers above ditch base """
         # layers above ditch bottom where drainage is possible
-        ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z > -DitchDepth))
+        ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -DitchDepth))
 
         if ix.size > 0:
+#            print('before', sum(Trans[ix]) / sum(dz_sat[ix]))
+            dz_sat[ix[-1]] = dz_sat[ix[-1]] + (z[ix][-1] - dz[ix][-1] / 2 + DitchDepth)
+            if abs(sum(dz_sat[ix]) - Hdr) > eps:
+                print(sum(dz_sat[ix]), Hdr, DitchDepth, gwl)
+            Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
+#            print('after', sum(Trans[ix]) / sum(dz_sat[ix]))
             Ka = sum(Trans[ix]) / sum(dz_sat[ix])  # effective hydraulic conductivity ms-1
             Qa = 4 * Ka * Hdr**2 / (DitchSpacing**2)  # m s-1, total drainage above ditches
             # sink term s-1, partitions Qa by relative transmissivity of layer
             Qz_drain[ix] = Qa * Trans[ix] / sum(Trans[ix]) / dz[ix]
+#            print(Qa, sum(Qz_drain*dz), Ksat_layer(dz,Ksat,gwl,DitchDepth)*4 * Hdr**2 / (DitchSpacing**2))
 
         if below_ditch_drain:
             """ drainage from saturated layers below ditch base """
@@ -414,6 +414,10 @@ def Ksat_layer(dz, Ksat, gwl, DitchDepth):
 
     Hdr = min(max(0, gwl + DitchDepth), DitchDepth)  # depth of saturated layer above ditch bottom
 
+    """ drainage from saturated layers above ditch base """
+    # layers above ditch bottom where drainage is possible
+    ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -DitchDepth))
+
     if Hdr > 0:
         # saturated layer thickness [m]
         dz_sat = np.minimum(np.maximum(gwl - (z - dz / 2), 0), dz)
@@ -422,9 +426,13 @@ def Ksat_layer(dz, Ksat, gwl, DitchDepth):
 
         """ drainage from saturated layers above ditch base """
         # layers above ditch bottom where drainage is possible
-        ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z > -DitchDepth))
+        ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -DitchDepth))
 
         if ix.size > 0:
+            dz_sat[ix[-1]] = dz_sat[ix[-1]] + (z[ix][-1] - dz[ix][-1] / 2 + DitchDepth)
+            if abs(sum(dz_sat[ix]) - Hdr) > eps:
+                print(sum(dz_sat[ix]), Hdr, DitchDepth, gwl)
+            Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
             Ka = sum(Trans[ix]) / sum(dz_sat[ix])  # effective hydraulic conductivity ms-1
 
     return Ka
