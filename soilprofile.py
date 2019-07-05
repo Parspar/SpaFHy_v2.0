@@ -25,7 +25,7 @@ class SoilGrid(object):
                 # scipy interpolation functions describing soil behavior
                 'wtso_to_gwl'
                 'gwl_to_wsto'
-                'gwl_to_drainage'
+                'gwl_to_Ksat'
                 # organic (moss) layer
                 'org_depth': depth of organic top layer (m)
                 'org_poros': porosity (-)
@@ -57,7 +57,6 @@ class SoilGrid(object):
         self.wsto_to_gwl = spara['wtso_to_gwl']
         self.gwl_to_wsto = spara['gwl_to_wsto']
         self.gwl_to_Ksat = spara['gwl_to_Ksat']
-#        self.gwl_to_drainage = spara['gwl_to_drainage']
 
         self.Wsto_max = np.full_like(self.h_pond_max,0.0)
         for key, value in self.gwl_to_wsto.items():
@@ -118,10 +117,9 @@ class SoilGrid(object):
         evap = np.minimum(evap, self.Wsto_top)
         self.Wsto_top -= evap
 
-        # drainage [m s-1]
+        # drainage [m]
         for i in range(len(self.gwl_to_Ksat)):
-            self.Ksat[self.depth_id == i] = self.gwl_to_Ksat[i](self.gwl[self.depth_id == i])
-
+            self.Ksat[self.depth_id == i] = self.gwl_to_Ksat[i](self.gwl[self.depth_id == i])  # [m s-1]
         Hdr = np.minimum(np.maximum(0, self.gwl + self.ditch_depth), self.ditch_depth)
         drain = 4 * self.Ksat * Hdr**2 / (self.ditch_spacing**2) * dt  # [m]
 
@@ -259,31 +257,6 @@ def h_to_cellmoist(pF, h, dz):
 
     return theta
 
-def gwl_drainage(z, Ksat, DitchDepth, DitchSpacing, DitchWidth):
-    r""" Forms interpolated function for drainage vs gwl
-    """
-    z = np.array(z)
-    dz = abs(z)
-    dz[1:] = z[:-1] - z[1:]
-
-    # --------- connection between gwl and drainage------------
-    # gwl from ground surface gwl = 0 to gwl = -5
-    gwl = np.arange(0.0, -DitchDepth-0.1, -1e-2)
-    gwl[-1]=-5.0
-    # solve water storage corresponding to gwls
-    drainage = [sum(drainage_hooghoud(
-            dz, Ksat, g, DitchDepth, DitchSpacing, DitchWidth) * dz) for g in gwl]
-
-    # interpolate functions
-    GwlToDrainage = interp1d(np.array(gwl), np.array(drainage), fill_value='extrapolate')
-
-# CAREFUL!!!
-#    plt.figure(99)
-#    plt.plot(GwlToDrainage(gwl)*1000*3600, gwl)
-#    plt.plot(polyp(gwl)*1000*3600, gwl)
-
-    return GwlToDrainage
-
 def gwl_Ksat(z, Ksat, DitchDepth):
     r""" Forms interpolated function for drainage vs gwl
     """
@@ -294,7 +267,7 @@ def gwl_Ksat(z, Ksat, DitchDepth):
     # --------- connection between gwl and drainage------------
     # gwl from ground surface gwl = 0 to gwl = -5
     gwl = np.arange(0.0, -DitchDepth-0.1, -1e-2)
-    gwl[-1]=-5.0
+    gwl[-1] = -5.0
     # solve water storage corresponding to gwls
     Ka = [Ksat_layer(dz, Ksat, g, DitchDepth) for g in gwl]
 
@@ -306,87 +279,6 @@ def gwl_Ksat(z, Ksat, DitchDepth):
 #    plt.plot(GwlToKsat(gwl), gwl)
 
     return GwlToKsat
-
-def drainage_hooghoud(dz, Ksat, gwl, DitchDepth, DitchSpacing, DitchWidth, Zbot=None,
-                      below_ditch_drain=False):
-    r""" Calculates drainage to ditch using Hooghoud's drainage equation,
-    accounts for drainage from saturated layers above and below ditch bottom.
-
-    Args:
-       dz (array):  soil conpartment thichness, node in center [m]
-       Ksat (array): horizontal saturated hydr. cond. [ms-1]
-       gwl (float): ground water level below surface, <0 [m]
-       DitchDepth (float): depth of drainage ditch bottom, >0 [m]
-       DitchSpacing (float): horizontal spacing of drainage ditches [m]
-       DitchWidth (float): ditch bottom width [m]
-       Zbot (float): distance to impermeable layer, >0 [m]
-    Returns:
-       Qz_drain (array): drainage from each soil layer [m3 m-3 s-1]
-
-    Reference:
-       Follows Koivusalo, Lauren et al. FEMMA -document. Ref: El-Sadek et al., 2001.
-       J. Irrig.& Drainage Engineering.
-
-    Samuli Launiainen, Metla 3.11.2014.; converted to Python 14.9.2016
-    Kersti Haahti, 29.12.2017. Code checked, small corrections
-    """
-    # depth of midpoint
-    z = dz / 2 - np.cumsum(dz)
-    N = len(z)
-    Qz_drain = np.zeros(N)
-    Qa = 0.0
-    Qb = 0.0
-
-    if Zbot is None or Zbot > sum(dz):  # Can't be lower than soil profile bottom
-        Zbot = sum(dz)
-
-    Hdr = min(max(0, gwl + DitchDepth), DitchDepth)  # depth of saturated layer above ditch bottom
-
-    if Hdr > 0:
-        # saturated layer thickness [m]
-        dz_sat = np.minimum(np.maximum(gwl - (z - dz / 2), 0), dz)
-        # transmissivity of layers  [m2 s-1]
-        Trans = Ksat * dz_sat
-
-        """ drainage from saturated layers above ditch base """
-        # layers above ditch bottom where drainage is possible
-        ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -DitchDepth))
-
-        if ix.size > 0:
-#            print('before', sum(Trans[ix]) / sum(dz_sat[ix]))
-            dz_sat[ix[-1]] = dz_sat[ix[-1]] + (z[ix][-1] - dz[ix][-1] / 2 + DitchDepth)
-            if abs(sum(dz_sat[ix]) - Hdr) > eps:
-                print(sum(dz_sat[ix]), Hdr, DitchDepth, gwl)
-            Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
-#            print('after', sum(Trans[ix]) / sum(dz_sat[ix]))
-            Ka = sum(Trans[ix]) / sum(dz_sat[ix])  # effective hydraulic conductivity ms-1
-            Qa = 4 * Ka * Hdr**2 / (DitchSpacing**2)  # m s-1, total drainage above ditches
-            # sink term s-1, partitions Qa by relative transmissivity of layer
-            Qz_drain[ix] = Qa * Trans[ix] / sum(Trans[ix]) / dz[ix]
-#            print(Qa, sum(Qz_drain*dz), Ksat_layer(dz,Ksat,gwl,DitchDepth)*4 * Hdr**2 / (DitchSpacing**2))
-
-        if below_ditch_drain:
-            """ drainage from saturated layers below ditch base """
-            # layers below ditch bottom where drainage is possible
-            ix = np.where(z <= -DitchDepth)
-
-            # effective hydraulic conductivity ms-1
-            Kb = sum(Trans[ix]) / sum(dz_sat[ix])
-
-            # compute equivalent depth Deq
-            Dbt = Zbot - DitchDepth  # distance from impermeable layer to ditch bottom
-            A = 3.55 - 1.6 * Dbt / DitchSpacing + 2 * (2.0 / DitchSpacing)**2.0
-            Reff = DitchWidth / 2.0  # effective radius of ditch
-
-            if Dbt / DitchSpacing <= 0.3:
-                Deq = Dbt / (1.0 + Dbt / DitchSpacing * (8 / np.pi * np.log(Dbt / Reff) - A))  # m
-            else:
-                Deq = np.pi * DitchSpacing / (8 * (np.log(DitchSpacing / Reff) - 1.15))  # m
-
-            Qb = 8 * Kb * Deq * Hdr / DitchSpacing**2  # m s-1, total drainage below ditches
-            Qz_drain[ix] = Qb * Trans[ix] / sum(Trans[ix]) / dz[ix]  # sink term s-1
-
-    return Qz_drain
 
 def Ksat_layer(dz, Ksat, gwl, DitchDepth):
     r""" Calculates drainage to ditch using Hooghoud's drainage equation,
@@ -409,7 +301,6 @@ def Ksat_layer(dz, Ksat, gwl, DitchDepth):
     Kersti Haahti, 29.12.2017. Code checked, small corrections
     """
     z = dz / 2 - np.cumsum(dz)
-    N = len(z)
     Ka = 0.0
 
     Hdr = min(max(0, gwl + DitchDepth), DitchDepth)  # depth of saturated layer above ditch bottom

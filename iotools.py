@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile import gwl_Wsto, gwl_drainage, gwl_Ksat, nan_function
+from soilprofile import gwl_Wsto, gwl_Ksat, nan_function
 from koordinaattimuunnos import koordTG
 
 eps = np.finfo(float).eps  # machine epsilon
@@ -173,11 +173,7 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
     data.update((x, y * gisdata['cmask']) for x, y in data.items())
 
     data.update({'soiltype': np.empty(np.shape(gisdata['cmask']),dtype=object),
-                 'depth_id': np.empty(np.shape(gisdata['cmask']),dtype=int)
-#                 'wtso_to_gwl': np.full_like(np.shape(gisdata['cmask']),nan_function,dtype=object),
-#                 'gwl_to_wsto': np.full_like(np.shape(gisdata['cmask']),nan_function,dtype=object),
-#                 'gwl_to_drainage': np.full_like(gisdata['cmask'],nan_function,dtype=object)
-                })
+                 'depth_id': np.empty(np.shape(gisdata['cmask']),dtype=int)})
 
     if spatial == False:
         data['soilclass'] = psp['soil_id'] * gisdata['cmask']
@@ -207,20 +203,6 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
             i=i+1
 
     data['gwl_to_Ksat'] = data['gwl_to_Ksat'][:i]
-
-#    # go through all pixels to get interpolatefunction drainage=f(gwl)
-#    for i in range(np.shape(gisdata['cmask'])[0]):
-#        for j in range(np.shape(gisdata['cmask'])[1]):
-#            if np.isfinite(gisdata['cmask'][i,j]):
-#                soiltype = data['soiltype'][i,j]
-#                data['wtso_to_gwl'][i,j] = peatp[soiltype]['to_gwl']
-#                data['gwl_to_wsto'][i,j] = peatp[soiltype]['to_wsto']
-#                data['gwl_to_drainage'][i,j] = gwl_drainage(
-#                        peatp[soiltype]['z'],
-#                        peatp[soiltype]['saturated_conductivity'],
-#                        data['ditch_depth'][i,j],
-#                        data['ditch_spacing'][i,j],
-#                        data['ditch_width'][i,j])
 
     data['wtso_to_gwl'] = {soiltype: peatp[soiltype]['to_gwl'] for soiltype in peatp.keys()}
     data['gwl_to_wsto'] = {soiltype: peatp[soiltype]['to_wsto'] for soiltype in peatp.keys()}
