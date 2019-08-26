@@ -8,9 +8,9 @@ PARAMETERS
 def parameters():
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2006-01-01',
-            'end_date': '2019-06-01',
-            'spinup_end': '2010-01-01',  # results after this are saved in result file
+            'start_date': '2014-01-01',
+            'end_date': '2017-12-31',
+            'spinup_end': '2015-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -165,6 +165,16 @@ def peat_soilprofiles():
                     'alpha': [0.202, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044],
                     'n': [1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349]},
             'saturated_conductivity': [30*4.97E-05, 10*3.21E-05, 2.07E-05, 1.34E-05, 8.63E-06, 5.57E-06, 3.60E-06, 2.32E-06, 1.50E-06, 9.68E-07, 2.61E-07, 1.16E-07],
+                },
+        'carex_mouhi': {
+            'soil_id': 3.0,
+            'z': [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1., -1.5, -2.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.943, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882, 0.882],
+                    'ThetaR': [0.002, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104, 0.104],
+                    'alpha': [0.202, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044, 0.044],
+                    'n': [1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349, 1.349]},
+            'saturated_conductivity': [0.5*4.97E-05, 0.5*3.21E-05, 0.5*2.07E-05, 0.5*1.34E-05, 0.5*8.63E-06, 0.5*5.57E-06, 0.5*3.60E-06, 0.5*2.32E-06, 0.5*1.50E-06, 0.5*9.68E-07, 0.5*2.61E-07, 0.5*1.16E-07],
                 }
             }
     return peatp
