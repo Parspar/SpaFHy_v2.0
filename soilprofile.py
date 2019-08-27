@@ -62,6 +62,8 @@ class SoilGrid(object):
         for key, value in self.gwl_to_wsto.items():
             self.Wsto_max[self.soiltype == key] = value(0.0)
 
+        self.gwl_to_rootmoist = spara['gwl_to_rootmoist']
+
         # drainage parameters
         self.ditch_depth = spara['ditch_depth']
         self.ditch_spacing = spara['ditch_spacing']
@@ -72,8 +74,18 @@ class SoilGrid(object):
         # soil profile
         self.gwl = spara['ground_water_level']
         self.Wsto = np.full_like(self.gwl, 0.0)
+        self.rootmoist = np.full_like(self.gwl, 0.0)
+        self.root_fc0 = np.full_like(self.gwl, 0.0)
+        self.root_fc1 = np.full_like(self.gwl, 0.0)
+        self.root_wp = np.full_like(self.gwl, 0.0)
         for key, value in self.gwl_to_wsto.items():
             self.Wsto[self.soiltype == key] = value(self.gwl[self.soiltype == key])
+        for key, value in self.gwl_to_rootmoist.items():
+            self.rootmoist[self.soiltype == key] = value(self.gwl[self.soiltype == key])
+            self.root_fc0[self.soiltype == key] = value(-0.7 - 0.1)
+            self.root_fc1[self.soiltype == key] = value(-1.2 - 0.1)
+            self.root_wp[self.soiltype == key] = value(-150.0 - 0.1)
+
         self.Rew = 1.0
 
         # toplayer storage and relative conductance for evaporation
@@ -150,6 +162,16 @@ class SoilGrid(object):
         self.Wliq_top = self.fc_top * self.Wsto_top / self.Wsto_top_max
         self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
 
+        for key, value in self.gwl_to_rootmoist.items():
+            self.rootmoist[self.soiltype == key] = value(self.gwl[self.soiltype == key])
+
+        # Koivusalo et al. 2008 HESS without wet side limit
+        self.Rew = np.where(self.rootmoist > self.root_fc1,
+                            np.minimum(1.0, 0.5*(1 + (self.rootmoist - self.root_fc1)/(self.root_fc0 - self.root_fc1))),
+                            np.maximum(0.0, 0.5*(self.rootmoist - self.root_wp)/(self.root_fc1 - self.root_wp))
+                            )
+
+        # mass balance error [m]
         mbe = (state0  - self.Wsto_top - self.Wsto - self.h_pond -
                drain - tr - surface_runoff - evap)
 
@@ -162,11 +184,13 @@ class SoilGrid(object):
                 'drainage': drain * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'water_closure':  mbe,  # [mm d-1]
+                'transpiration_limitation': self.Rew,  # [-]
+                'rootzone_moisture': self.rootmoist,  # [m3 m-3]
                 }
 
         return results
 
-def gwl_Wsto(z, pF):
+def gwl_Wsto(z, pF, root=False):
     r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
     function of water storage [m] and vice versa
 
@@ -191,8 +215,12 @@ def gwl_Wsto(z, pF):
     # --------- connection between gwl and water storage------------
     # gwl from ground surface gwl = 0 to gwl = -5
     gwl = np.arange(0.0, -5, -1e-3)
+    gwl[-1] = -150
     # solve water storage corresponding to gwls
     Wsto = [sum(h_to_cellmoist(pF, g - z_mid, dz) * dz) for g in gwl]
+
+    if root:
+        Wsto = Wsto/sum(dz)
 
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
@@ -201,10 +229,16 @@ def gwl_Wsto(z, pF):
 #    plt.figure()
 #    plt.plot(Wsto, gwl,'.k')
 #    plt.plot(GwlToWsto(gwl), gwl)
+#    plt.xlabel('2-m profiilin vesivarasto (m)')
+#    plt.ylabel('Pohjavedenpinta (m)')
+#    plt.ylim([-1.5,0])
 
     del gwl, Wsto
 
-    return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
+    if root:
+        return {'to_rootmoist': GwlToWsto}
+    else:
+        return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
 
 def h_to_cellmoist(pF, h, dz):
     r""" Cell moisture based on vanGenuchten-Mualem soil water retention model.
@@ -261,6 +295,7 @@ def gwl_Ksat(z, Ksat, DitchDepth):
     # gwl from ground surface gwl = 0 to gwl = -5
     gwl = np.arange(0.0, -DitchDepth-0.1, -1e-2)
     gwl[-1] = -5.0
+
     # solve water storage corresponding to gwls
     Ka = [Ksat_layer(dz, Ksat, g, DitchDepth) for g in gwl]
 
