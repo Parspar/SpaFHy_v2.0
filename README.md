@@ -21,7 +21,7 @@ results = read_results(outputfile)
 plt.figure()
 results['soil_ground_water_level'][:,0,:10].plot.line(x='date')
 ```
-**Edits:**
-5-Jul-2019: Modified interpolation function calls to speed up computation
-26-Aug-2019: Rootzone moisture restriction on transpiration from sompa branch
-28-Aug-2019: Reading forcing files adjusted
+**Edits:**  
+5-Jul-2019: Modified interpolation function calls to speed up computation  
+26-Aug-2019: Rootzone moisture restriction on transpiration from sompa branch  
+28-Aug-2019: Reading forcing files adjusted  
