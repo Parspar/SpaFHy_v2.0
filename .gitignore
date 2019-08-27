@@ -107,6 +107,7 @@ venv.bak/
 /figures
 /results
 /data
+/sompa_data
 
 # sandbucket, sandbox
 sand*.py
