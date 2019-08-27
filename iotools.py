@@ -340,7 +340,6 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
 
     fmi['doy'] = fmi.index.dayofyear
     # replace nan's in prec with 0.0
-    dt = (fmi.index[1] - fmi.index[0]).total_seconds()
     fmi['precipitation'] = fmi['precipitation'].fillna(0.0)
 
     # add CO2 and wind speed concentration to dataframe
@@ -355,10 +354,11 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
 #    print(fmi.isnull().any())
 
     dates = pd.date_range(start_date, end_date).tolist()
+    fmi = fmi.drop_duplicates(keep='first')
     if len(dates) != len(fmi):
         print(str(len(dates) - len(fmi)) + ' days missing from forcing file, interpolated')
-    forcing=pd.DataFrame(index=dates, columns=[])
-    forcing=forcing.merge(fmi, how='outer', left_index=True, right_index=True)
+    forcing = pd.DataFrame(index=dates, columns=[])
+    forcing = forcing.merge(fmi, how='outer', left_index=True, right_index=True)
     forcing = forcing.fillna(method='ffill')
 
     return forcing

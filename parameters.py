@@ -8,9 +8,9 @@ PARAMETERS
 def parameters():
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '1980-01-01',
+            'start_date': '1981-01-01',
             'end_date': '2015-12-31',
-            'spinup_end': '1981-01-01',  # results after this are saved in result file
+            'spinup_end': '1982-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
