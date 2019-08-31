@@ -66,9 +66,11 @@ class CanopyGrid():
         self._LAIdecid_max = state['lai_decid_max'] + epsi # m2m-2
 
         # senescence starts at first doy when daylength < self.phenopara['sdl']
-        self.phenopara['sso'] = np.empty(np.shape(self.latitude))
+        self.phenopara['sso'] = np.ones(np.shape(self.latitude))*np.nan
         doy = np.arange(1, 366)
         for lat in np.unique(self.latitude):
+            if np.isnan(lat):
+                break
             # senescence starts at first doy when daylength < self.phenopara['sdl']
             dl = daylength(lat, doy)
             ix = np.max(np.where(dl > self.phenopara['sdl']))
@@ -137,8 +139,11 @@ class CanopyGrid():
         """ --- update deciduous leaf area index --- """
         laifract = self._lai_dynamics(doy)
 
+# TEST
+#        fPheno = self._LAIconif/self.LAI * fPheno + self._LAIdecid/self.LAI * np.minimum(self._LAIdecid/self._LAIdecid_max-self.phenopara['lai_decid_min'],fPheno)
+
         """ --- aerodynamic conductances --- """
-        Ra, Rb, Ras, ustar, Uh, Ug = aerodynamics(self.LAI, self.hc, U, w=0.01, zm=self.zmeas,
+        Ra, _, Ras, _, _, _ = aerodynamics(self.LAI, self.hc, U, w=0.01, zm=self.zmeas,
                                                   zg=self.zground, zos=self.zo_ground)
 
         """ --- interception, evaporation and snowpack --- """
@@ -148,6 +153,7 @@ class CanopyGrid():
         Transpi, Efloor, Gc = self.dry_canopy_et(VPD, Par, Rn, Ta, Ra=Ra, Ras=Ras, CO2=CO2, Rew=Rew, beta=beta, fPheno=fPheno)
 
         Transpi = Transpi * dt
+#        Transpi = (1.0 - Evap/(erate + eps)) * Transpi * dt
         Efloor = Efloor * dt
         ET = Transpi + Efloor
 
@@ -161,7 +167,9 @@ class CanopyGrid():
                 'snow_water_equivalent': self.SWE,  # [mm]
                 'water_closure': MBE,  # [mm d-1]
                 'phenostate': fPheno,  # [-]
-                'leaf_area_index': self.LAI  # [m2 m-2]
+                'leaf_area_index': self.LAI,  # [m2 m-2]
+                'stomatal_conductance': Gc,  # [m s-1]
+                'degree_day_sum': self.DDsum  # [degC]
                 }
 
         return results
@@ -287,22 +295,22 @@ class CanopyGrid():
         """--- canopy conductance Gc (integrated stomatal conductance)----- """
 
         # fQ: Saugier & Katerji, 1991 Agric. For. Met., eq. 4. Leaf light response = Qp / (Qp + q50)
-        fQ = 1./ kp * np.log((kp*Qp + q50) / (kp*Qp*np.exp(-kp * self.LAI) + q50 + eps) )
+        fQ = 1./ kp * np.log((kp*Qp + q50) / (kp*Qp*np.exp(-kp * self.LAI) + q50 + eps))
 
         # the next formulation is from Leuning et al., 2008 WRR for daily Gc; they refer to
         # Kelliher et al. 1995 AFM but the resulting equation is not exact integral of K95.
         # fQ = 1./ kp * np.log((Qp + q50) / (Qp*np.exp(-kp*self.LAI) + q50))
 
         # soil moisture response: Lagergren & Lindroth, xxxx"""
-        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
-        # fRew = 1.0
+#        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
+        fRew = Rew
 
         # CO2 -response of canopy conductance, derived from APES-simulations
         # (Launiainen et al. 2016, Global Change Biology). relative to 380 ppm
         fCO2 = 1.0 - 0.387 * np.log(CO2 / 380.0)
 
         # leaf level light-saturated gs (m/s)
-        gs = 1.6*(1.0 + g1 / np.sqrt(D))*Amax / CO2 / rhoa
+        gs = np.minimum(1.6*(1.0 + g1 / np.sqrt(D))*Amax / CO2 / rhoa, 0.1)  # large values if D -> 0
 
         # canopy conductance
         Gc = gs * fQ * fRew * fCO2 * fPheno
@@ -366,19 +374,12 @@ class CanopyGrid():
         if np.shape(T) != gridshape:
             T = np.ones(gridshape) * T
             Prec = np.ones(gridshape) * Prec
-            AE = np.ones(gridshape) * AE
-            D = np.ones(gridshape) * D
-            Ra = np.ones(gridshape) * Ra
 
-        Prec = Prec * dt  # mm
         # latent heat of vaporization (Lv) and sublimation (Ls) J kg-1
         Lv = 1e3 * (3147.5 - 2.37 * (T + 273.15))
         Ls = Lv + 3.3e5
 
         # compute 'potential' evaporation / sublimation rates for each grid cell
-        erate = np.zeros(gridshape)
-        ixs = np.where((Prec == 0) & (T <= Tmin))
-        ixr = np.where((Prec == 0) & (T > Tmin))
         Ga = 1. / Ra  # aerodynamic conductance
 
         # resistance for snow sublimation adopted from:
@@ -388,37 +389,21 @@ class CanopyGrid():
 
         Ce = 0.01*((self.W + eps) / Wmaxsnow)**(-0.4)  # exposure coeff (-)
         Sh = (1.79 + 3.0*U**0.5)  # Sherwood numbner (-)
-        gi = Sh*self.W*Ce / 7.68 + eps # m s-1
-        # print ixs
-        # print('ixs', np.shape(ixs), 'gi', np.shape(gi[ixs]), 'ga', np.shape(Ga[ixs]),
-        #      'T', np.shape(T[ixs]), 'AE', np.shape(AE[ixs]), 'tau', np.shape(tau[ixs]))
-        erate[ixs] = dt / Ls[ixs] * penman_monteith((1.0 - tau[ixs])*AE[ixs], 1e3*D[ixs], T[ixs], gi[ixs], Ga[ixs], units='W')
-#        print('gi', gi, 'Ce', Ce, 'Sh', Sh)
 
-        # evaporation of intercepted water, mm
-        gs = 1e6
-        erate[ixr] = dt / Lv[ixr] * penman_monteith((1.0 - tau[ixr])*AE[ixr], 1e3*D[ixr], T[ixr], gs, Ga[ixr], units='W')
-
-        # print('erate', erate)
+        gi = np.where(T <= Tmin, Sh*self.W*Ce / 7.68 + eps, 1e6) # m s-1
+        Lambda = np.where(T <= Tmin, Ls, Lv)
+        # evaporation of interception storage, mm
+        erate = np.where(Prec==0,
+                         dt / Lambda * penman_monteith((1.0 - tau)*AE, 1e3*D, T, gi, Ga, units='W'),
+                         0.0)
 
         # ---state of precipitation [as water (fW) or as snow(fS)]
-        fW = np.zeros(gridshape)
-        fS = np.zeros(gridshape)
+        fW = np.where(T >= Tmax, 1.0, 0.0)
 
-        fW[T >= Tmax] = 1.0
-        fS[T <= Tmin] = 1.0
-
-        ix = np.where((T > Tmin) & (T < Tmax))
+        ix = ((T > Tmin) & (T < Tmax))
         fW[ix] = (T[ix] - Tmin) / (Tmax - Tmin)
-        fS[ix] = 1.0 - fW[ix]
-        del ix
 
-        # --- Local fluxes (mm)
-        Unload = np.zeros(gridshape)  # snow unloading
-        Interc = np.zeros(gridshape)  # interception
-        Melt = np.zeros(gridshape)   # melting
-        Freeze = np.zeros(gridshape)  # freezing
-        Evap = np.zeros(gridshape)
+        fS = 1.0 - fW
 
         """ --- initial conditions for calculating mass balance error --"""
         Wo = self.W  # canopy storage
@@ -427,25 +412,17 @@ class CanopyGrid():
         """ --------- Canopy water storage change -----"""
         # snow unloading from canopy, ensures also that seasonal LAI development does
         # not mess up computations
-        ix = (T >= Tmax)
-        Unload[ix] = np.maximum(self.W[ix] - Wmax[ix], 0.0)
+        Unload = np.where(T >= Tmax, np.maximum(self.W - Wmax, 0.0), 0.0)
         self.W = self.W - Unload
-        del ix
-        # dW = self.W - Wo
 
         # Interception of rain or snow: asymptotic approach of saturation.
         # Hedstrom & Pomeroy 1998. Hydrol. Proc 12, 1611-1625;
         # Koivusalo & Kokkonen 2002 J.Hydrol. 262, 145-164.
-        ix = (T < Tmin)
-        Interc[ix] = (Wmaxsnow[ix] - self.W[ix]) \
-                    * (1.0 - np.exp(-(self.cf[ix] / Wmaxsnow[ix]) * Prec[ix]))
-        del ix
-
         # above Tmin, interception capacity equals that of liquid precip
-        ix = (T >= Tmin)
-        Interc[ix] = np.maximum(0.0, (Wmax[ix] - self.W[ix]))\
-                    * (1.0 - np.exp(-(self.cf[ix] / Wmax[ix]) * Prec[ix]))
-        del ix
+        Interc = np.where(T < Tmin,
+                (Wmaxsnow - self.W)* (1.0 - np.exp(-(self.cf / Wmaxsnow) * Prec)),
+                np.maximum(0.0, (Wmax - self.W))* (1.0 - np.exp(-(self.cf / Wmax) * Prec)))
+
         self.W = self.W + Interc  # new canopy storage, mm
 
         Trfall = Prec + Unload - Interc  # Throughfall to field layer or snowpack
@@ -455,16 +432,14 @@ class CanopyGrid():
         self.W = self.W - Evap
 
         """ Snowpack (in case no snow, all Trfall routed to floor) """
-        ix = np.where(T >= Tmelt)
-        Melt[ix] = np.minimum(self.SWEi[ix], Kmelt[ix] * dt * (T[ix] - Tmelt))  # mm
-        del ix
-        ix = np.where(T < Tmelt)
-        Freeze[ix] = np.minimum(self.SWEl[ix], Kfreeze * dt * (Tmelt - T[ix]))  # mm
-        del ix
+        # melting positive, freezing negative
+        Melt_Freeze = np.where(T >= Tmelt,
+                np.minimum(self.SWEi, Kmelt * dt * (T - Tmelt)),
+                -np.minimum(self.SWEl, Kfreeze * dt * (Tmelt - T)))
 
         # amount of water as ice and liquid in snowpack
-        Sice = np.maximum(0.0, self.SWEi + fS * Trfall + Freeze - Melt)
-        Sliq = np.maximum(0.0, self.SWEl + fW * Trfall - Freeze + Melt)
+        Sice = np.maximum(0.0, self.SWEi + fS * Trfall - Melt_Freeze)
+        Sliq = np.maximum(0.0, self.SWEl + fW * Trfall + Melt_Freeze)
 
         PotInf = np.maximum(0.0, Sliq - Sice * self.R)  # mm
         Sliq = np.maximum(0.0, Sliq - PotInf)  # mm, liquid water in snow
@@ -476,25 +451,6 @@ class CanopyGrid():
 
         # mass-balance error mm
         MBE = (self.W + self.SWE) - (Wo + SWEo) - (Prec - Evap - PotInf)
-
-        # MBEsnow = self.SWE - SWEo - (Trfall - PotInf)
-#        if np.nanmax(MBEsnow) > 0.1:
-#            print('MBEsnow', MBEsnow)
-#            print('Freeze', Freeze)
-#            print('melt', Melt)
-#            print('Potinf', PotInf)
-#            print('Trfall', Trfall)
-#            print('SWE', self.SWE)
-#            print('SWo', SWEo)
-#            print('dSWE', self.SWE-SWEo)
-#            print('T', T)
-#            print('fS', fS)
-#            print('fW', fW)
-#        MBEcan = (self.W - Wo) - (Interc - Evap - Unload)
-#        if np.nanmax(MBEcan) > 0.1:
-#            print('Mbecan', MBEcan)
-#            print('Unload', Unload)
-#            print('dW', dW)
 
         return PotInf, Trfall, Evap, Interc, MBE, erate, Unload, fS + fW
 
@@ -550,28 +506,26 @@ def eq_evap(AE, T, P=101300.0, units='W'):
 
 
 # @staticmethod
-def e_sat(T, P=101300):
+def e_sat(T, P=101300, Lambda=2450e3):
     """
     Computes saturation vapor pressure (Pa), slope of vapor pressure curve
     [Pa K-1]  and psychrometric constant [Pa K-1]
     IN:
         T - air temperature (degC)
         P - ambient pressure (Pa)
+        Lambda - lat heat of vapor [J/kg]
     OUT:
         esa - saturation vapor pressure in Pa
         s - slope of saturation vapor pressure curve (Pa K-1)
         g - psychrometric constant (Pa K-1)
     """
-    NT = 273.15
     cp = 1004.67  # J/kg/K
 
-    Lambda = 1e3 * (3147.5 - 2.37 * (T + NT))  # lat heat of vapor [J/kg]
-    esa = 1e3 * (0.6112 * np.exp((17.67 * T) / (T + 273.16 - 29.66)))  # Pa
+    esa = 1e3 * 0.6112 * np.exp((17.67 * T) / (T + 273.16 - 29.66))  # Pa
 
     s = 17.502 * 240.97 * esa / ((240.97 + T) ** 2)
     g = P * cp / (0.622 * Lambda)
     return esa, s, g
-
 
 # @staticmethod
 def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
@@ -593,8 +547,8 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
     cp = 1004.67  # J kg-1 K-1
     rho = 1.25  # kg m-3
     Mw = 18e-3  # kg mol-1
-    _, s, g = e_sat(T, P)  # slope of sat. vapor pressure, psycrom const
     L = 1e3 * (3147.5 - 2.37 * (T + 273.15))
+    _, s, g = e_sat(T, P, L)  # slope of sat. vapor pressure, psycrom const
 
     x = (s * AE + rho * cp * Ga * D) / (s + g * (1.0 + Ga / (Gs + eps)))  # Wm-2
 

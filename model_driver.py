@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 eps = np.finfo(float).eps
 
-def driver(create_ncf=False):
+def driver(create_ncf=False, output=True):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -92,10 +92,12 @@ def driver(create_ncf=False):
         ncf.close()
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
         print('--- Results are in file: ' + outputfile + ' ---')
-        return outputfile
+        if output:
+            return outputfile
     else:
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
-        return results
+        if output:
+            return results
 
 def preprocess_parameters():
     """
@@ -149,11 +151,13 @@ def preprocess_forcing(pgen):
 
     dims = ['date','i','j']
     dates = pd.date_range(pgen['start_date'], pgen['end_date']).tolist()
-    empty_array = np.empty((len(dates),) + np.shape(indices))
+    empty_array = np.ones((len(dates),) + np.shape(indices)) * np.nan
 
     ddict = {var: (dims, empty_array.copy()) for var in variables}
 
     for index in np.unique(indices):
+        if np.isnan(index):
+            break
         fp = pgen['forcing_file'].replace('[forcing_id]',str(int(index)))
         df = read_FMI_weather(pgen['start_date'],
                               pgen['end_date'],
@@ -212,3 +216,9 @@ def _append_results(group, step_results, results, step=None):
                 results[key][step] = res
 
     return results
+
+if __name__ == '__main__':
+
+    outputfile = driver(create_ncf=True)
+
+    print(outputfile)
