@@ -8,8 +8,8 @@ Created on Mon Jan 21 13:52:46 2019
 import time
 import numpy as np
 import pandas as pd
-from spafhy_peat import SpaFHy
-from iotools import read_FMI_weather, initialize_netcdf, write_ncf
+from .spafhy_peat import SpaFHy
+from .iotools import read_FMI_weather, initialize_netcdf, write_ncf
 import matplotlib.pyplot as plt
 
 eps = np.finfo(float).eps

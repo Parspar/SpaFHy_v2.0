@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile import gwl_Wsto, gwl_drainage, nan_function
-from koordinaattimuunnos import koordTG
+from .soilprofile import gwl_Wsto, gwl_drainage, nan_function
+from .koordinaattimuunnos import koordTG
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
