@@ -8,8 +8,8 @@ Created on Fri Oct 28 16:18:57 2016
 
 import numpy as np
 import pandas as pd
-from canopygrid import CanopyGrid
-from soilprofile import SoilGrid
+from .canopygrid import CanopyGrid
+from .soilprofile import SoilGrid
 
 eps = np.finfo(float).eps  # machine epsilon
 
