@@ -285,10 +285,14 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     # import forcing data
     try:
         fmi = pd.read_csv(sourcefile, sep=';', header='infer',
-                          usecols=['OmaTunniste', 'Kunta', 'aika', 'longitude',
-                          'latitude', 't_mean', 't_max', 't_min', 'rainfall',
+                          usecols=['OmaTunniste', 'Kunta', 'aika','vuosi','kk','paiva',
+                          'longitude','latitude', 't_mean', 't_max', 't_min', 'rainfall',
                           'radiation', 'hpa', 'lamposumma_v', 'rainfall_v'],
                           parse_dates=['aika'],encoding="ISO-8859-1")
+
+        fmi['aika'] = pd.to_datetime({'year': fmi['vuosi'],
+                                    'month': fmi['kk'],
+                                    'day': fmi['paiva']})
 
         fmi = fmi.rename(columns={'aika': 'date',
                                   'OmaTunniste': 'ID',
@@ -297,7 +301,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
                                   'radiation': 'global_radiation',
                                   'hpa': 'h2o'})
 
-        time = pd.to_datetime(fmi['date'], format='%Y%m%d')
+        time = fmi['date']
     except:
         try:
             fmi = pd.read_csv(sourcefile, sep=';', header='infer',
@@ -354,7 +358,8 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
 #    print(fmi.isnull().any())
 
     dates = pd.date_range(start_date, end_date).tolist()
-    fmi = fmi.drop_duplicates(keep='first')
+#    fmi = fmi.drop_duplicates(keep='first')
+#    print(fmi[fmi.duplicated()])
     if len(dates) != len(fmi):
         print(str(len(dates) - len(fmi)) + ' days missing from forcing file, interpolated')
     forcing = pd.DataFrame(index=dates, columns=[])
