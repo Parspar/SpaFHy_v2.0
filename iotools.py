@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from .soilprofile import gwl_Wsto, gwl_drainage, nan_function
-from .koordinaattimuunnos import koordTG
+from soilprofile import gwl_Wsto, gwl_Ksat, nan_function
+from koordinaattimuunnos import koordTG
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -671,8 +671,6 @@ def create_input_GIS(fpath, plotgrids=False):
 
     for key, gdata in GisData.items():
         write_AsciiGrid(os.path.join(fpath, key + '.dat'), gdata, info, fmt='%.6e')
-<<<<<<< HEAD
-=======
 
 def rw_FMI_files(sourcefiles, out_path, plot=False):
     """
@@ -732,4 +730,3 @@ def rw_FMI_files(sourcefiles, out_path, plot=False):
     print(readme, file=outF)
     outF.close()
     return fmi
->>>>>>> 30c261ba8198816d2a9c55ca89b0aab0268e8320

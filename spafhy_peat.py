@@ -8,8 +8,8 @@ Created on Fri Oct 28 16:18:57 2016
 
 import numpy as np
 import pandas as pd
-from .canopygrid import CanopyGrid
-from .soilprofile import SoilGrid
+from canopygrid import CanopyGrid
+from soilprofile import SoilGrid
 
 eps = np.finfo(float).eps  # machine epsilon
 
@@ -17,18 +17,18 @@ eps = np.finfo(float).eps  # machine epsilon
 
 Simple spatial hydrology and catchment water balance model.
 
-CONSISTS OF THREE CLASSES, defined in separate modules: 
+CONSISTS OF THREE CLASSES, defined in separate modules:
     CanopyGrid - vegetation and snowpack water storages and flows
     BucketGrid - topsoil bucket model (root zone / topsoil water storage)
     Topmodel - integration to catchment scale using Topmodel -concept
 HELPER FUNCTIONS:
     spafhy_parameters - parameter definition file
     spafhy_io - utility functions for data input & output
- 
-MAIN PROGRAM:   
+
+MAIN PROGRAM:
     spafhy_driver is main program, call it as
     outargs = spathy_driver(spathyparamfile, args)
-    
+
     spathyparamfile - path to parameter file, default is 'spathy_default.ini'
     soil type dependent parameters are in 'soilparam.ini'
 
@@ -48,15 +48,15 @@ ToDo:
           --> we need snow density algorithm: SWE <-----> depth
     Topmodel:
         -think of definging 'relative m & to grids' (soil-type & elevation-dependent?) and calibrate 'catchment averages'
-        -topmodel gives 'saturated zone storage deficit in [m]'. This can be converted to gwl proxy (?) if: 
-        local water retention characteristics are known & hydrostatic equilibrium assumes. 
+        -topmodel gives 'saturated zone storage deficit in [m]'. This can be converted to gwl proxy (?) if:
+        local water retention characteristics are known & hydrostatic equilibrium assumes.
         Look which water retention model was analytically integrable (Campbell, brooks-corey?)
-    
+
     Graphics and analysis of results:
         -make ready functions
 
 
-(C) Samuli Launiainen 10/2016-->    
+(C) Samuli Launiainen 10/2016-->
 
 VERSION 05.10.2018 / equations correspond to GMDD paper
 
@@ -86,7 +86,7 @@ class SpaFHy():
         self.soil = SoilGrid(psoil)
 
     def run_timestep(self, forc):
-        """ 
+        """
         Runs SpaFHy for one timestep starting from current state
         Args:
             forc - dictionary or pd.DataFrame containing forcing values for the timestep

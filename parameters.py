@@ -20,9 +20,7 @@ def parameters():
             'spatial_forcing': True,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(r'testcase_input/parameters')),
-            'forcing_file': str(pathlib.Path(r'testcase_input/forcing/Weather_id_0.csv')),
-            'gis_folder': r'testcase_input/parameters',
-            'forcing_file': r'testcase_input/forcing/Weather_id_[forcing_id].csv',
+            'forcing_file': str(pathlib.Path(r'testcase_input/forcing/Weather_id_[forcing_id].csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': r'testcase.nc',
             'results_folder': r'results',
