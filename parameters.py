@@ -6,7 +6,7 @@ PARAMETERS
 """
 import pathlib
 
-def parameters():
+def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
             'start_date': '1981-01-01',
@@ -19,11 +19,11 @@ def parameters():
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': True,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(r'testcase_input/parameters')),
-            'forcing_file': str(pathlib.Path(r'testcase_input/forcing/Weather_id_[forcing_id].csv')),
+            'gis_folder': str(pathlib.Path(folder+r'/parameters')),
+            'forcing_file': str(pathlib.Path(folder+r'/forcing/Weather_id_[forcing_id].csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
-            'ncf_file': r'testcase.nc',
-            'results_folder': r'results',
+            'ncf_file': folder + r'.nc',
+            'results_folder': r'results/',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],

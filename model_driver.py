@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 eps = np.finfo(float).eps
 
-def driver(create_ncf=False, output=True):
+def driver(create_ncf=False, output=True, folder=''):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -24,7 +24,7 @@ def driver(create_ncf=False, output=True):
     running_time = time.time()
 
     # load and process parameters parameter
-    pgen, pcpy, psoil, cmask = preprocess_parameters()
+    pgen, pcpy, psoil, cmask = preprocess_parameters(folder)
 
     # initialize SpaFHy
     spa = SpaFHy(pgen, pcpy, psoil)
@@ -99,7 +99,7 @@ def driver(create_ncf=False, output=True):
         if output:
             return results
 
-def preprocess_parameters():
+def preprocess_parameters(folder=''):
     """
     Reading gisdata if applicable and preprocesses parameters
     """
@@ -108,7 +108,7 @@ def preprocess_parameters():
     from iotools import preprocess_soildata, preprocess_cpydata
     from parameters import peat_soilprofiles, parameters
 
-    pgen, pcpy, psp= parameters()
+    pgen, pcpy, psp= parameters(folder)
     peatp = peat_soilprofiles()
     gisdata = {}
 
@@ -219,6 +219,13 @@ def _append_results(group, step_results, results, step=None):
 
 if __name__ == '__main__':
 
-    outputfile = driver(create_ncf=True)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--folder', help='parameter folder', type=str)
+
+    args = parser.parse_args()
+
+    outputfile = driver(create_ncf=True, folder=args.folder)
 
     print(outputfile)
