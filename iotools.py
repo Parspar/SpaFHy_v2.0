@@ -189,6 +189,16 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
             len(peatp)*len(np.unique(np.round(data['ditch_depth'],2))),
             nan_function, dtype=object)
 
+    soil_ids = []
+    for key, value in peatp.items():
+        soil_ids.append(value['soil_id'])
+
+    if set(soil_ids) >= set(np.unique(data['soilclass']).tolist()):
+        # no problems
+        print('No undefined soil ids')
+    else:
+        raise ValueError("Soil id in inputs not specified in parameters.py")
+
     i = 0
     for key, value in peatp.items():
         c = value['soil_id']
