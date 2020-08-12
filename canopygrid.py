@@ -46,7 +46,7 @@ class CanopyGrid():
         cmask[np.isfinite(cmask)] = 1.0
         self.cmask = cmask
 
-        self.latitude = cpara['loc']['lat']
+        self.latitude = cpara['loc']['lat'] * cmask
         self.longitude = cpara['loc']['lon']
 
         # physiology: transpi + floor evap
