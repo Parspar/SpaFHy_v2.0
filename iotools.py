@@ -193,7 +193,7 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
     for key, value in peatp.items():
         soil_ids.append(value['soil_id'])
 
-    if set(soil_ids) >= set(np.unique(data['soilclass']).tolist()):
+    if set(soil_ids) >= set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()):
         # no problems
         print('No undefined soil ids')
     else:
