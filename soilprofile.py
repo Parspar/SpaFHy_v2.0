@@ -26,6 +26,7 @@ class SoilGrid(object):
                 'wtso_to_gwl'
                 'gwl_to_wsto'
                 'gwl_to_Ksat'
+                'gwl_to_rootmoist'
                 # organic (moss) layer
                 'org_depth': depth of organic top layer (m)
                 'org_poros': porosity (-)
@@ -190,7 +191,7 @@ class SoilGrid(object):
 
         return results
 
-def gwl_Wsto(z, pF, root=False):
+def gwl_Wsto(z, pF, Ksat=None, root=False):
     r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
     function of water storage [m] and vice versa
 
@@ -212,7 +213,7 @@ def gwl_Wsto(z, pF, root=False):
     dz[1:] = z[:-1] - z[1:]
     z_mid = dz / 2 - np.cumsum(dz)
 
-    # --------- connection between gwl and water storage------------
+    # --------- connection between gwl and Wsto, Tr, C------------
     # gwl from ground surface gwl = 0 to gwl = -5
     gwl = np.arange(0.0, -5, -1e-3)
     gwl[-1] = -150
@@ -221,24 +222,26 @@ def gwl_Wsto(z, pF, root=False):
 
     if root:
         Wsto = Wsto/sum(dz)
+        GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
+        return {'to_rootmoist': GwlToWsto}
+
+    # solve tranmissivity corresponding to gwls
+    Tr = [Ksat_layer(dz, Ksat, g, max(abs(z)), return_Ka=False) * 86400. for g in gwl]  # [m2/day]
 
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
+    GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto)/np.gradient(gwl)), fill_value='extrapolate')
+    GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
 
-#    plt.figure()
-#    plt.plot(Wsto, gwl,'.k')
-#    plt.plot(GwlToWsto(gwl), gwl)
-#    plt.xlabel('2-m profiilin vesivarasto (m)')
-#    plt.ylabel('Pohjavedenpinta (m)')
-#    plt.ylim([-1.5,0])
+    # plt.figure()
+    # plt.plot(Wsto, gwl,'.k')
+    # plt.plot(GwlToWsto(gwl), gwl)
+    # plt.xlabel('2-m profiilin vesivarasto (m)')
+    # plt.ylabel('Pohjavedenpinta (m)')
+    # plt.ylim([-1.5,0])
 
-    del gwl, Wsto
-
-    if root:
-        return {'to_rootmoist': GwlToWsto}
-    else:
-        return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto}
+    return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
 def h_to_cellmoist(pF, h, dz):
     r""" Cell moisture based on vanGenuchten-Mualem soil water retention model.
@@ -296,7 +299,7 @@ def gwl_Ksat(z, Ksat, DitchDepth):
     gwl = np.arange(0.0, -DitchDepth-0.1, -1e-2)
     gwl[-1] = -5.0
 
-    # solve water storage corresponding to gwls
+    # solve Ka corresponding to gwls
     Ka = [Ksat_layer(dz, Ksat, g, DitchDepth) for g in gwl]
 
     # interpolate functions
@@ -308,7 +311,7 @@ def gwl_Ksat(z, Ksat, DitchDepth):
 
     return GwlToKsat
 
-def Ksat_layer(dz, Ksat, gwl, DitchDepth):
+def Ksat_layer(dz, Ksat, gwl, DitchDepth, return_Ka=True):
     r""" Calculates drainage to ditch using Hooghoud's drainage equation,
     accounts for drainage from saturated layers above and below ditch bottom.
 
@@ -330,6 +333,7 @@ def Ksat_layer(dz, Ksat, gwl, DitchDepth):
     """
     z = dz / 2 - np.cumsum(dz)
     Ka = 0.0
+    Tr = 0.0
 
     Hdr = min(max(0, gwl + DitchDepth), DitchDepth)  # depth of saturated layer above ditch bottom
 
@@ -352,9 +356,13 @@ def Ksat_layer(dz, Ksat, gwl, DitchDepth):
             if abs(sum(dz_sat[ix]) - Hdr) > eps:
                 print(sum(dz_sat[ix]), Hdr, DitchDepth, gwl)
             Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
-            Ka = sum(Trans[ix]) / sum(dz_sat[ix])  # effective hydraulic conductivity ms-1
+            Tr = sum(Trans[ix])
+            Ka = Tr / sum(dz_sat[ix])  # effective hydraulic conductivity ms-1
 
-    return Ka
+    if return_Ka:
+        return Ka
+    else:
+        return Tr
 
 nan_function = interp1d(np.array([np.nan, np.nan]),
                         np.array([np.nan, np.nan]),

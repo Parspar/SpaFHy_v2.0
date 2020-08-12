@@ -32,7 +32,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
 
     # soil classification
-    soilclass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
+    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
 
     # ditch depth and spacing
     ditch_depth, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditch_depth.dat'))
@@ -61,6 +61,8 @@ def read_soil_gisdata(fpath, plotgrids=False):
         plt.title('ditch depth (m)')
         plt.subplot(313); plt.imshow(ditch_spacing); plt.colorbar();
         plt.title('ditch spacing (m)')
+
+    gis.update({'dxy': cellsize})
 
     return gis
 
@@ -205,7 +207,7 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
         ix = np.where(data['soilclass'] == c)
         data['soiltype'][ix] = key
         # interpolation function between wsto and gwl
-        value.update(gwl_Wsto(value['z'], value['pF']))
+        value.update(gwl_Wsto(value['z'], value['pF'], value['saturated_conductivity']))
         # interpolation function between root_wsto and gwl
         value.update(gwl_Wsto(value['z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
 
@@ -221,7 +223,11 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
 
     data['wtso_to_gwl'] = {soiltype: peatp[soiltype]['to_gwl'] for soiltype in peatp.keys()}
     data['gwl_to_wsto'] = {soiltype: peatp[soiltype]['to_wsto'] for soiltype in peatp.keys()}
+    data['gwl_to_C'] = {soiltype: peatp[soiltype]['to_C'] for soiltype in peatp.keys()}
+    data['gwl_to_Tr'] = {soiltype: peatp[soiltype]['to_Tr'] for soiltype in peatp.keys()}
     data['gwl_to_rootmoist'] = {soiltype: peatp[soiltype]['to_rootmoist'] for soiltype in peatp.keys()}
+
+    data['dxy'] = gisdata['dxy']
 
     return data
 

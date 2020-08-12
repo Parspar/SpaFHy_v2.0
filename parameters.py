@@ -15,7 +15,7 @@ def parameters(folder=''):
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
-            'spatial_soil': False,  # if False uses soil_id, ditch_depth, ditch_spacing from psp
+            'spatial_soil': True,  # if False uses soil_id, ditch_depth, ditch_spacing from psp
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
