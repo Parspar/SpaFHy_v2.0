@@ -34,4 +34,7 @@ results['soil_ground_water_level'][:,1:-1,1:-1].mean(dim='date').plot()
 plt.figure()
 results['soil_drainage'].mean(dim=['i','j']).plot()
 
+plt.figure()
+results['parameters_elevation'].plot()
+
 results.close()

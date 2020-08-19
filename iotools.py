@@ -33,6 +33,13 @@ def read_soil_gisdata(fpath, plotgrids=False):
     # soil classification
     soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
 
+    # dem
+    try:
+        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem.dat'))
+    except:
+        print('Constant elevation')
+        dem = np.full_like(soilclass, 0.0)
+
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
@@ -41,7 +48,8 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # dict of all rasters
     gis = {'cmask': cmask,
-           'soilclass': soilclass
+           'soilclass': soilclass,
+           'dem': dem
            }
 
     for key in gis.keys():
@@ -50,6 +58,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
     if plotgrids is True:
         plt.figure()
         plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
+        plt.subplot(312); plt.imshow(dem); plt.colorbar(); plt.title('dem')
 
     gis.update({'dxy': cellsize})
 
@@ -166,13 +175,13 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
     data = psp.copy()
     data.update((x, y * gisdata['cmask']) for x, y in data.items())
 
-    data.update({'soiltype': np.empty(np.shape(gisdata['cmask']),dtype=object),
-                 'depth_id': np.empty(np.shape(gisdata['cmask']),dtype=int)})
+    data.update({'soiltype': np.empty(np.shape(gisdata['cmask']),dtype=object)})
 
     if spatial == False:
         data['soilclass'] = psp['soil_id'] * gisdata['cmask']
     else:
         data['soilclass'] = gisdata['soilclass']
+        data['elevation'] = gisdata['dem']
 
     soil_ids = []
     for key, value in peatp.items():

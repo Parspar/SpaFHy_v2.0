@@ -79,7 +79,7 @@ class SoilGrid_2Dflow(object):
         self.h[:,-1] = self.h0
 
         # soil surface elevation and hydraulic head [m]
-        self.ele = np.full_like(self.h, 0.0)  # sould come from input?!
+        self.ele = spara['elevation']
         self.H = self.ele + self.h
 
         # water storage [m]
@@ -304,7 +304,7 @@ class SoilGrid_2Dflow(object):
             conv1 = np.max(np.abs(Htmp1 - Htmp))
             Htmp = Htmp1.copy()
             if conv1 < crit:
-                print('iterations', it, np.average(self.ele[1:-1,1:-1]-Htmp[1:-1,1:-1]))
+                # print('iterations', it, np.average(self.ele[1:-1,1:-1]-Htmp[1:-1,1:-1]))
                 break
             # end of iteration loop
 
