@@ -9,9 +9,9 @@ import pathlib
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '1981-01-01',
-            'end_date': '1981-02-01',
-            'spinup_end': '1981-01-01',  # results after this are saved in result file
+            'start_date': '1999-01-01',
+            'end_date': '2010-01-01',
+            'spinup_end': '2000-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -124,16 +124,11 @@ def parameters(folder=''):
     psp = {
             # soil profile, following properties are used if spatial_soil = False
             'soil_id': 2.0,
-            # drainage parameters, following properties are used if spatial_soil = False
-            'ditch_depth': 1.0,  # ditch depth [m]
-            'ditch_spacing': 45.0,  # ditch spacing [m]
-            'ditch_width': 1.0,  # ditch width [m]
             # organic (moss) layer
             'org_depth': 0.04, # depth of organic top layer (m)
             'org_poros': 0.9, # porosity (-)
             'org_fc': 0.3, # field capacity (-)
             'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
-            'pond_storage_max': 0.05,  # maximum pond depth [m]
             # initial states
             'ground_water_level': -0.2,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
@@ -144,7 +139,7 @@ def parameters(folder=''):
 
 def peat_soilprofiles():
     """
-    Properties of typical peat profiles. This still need work!
+    Properties of typical peat profiles...
     """
     peatp = {
         'sphagnum':{

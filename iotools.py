@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile import gwl_Wsto, gwl_Ksat, nan_function
+from soilprofile2D import gwl_Wsto, nan_function
 from koordinaattimuunnos import koordTG
 
 eps = np.finfo(float).eps  # machine epsilon
@@ -30,13 +30,8 @@ def read_soil_gisdata(fpath, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
-
     # soil classification
     soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
-
-    # ditch depth and spacing
-    ditch_depth, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditch_depth.dat'))
-    ditch_spacing, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'ditch_spacing.dat'))
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
@@ -46,9 +41,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # dict of all rasters
     gis = {'cmask': cmask,
-           'soilclass': soilclass,
-           'ditch_depth': ditch_depth,
-           'ditch_spacing': ditch_spacing
+           'soilclass': soilclass
            }
 
     for key in gis.keys():
@@ -57,10 +50,6 @@ def read_soil_gisdata(fpath, plotgrids=False):
     if plotgrids is True:
         plt.figure()
         plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
-        plt.subplot(312); plt.imshow(ditch_depth); plt.colorbar();
-        plt.title('ditch depth (m)')
-        plt.subplot(313); plt.imshow(ditch_spacing); plt.colorbar();
-        plt.title('ditch spacing (m)')
 
     gis.update({'dxy': cellsize})
 
@@ -184,12 +173,6 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
         data['soilclass'] = psp['soil_id'] * gisdata['cmask']
     else:
         data['soilclass'] = gisdata['soilclass']
-        data['ditch_depth'] = gisdata['ditch_depth']
-        data['ditch_spacing'] = gisdata['ditch_spacing']
-
-    data['gwl_to_Ksat'] = np.full(
-            len(peatp)*len(np.unique(np.round(data['ditch_depth'],2))),
-            nan_function, dtype=object)
 
     soil_ids = []
     for key, value in peatp.items():
@@ -210,16 +193,6 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
         value.update(gwl_Wsto(value['z'], value['pF'], value['saturated_conductivity']))
         # interpolation function between root_wsto and gwl
         value.update(gwl_Wsto(value['z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
-
-        for depth in np.unique(np.round(data['ditch_depth'][ix],2)):
-            data['gwl_to_Ksat'][i] = gwl_Ksat(value['z'],
-                    value['saturated_conductivity'], depth)
-            ixx = np.where((np.round(data['ditch_depth'],2) == depth) &
-                           (data['soiltype'] == key))
-            data['depth_id'][ixx] = i
-            i=i+1
-
-    data['gwl_to_Ksat'] = data['gwl_to_Ksat'][:i]
 
     data['wtso_to_gwl'] = {soiltype: peatp[soiltype]['to_gwl'] for soiltype in peatp.keys()}
     data['gwl_to_wsto'] = {soiltype: peatp[soiltype]['to_wsto'] for soiltype in peatp.keys()}

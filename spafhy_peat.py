@@ -111,8 +111,6 @@ class SpaFHy():
                 doy, self.dt, ta, prec, rg, par, vpd, U=u, CO2=co2,
                 beta=self.soil.Ree, Rew=self.soil.Rew, P=101300.0)
         # run Soilprofile water balance
-        print(np.mean(1e-3*canopy_results['potential_infiltration']),
-              np.mean(1e-3*canopy_results['transpiration']))
         soil_results = self.soil.run_timestep(
                 dt=self.dt / 86400.,  # kokeilin saada toimimaan suoraan sekuntteina muutamalla myös transmissiviteetin yksikön mutten onnistunut
                 rr=1e-3*canopy_results['potential_infiltration'],
