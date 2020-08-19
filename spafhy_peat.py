@@ -9,7 +9,8 @@ Created on Fri Oct 28 16:18:57 2016
 import numpy as np
 import pandas as pd
 from canopygrid import CanopyGrid
-from soilprofile import SoilGrid
+# from soilprofile import SoilGrid
+from soilprofile2D import SoilGrid_2Dflow as SoilGrid
 
 eps = np.finfo(float).eps  # machine epsilon
 
@@ -110,10 +111,17 @@ class SpaFHy():
                 doy, self.dt, ta, prec, rg, par, vpd, U=u, CO2=co2,
                 beta=self.soil.Ree, Rew=self.soil.Rew, P=101300.0)
         # run Soilprofile water balance
-        soil_results = self.soil.watbal(
-                dt=self.dt,
+        print(np.mean(1e-3*canopy_results['potential_infiltration']),
+              np.mean(1e-3*canopy_results['transpiration']))
+        soil_results = self.soil.run_timestep(
+                dt=self.dt / 86400.,  # kokeilin saada toimimaan suoraan sekuntteina muutamalla myös transmissiviteetin yksikön mutten onnistunut
                 rr=1e-3*canopy_results['potential_infiltration'],
                 tr=1e-3*canopy_results['transpiration'],
                 evap=1e-3*canopy_results['forestfloor_evaporation'])
+        # soil_results = self.soil.watbal(
+        #         dt=self.dt,
+        #         rr=1e-3*canopy_results['potential_infiltration'],
+        #         tr=1e-3*canopy_results['transpiration'],
+        #         evap=1e-3*canopy_results['forestfloor_evaporation'])
 
         return canopy_results, soil_results

@@ -23,7 +23,7 @@ plt.subplot(4,1,2, sharex=ax)
 results['forcing_air_temperature'][:].plot.line(x='date')
 
 plt.subplot(4,1,3, sharex=ax)
-results['soil_ground_water_level'][:,0,:].plot.line(x='date')
+results['soil_ground_water_level'][:,5,:].plot.line(x='date')
 
 plt.subplot(4,1,4, sharex=ax)
 results['canopy_transpiration'][:,0,:].plot.line(x='date')
@@ -32,6 +32,6 @@ plt.figure()
 results['canopy_leaf_area_index'][:,0,:].plot.line(x='date')
 
 plt.figure()
-results['soil_ground_water_level'].mean(dim='date').plot()
+results['soil_ground_water_level'][:,1:-1,1:-1].mean(dim='date').plot()
 
 results.close()

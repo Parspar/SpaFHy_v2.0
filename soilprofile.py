@@ -98,7 +98,7 @@ class SoilGrid(object):
         # pond storage
         self.h_pond = spara['pond_storage']
 
-    def watbal(self, dt=1, rr=0.0, tr=0.0, evap=0.0):
+    def watbal(self, dt=86400.0, rr=0.0, tr=0.0, evap=0.0):
 
         r""" Solves soil water storage in column assuming hydrostatic equilibrium.
 
@@ -226,7 +226,7 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
         return {'to_rootmoist': GwlToWsto}
 
     # solve tranmissivity corresponding to gwls
-    Tr = [Ksat_layer(dz, Ksat, g, max(abs(z)), return_Ka=False) * 86400. for g in gwl]  # [m2/day]
+    Tr = [Ksat_layer(dz, Ksat, g, max(abs(z)), return_Ka=False) * 86400. for g in gwl]  # [m2 d-1]
 
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
