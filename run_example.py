@@ -29,12 +29,18 @@ plt.subplot(4,1,4, sharex=ax)
 results['canopy_leaf_area_index'][:,5,:].plot.line(x='date')
 
 plt.figure()
-results['soil_drainage'].mean(dim='date').plot()
+results['soil_ground_water_level'][:,:,:].mean(dim='date').plot()
+
+plt.figure()
+results['soil_drainage'][:,:,:].mean(dim='date').plot()
+
+plt.figure()
+results['soil_water_closure'][:,1:-1,1:-1].mean(dim='date').plot()
 
 plt.figure()
 results['soil_drainage'][:,1:-1,1:-1].mean(dim=['i','j']).plot()
 
 plt.figure()
-results['parameters_elevation'].plot()
+results['soil_water_closure'][:,1:-1,1:-1].mean(dim=['i','j']).plot()
 
 results.close()

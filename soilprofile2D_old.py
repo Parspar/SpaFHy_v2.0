@@ -26,7 +26,7 @@ class SoilGrid_2Dflow(object):
         Args:
             spara (dict):
                 'elevation': elevation [m]
-                'ditches': ditch water level [m], < 0 for ditches otherwise 0
+                'ditch_depth': ditch depth [m] - ei vielä!
                 'dxy': cell horizontal length
                 # scipy interpolation functions describing soil behavior
                 'wtso_to_gwl'
@@ -71,8 +71,13 @@ class SoilGrid_2Dflow(object):
         self.gwl_to_rootmoist = spara['gwl_to_rootmoist']
 
         # initial h (= gwl) and boundaries [m]
-        self.ditch_h = spara['ditches']
-        self.h = np.minimum(spara['ground_water_level'], self.ditch_h)
+        self.h = spara['ground_water_level']
+        self.h0 = -0.9  # depth of water level in ditch / canal, from input?!
+        self.h[0,:] = self.h0
+        self.h[-1,:] = self.h0
+        self.h[:,0] = self.h0
+        self.h[:,-1] = self.h0
+
         # soil surface elevation and hydraulic head [m]
         self.ele = spara['elevation']
         self.H = self.ele + self.h
@@ -131,7 +136,6 @@ class SoilGrid_2Dflow(object):
         self.CC = np.zeros((self.rows,self.cols))
         self.Tr0 = np.zeros((self.rows,self.cols))
         self.Tr1 = np.zeros((self.rows,self.cols))
-        self.Wtso1 = np.zeros((self.rows,self.cols))
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -213,8 +217,6 @@ class SoilGrid_2Dflow(object):
         HW = np.ravel(self.HW); HE = np.ravel(self.HE)
         HN = np.ravel(self.HN); HS = np.ravel(self.HS)
         H = np.ravel(self.H)
-        Wsto = np.ravel(self.Wsto)
-        ditch_h = np.ravel(self.ditch_h)
 
         # hydrauli heads, new iteration and old iteration
         Htmp = self.H.copy()
@@ -244,10 +246,6 @@ class SoilGrid_2Dflow(object):
                 self.CC[self.soiltype == key] = value(Htmp1[self.soiltype == key] - self.ele[self.soiltype == key])
             alfa = np.ravel(self.CC * self.dxy**2 / dt)
 
-            # water storage
-            for key, value in self.gwl_to_wsto.items():
-                self.Wtso1[self.soiltype == key] = value(Htmp1[self.soiltype == key] - self.ele[self.soiltype == key])
-
             # Penta-diagonal matrix setup
             i,j = np.indices(self.A.shape)
             self.A[i==j] = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
@@ -256,31 +254,53 @@ class SoilGrid_2Dflow(object):
             self.A[i==j+self.cols] = -self.implic * TrN1[self.cols:]  # North element
             self.A[i==j-self.cols] = -self.implic * TrS1[:self.n-self.cols]  # South element
 
+            # Boundaries
+            # North
+            for k in range(0,self.cols):
+                self.A[k,k] = self.implic * (2 * TrS1[k]) + alfa[k]
+                self.A[k,k+1] = 0
+                self.A[k,k-1] = 0
+                self.A[k,k+self.cols] = -self.implic * 2 * TrS1[k]
+            # South
+            for k in range(self.n-self.cols,self.n-1):
+                self.A[k,k] = self.implic * (2 * TrN1[k]) + alfa[k]
+                self.A[k,k+1] = 0
+                self.A[k, k-1] = 0
+                self.A[k, k-self.cols] = -self.implic * 2 * TrN1[k]
+            self.A[self.n-1,self.n-1] = self.implic * (2 * TrN1[self.n-1]) + alfa[self.n-1]
+            self.A[self.n-1,self.n-2] = 0
+            self.A[self.n-1,self.n-1-self.cols] = -self.implic * 2 * TrN1[self.n-1]
+            # West
+            for k in np.arange(self.cols, self.n-self.cols, self.cols, dtype='int'):
+                self.A[k,k] = self.implic * (2 * TrE1[k]) + alfa[k]
+                self.A[k, k-self.cols] = 0
+                self.A[k, k+self.cols] = 0
+                self.A[k,k+1] = -self.implic * 2 * TrE1[k]
+            # East
+            for k in np.arange(self.cols-1, self.n-self.cols, self.cols, dtype='int'):
+                self.A[k,k]= self.implic*(2*TrW1[k])+alfa[k]
+                if k-self.cols > 0:
+                    self.A[k, k-self.cols]=0
+                    self.A[k,k-1]=-self.implic*2*TrW1[k]
+                    self.A[k, k+self.cols]=0
+
             # Knowns: Right hand side of the eq
-            hs = (np.ravel(S) * dt * self.dxy**2 + alfa * np.ravel(Htmp1)
-                  - np.ravel(self.Wtso1) * self.dxy**2 / dt + Wsto * self.dxy**2 / dt
+            hs = (np.ravel(S) * dt * self.dxy**2 + alfa*H
                   + (1.-self.implic) * (TrN0*HN) + (1.-self.implic) * (TrW0*HW)
                   - (1.-self.implic) * (TrN0 + TrW0 + TrE0 + TrS0) * H
                   + (1.-self.implic) * (TrE0*HE) + (1.-self.implic) * (TrS0*HS))
-
-            # Ditches
-            for k in np.where(ditch_h < -eps)[0]:
-                self.A[k,k] = 1
-                hs[k] = H[k]
-                if k%self.cols != 0:  # west node
-                    self.A[k,k-1] = 0
-                if (k+1)%self.cols != 0:  # east node
-                    self.A[k,k+1] = 0
-                if k-self.cols >= 0:  #north node
-                    self.A[k,k-self.cols] = 0
-                if k+self.cols < self.n:  # south node
-                    self.A[k,k+self.cols] = 0
 
             # Solve: A*Htmp1 = hs
             Htmp1 = np.linalg.multi_dot([np.linalg.inv(self.A),hs])
             Htmp1 = np.reshape(Htmp1,(self.rows,self.cols))
 
-            Htmp1 = np.where(Htmp1 > self.ele, self.ele, Htmp1)  # this my cause mass balance error
+            # Return boundaries --- !?
+            Htmp1[0,:] = self.ele[0,:] + self.h0
+            Htmp1[-1,:] = self.ele[-1,:] + self.h0
+            Htmp1[:,0] = self.ele[:,0] + self.h0
+            Htmp1[:,-1] = self.ele[:,-1] + self.h0
+
+            Htmp1 = np.where(Htmp1 > self.ele, self.ele, Htmp1)
             conv1 = np.max(np.abs(Htmp1 - Htmp))
             Htmp = Htmp1.copy()
             if conv1 < crit:
@@ -288,17 +308,21 @@ class SoilGrid_2Dflow(object):
                 break
             # end of iteration loop
 
-        if self.DrIrr == False:  # this causes a small mass balance error
-            # ONLY APPIED FOR SURROUNDING DICHES
+        if self.DrIrr == True:
+            Htmp1[0,:] = self.ele[0,:] + self.h0
+            Htmp1[-1,:] = self.ele[-1,:] + self.h0
+            Htmp1[:,0] = self.ele[:,0] + self.h0
+            Htmp1[:,-1] = self.ele[:,-1] + self.h0
+        else:
             # if neighboring node has lower H set ditch H equal to that (no-flow), otherwise set to water level in ditch (constant head)
-            Htmp1[0,:] = np.where(Htmp1[1,:] < self.ele[0,:] + self.ditch_h[0,:],
-                                  Htmp1[1,:], self.ele[0,:] + self.ditch_h[0,:])
-            Htmp1[-1,:] = np.where(Htmp1[-2,:] < self.ele[-1,:] + self.ditch_h[-1,:],
-                                  Htmp1[-2,:], self.ele[-1,:] + self.ditch_h[-1,:])
-            Htmp1[:,0] = np.where(Htmp1[:,1] < self.ele[:,0] + self.ditch_h[:,0],
-                                  Htmp1[:,1], self.ele[:,0] + self.ditch_h[:,0])
-            Htmp1[:,-1] = np.where(Htmp1[:,-2] < self.ele[:,-1] + self.ditch_h[:,-1],
-                                  Htmp1[:,-2], self.ele[:,-1] + self.ditch_h[:,-1])
+            Htmp1[0,:] = np.where(Htmp1[1,:] < self.ele[0,:] + self.h0,
+                                  Htmp1[1,:], self.ele[0,:] + self.h0)
+            Htmp1[-1,:] = np.where(Htmp1[-2,:] < self.ele[-1,:] + self.h0,
+                                  Htmp1[-2,:], self.ele[-1,:] + self.h0)
+            Htmp1[:,0] = np.where(Htmp1[:,1] < self.ele[:,0] + self.h0,
+                                  Htmp1[:,1], self.ele[:,0] + self.h0)
+            Htmp1[:,-1] = np.where(Htmp1[:,-2] < self.ele[:,-1] + self.h0,
+                                  Htmp1[:,-2], self.ele[:,-1] + self.h0)
 
         """ update state """
         # soil profile
@@ -334,9 +358,6 @@ class SoilGrid_2Dflow(object):
         # mass balance error [m]
         mbe = (state0  - self.Wsto_top - self.Wsto -
                tr - surface_runoff - evap - lateral_flow)
-
-        mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
-        lateral_flow = np.where(self.ditch_h < -eps, 0.0, lateral_flow)
 
         results = {
                 'ground_water_level': self.h,  # [m]

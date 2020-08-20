@@ -33,6 +33,9 @@ def read_soil_gisdata(fpath, plotgrids=False):
     # soil classification
     soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
 
+    # ditches
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+
     # dem
     try:
         dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem.dat'))
@@ -49,6 +52,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
     # dict of all rasters
     gis = {'cmask': cmask,
            'soilclass': soilclass,
+           'ditches': ditches,
            'dem': dem
            }
 
@@ -59,6 +63,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
         plt.figure()
         plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
         plt.subplot(312); plt.imshow(dem); plt.colorbar(); plt.title('dem')
+        plt.subplot(313); plt.imshow(dem); plt.colorbar(); plt.title('ditches')
 
     gis.update({'dxy': cellsize})
 
@@ -182,6 +187,7 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
     else:
         data['soilclass'] = gisdata['soilclass']
         data['elevation'] = gisdata['dem']
+        data['ditches'] = gisdata['ditches']
 
     soil_ids = []
     for key, value in peatp.items():
