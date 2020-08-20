@@ -17,7 +17,7 @@ apply_vectorized = np.vectorize(lambda f, x: f(x))
 class SoilGrid_2Dflow(object):
     """
     2D soil water flow model based on Ari Lauren SUSI2D
-    Simulates moss/organic layer with interception and evaporation,   !!! MOSS
+    Simulates moss/organic layer with interception and evaporation,
     soil water storage, and drainage to ditches.
     """
     def __init__(self, spara):
@@ -26,7 +26,8 @@ class SoilGrid_2Dflow(object):
         Args:
             spara (dict):
                 'elevation': elevation [m]
-                'ditch_depth': ditch depth [m]
+                'ditch_depth': ditch depth [m] - ei vielä!
+                'dxy': cell horizontal length
                 # scipy interpolation functions describing soil behavior
                 'wtso_to_gwl'
                 'gwl_to_wsto'
@@ -41,7 +42,6 @@ class SoilGrid_2Dflow(object):
                 # initial states
                 'ground_water_level': groundwater depth [m]
                 'org_sat': organic top layer saturation ratio (-)
-                'pond_storage': initial pond depth at surface [m]
         """
 
         """ moss/organic layer """
