@@ -101,7 +101,6 @@ class SoilGrid_2Dflow(object):
         """ parameters for 2D solution """
         # parameters for solving
         self.implic = 1  # solving method: 0-forward Euler, 1-backward Euler, 0.5-Crank-Nicolson
-        self.DrIrr = False  # if true: constant head boundaries, if false changing boundary: gwl above canal, using constant head, if below below no flow
 
         # grid
         self.rows = np.shape(self.h)[0]
@@ -215,6 +214,7 @@ class SoilGrid_2Dflow(object):
         H = np.ravel(self.H)
         Wsto = np.ravel(self.Wsto)
         ditch_h = np.ravel(self.ditch_h)
+        ele = np.ravel(self.ele)
 
         # hydrauli heads, new iteration and old iteration
         Htmp = self.H.copy()
@@ -257,7 +257,8 @@ class SoilGrid_2Dflow(object):
             self.A[i==j-self.cols] = -self.implic * TrS1[:self.n-self.cols]  # South element
 
             # Knowns: Right hand side of the eq
-            hs = (np.ravel(S) * dt * self.dxy**2 + alfa * np.ravel(Htmp1)
+            Htmp1 = np.ravel(Htmp1)
+            hs = (np.ravel(S) * dt * self.dxy**2 + alfa * Htmp1
                   - np.ravel(self.Wtso1) * self.dxy**2 / dt + Wsto * self.dxy**2 / dt
                   + (1.-self.implic) * (TrN0*HN) + (1.-self.implic) * (TrW0*HW)
                   - (1.-self.implic) * (TrN0 + TrW0 + TrE0 + TrS0) * H
@@ -265,16 +266,49 @@ class SoilGrid_2Dflow(object):
 
             # Ditches
             for k in np.where(ditch_h < -eps)[0]:
+                # update A and calculate mean H of neighboring nodes
                 self.A[k,k] = 1
-                hs[k] = H[k]
+                H_ave = 0
+                n_neigh = 0
+                H_ave_all = 0
+                n_neigh_all = 0
                 if k%self.cols != 0:  # west node
                     self.A[k,k-1] = 0
+                    H_ave_all += Htmp1[k-1]
+                    n_neigh_all += 1
+                    if ditch_h[k-1] > -eps: # non-ditch neighbor
+                        H_ave += Htmp1[k-1]
+                        n_neigh += 1
                 if (k+1)%self.cols != 0:  # east node
                     self.A[k,k+1] = 0
-                if k-self.cols >= 0:  #north node
+                    H_ave_all += Htmp1[k+1]
+                    n_neigh_all += 1
+                    if ditch_h[k+1] > -eps: # non-ditch neighbor
+                        H_ave += Htmp1[k+1]
+                        n_neigh += 1
+                if k-self.cols >= 0:  # north node
                     self.A[k,k-self.cols] = 0
+                    H_ave_all += Htmp1[k-self.cols]
+                    n_neigh_all += 1
+                    if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
+                        H_ave += Htmp1[k-self.cols]
+                        n_neigh += 1
                 if k+self.cols < self.n:  # south node
                     self.A[k,k+self.cols] = 0
+                    H_ave_all += Htmp1[k+self.cols]
+                    n_neigh_all += 1
+                    if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
+                        H_ave += Htmp1[k+self.cols]
+                        n_neigh += 1
+                if n_neigh > 0:
+                    H_ave = H_ave / n_neigh  # average of neighboring non-ditch nodes
+                else:  # corners or nodes surrounded by ditches dont have neighbors
+                    H_ave = H_ave_all / n_neigh_all  # average of neighboring ditch nodes
+                # update hs
+                if H_ave < ele[k] + ditch_h[k]: # average of neighboring H below ditch depth
+                    hs[k] = H_ave
+                else:
+                    hs[k] = ele[k] + ditch_h[k]
 
             # Solve: A*Htmp1 = hs
             Htmp1 = np.linalg.multi_dot([np.linalg.inv(self.A),hs])
@@ -287,18 +321,6 @@ class SoilGrid_2Dflow(object):
                 # print('iterations', it, np.average(self.ele[1:-1,1:-1]-Htmp[1:-1,1:-1]))
                 break
             # end of iteration loop
-
-        if self.DrIrr == False:  # this causes a small mass balance error
-            # ONLY APPIED FOR SURROUNDING DICHES
-            # if neighboring node has lower H set ditch H equal to that (no-flow), otherwise set to water level in ditch (constant head)
-            Htmp1[0,:] = np.where(Htmp1[1,:] < self.ele[0,:] + self.ditch_h[0,:],
-                                  Htmp1[1,:], self.ele[0,:] + self.ditch_h[0,:])
-            Htmp1[-1,:] = np.where(Htmp1[-2,:] < self.ele[-1,:] + self.ditch_h[-1,:],
-                                  Htmp1[-2,:], self.ele[-1,:] + self.ditch_h[-1,:])
-            Htmp1[:,0] = np.where(Htmp1[:,1] < self.ele[:,0] + self.ditch_h[:,0],
-                                  Htmp1[:,1], self.ele[:,0] + self.ditch_h[:,0])
-            Htmp1[:,-1] = np.where(Htmp1[:,-2] < self.ele[:,-1] + self.ditch_h[:,-1],
-                                  Htmp1[:,-2], self.ele[:,-1] + self.ditch_h[:,-1])
 
         """ update state """
         # soil profile
@@ -455,7 +477,6 @@ def transmissivity(dz, Ksat, gwl):
        Qz_drain (array): drainage from each soil layer [m3 m-3 s-1]
     """
     z = dz / 2 - np.cumsum(dz)
-    Ka = 0.0
     Tr = 0.0
 
     ib = max(abs(z))
@@ -478,8 +499,6 @@ def transmissivity(dz, Ksat, gwl):
 
         if ix.size > 0:
             dz_sat[ix[-1]] = dz_sat[ix[-1]] + (z[ix][-1] - dz[ix][-1] / 2 + ib)
-            if abs(sum(dz_sat[ix]) - Hdr) > eps:
-                print(sum(dz_sat[ix]), Hdr, DitchDepth, gwl)
             Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
             Tr = sum(Trans[ix])
     return Tr
