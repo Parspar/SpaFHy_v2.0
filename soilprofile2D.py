@@ -131,6 +131,8 @@ class SoilGrid_2Dflow(object):
         self.Tr0 = np.zeros((self.rows,self.cols))
         self.Tr1 = np.zeros((self.rows,self.cols))
         self.Wtso1 = np.zeros((self.rows,self.cols))
+        
+        self.stepnro = 0
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -160,6 +162,8 @@ class SoilGrid_2Dflow(object):
         #North element: n=i*cols+j-cols
         #South element: n=i*cols-j+cols
         """
+        self.stepnro += 1
+        print('Timestep: ', self.stepnro)
 
         # for computing mass balance later
         state0 = self.Wsto + self.Wsto_top + rr
@@ -255,7 +259,8 @@ class SoilGrid_2Dflow(object):
             self.A[i==j-1] = -self.implic * TrE1[:-1]  # East element
             self.A[i==j+self.cols] = -self.implic * TrN1[self.cols:]  # North element
             self.A[i==j-self.cols] = -self.implic * TrS1[:self.n-self.cols]  # South element
-
+            
+            
             # Knowns: Right hand side of the eq
             Htmp1 = np.ravel(Htmp1)
             hs = (np.ravel(S) * dt * self.dxy**2 + alfa * Htmp1
@@ -266,6 +271,7 @@ class SoilGrid_2Dflow(object):
 
             # Ditches
             for k in np.where(ditch_h < -eps)[0]:
+                # assigns self.A = 1 at ditch location
                 # update A and calculate mean H of neighboring nodes
                 self.A[k,k] = 1
                 H_ave = 0
@@ -273,6 +279,7 @@ class SoilGrid_2Dflow(object):
                 H_ave_all = 0
                 n_neigh_all = 0
                 if k%self.cols != 0:  # west node
+                # assigns self.A = 0 over west boundary
                     self.A[k,k-1] = 0
                     H_ave_all += Htmp1[k-1]
                     n_neigh_all += 1
@@ -280,6 +287,7 @@ class SoilGrid_2Dflow(object):
                         H_ave += Htmp1[k-1]
                         n_neigh += 1
                 if (k+1)%self.cols != 0:  # east node
+                # assigns self.A = 0 over east boundary
                     self.A[k,k+1] = 0
                     H_ave_all += Htmp1[k+1]
                     n_neigh_all += 1
@@ -287,6 +295,7 @@ class SoilGrid_2Dflow(object):
                         H_ave += Htmp1[k+1]
                         n_neigh += 1
                 if k-self.cols >= 0:  # north node
+                # assigns self.A = 0 over north boundary
                     self.A[k,k-self.cols] = 0
                     H_ave_all += Htmp1[k-self.cols]
                     n_neigh_all += 1
@@ -294,6 +303,7 @@ class SoilGrid_2Dflow(object):
                         H_ave += Htmp1[k-self.cols]
                         n_neigh += 1
                 if k+self.cols < self.n:  # south node
+                # assigns self.A = 0 over south boundary
                     self.A[k,k+self.cols] = 0
                     H_ave_all += Htmp1[k+self.cols]
                     n_neigh_all += 1
@@ -311,6 +321,7 @@ class SoilGrid_2Dflow(object):
                     hs[k] = ele[k] + ditch_h[k]
 
             # Solve: A*Htmp1 = hs
+            # -> Htmp1 = 1/A * hs
             Htmp1 = np.linalg.multi_dot([np.linalg.inv(self.A),hs])
             Htmp1 = np.reshape(Htmp1,(self.rows,self.cols))
 
@@ -318,7 +329,10 @@ class SoilGrid_2Dflow(object):
             conv1 = np.max(np.abs(Htmp1 - Htmp))
             Htmp = Htmp1.copy()
             if conv1 < crit:
-                # print('iterations', it, np.average(self.ele[1:-1,1:-1]-Htmp[1:-1,1:-1]))
+                #print('iterations', it, np.average(self.ele[1:-1,1:-1]-Htmp[1:-1,1:-1]))
+                #print(self.A.tolist())
+                #print(np.linalg.multi_dot([np.linalg.inv(self.A),hs]))
+                #print(len(np.isnan(self.A))/(self.A.shape[0]*self.A.shape[1]))
                 break
             # end of iteration loop
 

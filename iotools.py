@@ -32,9 +32,11 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # soil classification
     soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
+    #soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soilclass.dat'))
 
     # ditches
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    #ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream.dat'))
 
     # dem
     try:
@@ -188,11 +190,14 @@ def preprocess_soildata(psp, peatp, gisdata, spatial=True):
         data['soilclass'] = gisdata['soilclass']
         data['elevation'] = gisdata['dem']
         data['ditches'] = gisdata['ditches']
+        
 
+    data['soilclass'][np.isfinite(data['soilclass'])] = 1.0 # edit 29.3.2021
+    
     soil_ids = []
     for key, value in peatp.items():
         soil_ids.append(value['soil_id'])
-
+        
     if set(soil_ids) >= set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()):
         # no problems
         print('No undefined soil ids')
