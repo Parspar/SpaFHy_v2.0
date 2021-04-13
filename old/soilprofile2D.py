@@ -9,7 +9,6 @@ Modified by khaahti
 import numpy as np
 from scipy.stats.mstats import gmean
 from scipy.interpolate import interp1d
-from scipy.sparse import diags, linalg
 import matplotlib.pyplot as plt
 eps = np.finfo(float).eps
 
@@ -78,9 +77,6 @@ class SoilGrid_2Dflow(object):
         self.ele = spara['elevation']
         self.H = self.ele + self.h
 
-        # replace nans (values outside catchment area)
-        self.H[np.isnan(self.H)] = -999
-
         # water storage [m]
         self.Wsto_max = np.full_like(self.h, 0.0)  # storage of fully saturated profile
         for key, value in self.gwl_to_wsto.items():
@@ -129,15 +125,14 @@ class SoilGrid_2Dflow(object):
         self.TrN1 = np.zeros((self.rows,self.cols))
         self.TrS1 = np.zeros((self.rows,self.cols))
         # computation matrix
-        # self.A = np.zeros((self.n,self.n))
+        self.A = np.zeros((self.n,self.n))
 
-        self.CC = np.ones((self.rows,self.cols))
+        self.CC = np.zeros((self.rows,self.cols))
         self.Tr0 = np.zeros((self.rows,self.cols))
         self.Tr1 = np.zeros((self.rows,self.cols))
         self.Wtso1 = np.zeros((self.rows,self.cols))
         
         self.stepnro = 0
-
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -168,6 +163,8 @@ class SoilGrid_2Dflow(object):
         #South element: n=i*cols-j+cols
         """
         self.stepnro += 1
+        print('Timestep: ', self.stepnro)
+
         # for computing mass balance later
         state0 = self.Wsto + self.Wsto_top + rr
 
@@ -185,9 +182,6 @@ class SoilGrid_2Dflow(object):
         airv = self.Wsto_max - self.Wsto
         # remove water that cannot fit into soil
         S = np.minimum(S, airv)
-
-        # replace nans (values outside catchment area)
-        S[np.isnan(S)] = 0.0
 
         # inflow excess - either into moss or surface runoff
         exfil = rr - (S + tr)
@@ -230,7 +224,7 @@ class SoilGrid_2Dflow(object):
         Htmp = self.H.copy()
         Htmp1 = self.H.copy()
 
-        crit = 1e-4 # convergence criteria
+        crit = 1e-6  # convergence criteria
         maxiter = 100
 
         for it in range(maxiter):
@@ -258,64 +252,59 @@ class SoilGrid_2Dflow(object):
             for key, value in self.gwl_to_wsto.items():
                 self.Wtso1[self.soiltype == key] = value(Htmp1[self.soiltype == key] - self.ele[self.soiltype == key])
 
-            # Setup of diagonal sparse matrix
-            a_d = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
-            a_w = -self.implic * TrW1[1:]  # West element
-            a_e = -self.implic * TrE1[:-1]  # East element
-            a_n = -self.implic * TrN1[self.cols:]  # North element
-            a_s = -self.implic * TrS1[:self.n-self.cols]  # South element
-
-            # i,j = np.indices(self.A.shape)
-            # self.A[i==j] = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
-            # self.A[i==j+1] = -self.implic * TrW1[1:]  # West element
-            # self.A[i==j-1] = -self.implic * TrE1[:-1]  # East element
-            # self.A[i==j+self.cols] = -self.implic * TrN1[self.cols:]  # North element
-            # self.A[i==j-self.cols] = -self.implic * TrS1[:self.n-self.cols]  # South element
-
+            # Penta-diagonal matrix setup
+            i,j = np.indices(self.A.shape)
+            self.A[i==j] = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
+            self.A[i==j+1] = -self.implic * TrW1[1:]  # West element
+            self.A[i==j-1] = -self.implic * TrE1[:-1]  # East element
+            self.A[i==j+self.cols] = -self.implic * TrN1[self.cols:]  # North element
+            self.A[i==j-self.cols] = -self.implic * TrS1[:self.n-self.cols]  # South element
+            
+            
             # Knowns: Right hand side of the eq
             Htmp1 = np.ravel(Htmp1)
             hs = (np.ravel(S) * dt * self.dxy**2 + alfa * Htmp1
-                   - np.ravel(self.Wtso1) * self.dxy**2 / dt + Wsto * self.dxy**2 / dt
+                  - np.ravel(self.Wtso1) * self.dxy**2 / dt + Wsto * self.dxy**2 / dt
                   + (1.-self.implic) * (TrN0*HN) + (1.-self.implic) * (TrW0*HW)
                   - (1.-self.implic) * (TrN0 + TrW0 + TrE0 + TrS0) * H
                   + (1.-self.implic) * (TrE0*HE) + (1.-self.implic) * (TrS0*HS))
 
             # Ditches
             for k in np.where(ditch_h < -eps)[0]:
+                # assigns self.A = 1 at ditch location
                 # update A and calculate mean H of neighboring nodes
-                # self.A[k,k] = 1
-                a_d[k] = 1
+                self.A[k,k] = 1
                 H_ave = 0
                 n_neigh = 0
                 H_ave_all = 0
                 n_neigh_all = 0
                 if k%self.cols != 0:  # west node
-                    # self.A[k,k-1] = 0
-                    a_w[k-1] = 0
+                # assigns self.A = 0 over west boundary
+                    self.A[k,k-1] = 0
                     H_ave_all += Htmp1[k-1]
                     n_neigh_all += 1
                     if ditch_h[k-1] > -eps: # non-ditch neighbor
                         H_ave += Htmp1[k-1]
                         n_neigh += 1
                 if (k+1)%self.cols != 0:  # east node
-                    # self.A[k,k+1] = 0
-                    a_e[k] = 0
+                # assigns self.A = 0 over east boundary
+                    self.A[k,k+1] = 0
                     H_ave_all += Htmp1[k+1]
                     n_neigh_all += 1
                     if ditch_h[k+1] > -eps: # non-ditch neighbor
                         H_ave += Htmp1[k+1]
                         n_neigh += 1
                 if k-self.cols >= 0:  # north node
-                    # self.A[k,k-self.cols] = 0
-                    a_n[k-self.cols] = 0
+                # assigns self.A = 0 over north boundary
+                    self.A[k,k-self.cols] = 0
                     H_ave_all += Htmp1[k-self.cols]
                     n_neigh_all += 1
                     if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
                         H_ave += Htmp1[k-self.cols]
                         n_neigh += 1
                 if k+self.cols < self.n:  # south node
-                    # self.A[k,k+self.cols] = 0
-                    a_s[k] = 0
+                # assigns self.A = 0 over south boundary
+                    self.A[k,k+self.cols] = 0
                     H_ave_all += Htmp1[k+self.cols]
                     n_neigh_all += 1
                     if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
@@ -331,25 +320,21 @@ class SoilGrid_2Dflow(object):
                 else:
                     hs[k] = ele[k] + ditch_h[k]
 
-            A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
-
             # Solve: A*Htmp1 = hs
-            Htmp1 = linalg.spsolve(A,hs)
-
-            # Htmp1 = np.linalg.multi_dot([np.linalg.inv(self.A),hs])
-
+            # -> Htmp1 = 1/A * hs
+            Htmp1 = np.linalg.multi_dot([np.linalg.inv(self.A),hs])
             Htmp1 = np.reshape(Htmp1,(self.rows,self.cols))
 
+            Htmp1 = np.where(Htmp1 > self.ele, self.ele, Htmp1)  # this my cause mass balance error
             conv1 = np.max(np.abs(Htmp1 - Htmp))
             Htmp = Htmp1.copy()
             if conv1 < crit:
+                #print('iterations', it, np.average(self.ele[1:-1,1:-1]-Htmp[1:-1,1:-1]))
+                #print(self.A.tolist())
+                #print(np.linalg.multi_dot([np.linalg.inv(self.A),hs]))
+                #print(len(np.isnan(self.A))/(self.A.shape[0]*self.A.shape[1]))
                 break
             # end of iteration loop
-        print('Timestep:', self.stepnro, 'iterations', it, conv1)
-
-        # extra rooted to surface runoff - or should check top layer first..?
-        Htmp1 = np.where(Htmp1 > self.ele, self.ele, Htmp1)
-        surface_runoff = surface_runoff + (Htmp - Htmp1)
 
         """ update state """
         # soil profile
@@ -428,17 +413,18 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     z_mid = dz / 2 - np.cumsum(dz)
 
     # --------- connection between gwl and Wsto, Tr, C------------
-    gwl = np.arange(1.0, -10., -1e-2)
+    # gwl from ground surface gwl = 0 to gwl = -5
+    gwl = np.arange(0.0, -5, -1e-3)
     gwl[-1] = -150
     # solve water storage corresponding to gwls
-    Wsto = [sum(h_to_cellmoist(pF, g - z_mid, dz) * dz) + max(0.0,g) for g in gwl]
+    Wsto = [sum(h_to_cellmoist(pF, g - z_mid, dz) * dz) for g in gwl]
 
     if root:
         Wsto = Wsto/sum(dz)
         GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
         return {'to_rootmoist': GwlToWsto}
 
-    # solve transmissivity corresponding to gwls
+    # solve tranmissivity corresponding to gwls
     Tr = [transmissivity(dz, Ksat, g) * 86400. for g in gwl]  # [m2 d-1]
 
     # interpolate functions
