@@ -9,9 +9,9 @@ import pathlib
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2000-06-01',
-            'end_date': '2000-07-01',
-            'spinup_end': '2000-06-01',  # results after this are saved in result file
+            'start_date': '1961-05-01',
+            'end_date': '1961-08-01',
+            'spinup_end': '1961-06-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': False,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -129,7 +129,7 @@ def parameters(folder=''):
             'org_fc': 0.3, # field capacity (-)
             'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
             # initial states
-            'ground_water_level': -0.5,  # groundwater depth [m]
+            'ground_water_level': -1.0,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0  # initial pond depth at surface [m]
             }
@@ -163,13 +163,13 @@ def peat_soilprofiles():
                 },
         'mineral': {
             'soil_id': 3.0,
-            'z': [-5.0],
+            'z': [-2.5],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.7],
-                    'ThetaR': [0.03],
+                    'ThetaS': [0.5],
+                    'ThetaR': [0.05],
                     'alpha': [0.06],
                     'n': [1.35]},
-            'saturated_conductivity': [1E-05],
+            'saturated_conductivity': [1E-06],
                 },
             }
     return peatp
