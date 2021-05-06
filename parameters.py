@@ -9,11 +9,11 @@ import pathlib
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '1961-05-01',
-            'end_date': '1961-08-01',
+            'start_date': '1961-06-01',
+            'end_date': '1961-10-01',
             'spinup_end': '1961-06-01',  # results after this are saved in result file
             'dt': 86400.0,
-            'spatial_cpy': False,  # if False uses parameters from cpy['state']
+            'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
             'spatial_soil': True,  # if False uses soil_id, ditch_depth, ditch_spacing from psp
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
@@ -34,6 +34,9 @@ def parameters(folder=''):
                     ['parameters_elevation', 'elevation from dem [m]'],
                     ['parameters_lat', 'latitude [deg]'],
                     ['parameters_lon', 'longitude [deg]'],
+                    ['parameters_ditches', 'ditches'],
+                    ['parameters_cmask', 'cmask'],
+                    ['parameters_sitetype', 'sitetype'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
                     ['forcing_precipitation', 'precipitation [mm d-1]'],
                     ['forcing_vapor_pressure_deficit', 'vapor pressure deficit [kPa]'],
@@ -129,164 +132,107 @@ def parameters(folder=''):
             'org_fc': 0.3, # field capacity (-)
             'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
             # initial states
-            'ground_water_level': -1.0,  # groundwater depth [m]
+            'ground_water_level': -0.8,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0  # initial pond depth at surface [m]
             }
 
     return pgen, pcpy, psp
 
-def peat_soilprofiles():
+def topsoil():
     """
-    Properties of typical peat profiles...
+    Properties of typical topsoils
+    Following main site type (1-4) classification
     """
-    peatp = {
-        'sphagnum':{
-            'soil_id': 1.0,
-            'z': [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1., -1.5, -2.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.945, 0.918, 0.918, 0.918, 0.918, 0.918, 0.918, 0.918, 0.918, 0.918, 0.918, 0.918],
-                    'ThetaR': [0.098, 0.098, 0.098, 0.098, 0.098, 0.098, 0.098, 0.098, 0.098, 0.098, 0.098, 0.098],
-                    'alpha': [0.338, 0.072, 0.072, 0.072, 0.072, 0.072, 0.072, 0.072, 0.072, 0.072, 0.072, 0.072],
-                    'n': [1.402, 1.371, 1.371, 1.371, 1.371, 1.371, 1.371, 1.371, 1.371, 1.371, 1.371, 1.371]},
-            'saturated_conductivity': [30*8.99E-05, 20*2.98E-05, 10*9.86E-06, 3.27E-06, 1.08E-06, 3.58E-07, 1.19E-07, 1.16E-07, 1.16E-07, 1.16E-07, 1.16E-07, 1.16E-07],
-                },
-        'carex': {
-            'soil_id': 2.0,
-            'z': [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1., -1.5, -2.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.943, 0.874, 0.874, 0.874, 0.874, 0.874, 0.874, 0.874, 0.874, 0.874, 0.874, 0.874],
-                    'ThetaR': [0.002, 0.198, 0.198, 0.198, 0.198, 0.198, 0.198, 0.198, 0.198, 0.198, 0.198, 0.198],
-                    'alpha': [0.202, 0.030, 0.030, 0.030, 0.030, 0.030, 0.030, 0.030, 0.030, 0.030, 0.030, 0.030],
-                    'n': [1.349, 1.491, 1.491, 1.491, 1.491, 1.491, 1.491, 1.491, 1.491, 1.491, 1.491, 1.491]},
-            'saturated_conductivity': [30*4.97E-05, 20*3.21E-05, 10*2.07E-05, 1.34E-05, 8.63E-06, 5.57E-06, 3.60E-06, 2.32E-06, 1.50E-06, 9.68E-07, 2.61E-07, 1.16E-07],
-                },
-        'mineral': {
-            'soil_id': 3.0,
-            'z': [-2.5],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.5],
-                    'ThetaR': [0.05],
-                    'alpha': [0.06],
-                    'n': [1.35]},
-            'saturated_conductivity': [1E-06],
-                },
+    topsoil = {
+        'mineral':{
+            'topsoil_id': 1,
+            'org_depth': 0.05,
+            'org_poros': 0.9,
+            'org_fc': 0.3,
+            'org_rw': 0.24
+            },
+        'fen':{
+            'topsoil_id': 2,
+            'org_depth': 0.07,
+            'org_poros': 0.9,
+            'org_fc': 0.5,
+            'org_rw': 0.3
+            },
+        'peatland':{
+            'topsoil_id': 3,
+            'org_depth': 0.07,
+            'org_poros': 0.9,
+            'org_fc': 0.6,
+            'org_rw': 0.4
+            },
+        'openmire':{
+            'topsoil_id': 4,
+            'org_depth': 0.10,
+            'org_poros': 0.9,
+            'org_fc': 0.7,
+            'org_rw': 0.5
             }
-    return peatp
-'''
-def peat_soilprofiles():
-    """
-    Properties of typical peat profiles...
-    """
-    peatp = {
-        'FineTextured':{
-            'soil_id': 1.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.34],
-                    'ThetaR': [0.07],
-                    'alpha': [0.018],
-                    'n': [1.402]},
-            'saturated_conductivity': [1e-06],
-                },
-        'MediumTextured':{
-            'soil_id': 2.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.33],
-                    'ThetaR': [0.05],
-                    'alpha': [0.024],
-                    'n': [1.402]},
-            'saturated_conductivity': [1e-05],
-                },
-        'CoarseTextured':{
-            'soil_id': 3.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.21],
-                    'ThetaR': [0.05],
-                    'alpha': [0.039],
-                    'n': [1.402]},
-            'saturated_conductivity': [0.0001],
-                },
-        'Peat':{
-            'soil_id': 4.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.414],
-                    'ThetaR': [0.01],
-                    'alpha': [0.123],
-                    'n': [1.402]},
-            'saturated_conductivity': [5e-05],
-                },
-        'Humus': {
-            'soil_id': 5.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.35],
-                    'ThetaR': [0.01],
-                    'alpha': [0.123],
-                    'n': [1.35]},
-            'saturated_conductivity': [8e-06],
-                },
-            }
-    return peatp
+        }
+    return topsoil
 
-def peat_soilprofiles():
+
+def soilprofiles():
     """
     Properties of typical peat profiles...
-    """
-    peatp = {
+    """ #kr 0.44, 0.024, 0.053, 1.251
+    soilp = {
         'FineTextured':{
             'soil_id': 1.0,
-            'z': [-5.0],
+            'z': [-0.05, -0.05, -2.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.5],
-                    'ThetaR': [0.03],
-                    'alpha': [0.06],
-                    'n': [1.35]},
-            'saturated_conductivity': [1E-06],
+                    'ThetaS': [0.448]*3,
+                    'ThetaR': [0.03]*3,
+                    'alpha': [0.054]*3,
+                    'n': [1.293]*3},
+            'saturated_conductivity': [1E-06]*3,
                 },
         'MediumTextured':{
             'soil_id': 2.0,
-            'z': [-5.0],
+            'z': [-0.05, -0.05, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.5],
-                    'ThetaR': [0.03],
-                    'alpha': [0.06],
-                    'n': [1.35]},
-            'saturated_conductivity': [1E-06],
+                    'ThetaS': [0.448]*3,
+                    'ThetaR': [0.03]*3,
+                    'alpha': [0.054]*3,
+                    'n': [1.293]*3},
+            'saturated_conductivity': [1E-05]*3,
                 },
         'CoarseTextured':{
             'soil_id': 3.0,
-            'z': [-5.0],
+            'z': [-0.05, -0.05, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.5],
-                    'ThetaR': [0.03],
-                    'alpha': [0.06],
-                    'n': [1.35]},
-            'saturated_conductivity': [1E-06],
+                    'ThetaS': [0.448]*3,
+                    'ThetaR': [0.03]*3,
+                    'alpha': [0.054]*3,
+                    'n': [1.293]*3},
+            'saturated_conductivity': [1E-05]*3,
                 },
         'Peat':{
             'soil_id': 4.0,
-            'z': [-5.0],
+            'z': [-0.05, -0.05, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.5],
-                    'ThetaR': [0.03],
-                    'alpha': [0.06],
-                    'n': [1.35]},
-            'saturated_conductivity': [1E-06],
+                    'ThetaS': [0.92]*3,
+                    'ThetaR': [0.098]*3,
+                    'alpha': [0.07]*3,
+                    'n': [1.37]*3},
+            'saturated_conductivity': [5e-06]*3,
                 },
         'Humus': {
             'soil_id': 5.0,
-            'z': [-5.0],
+            'z': [-2.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.5],
-                    'ThetaR': [0.03],
-                    'alpha': [0.06],
-                    'n': [1.35]},
+                    'ThetaS': [0.44],
+                    'ThetaR': [0.024],
+                    'alpha': [0.053],
+                    'n': [1.251]},
             'saturated_conductivity': [1E-06],
                 },
             }
-    return peatp
-'''
+    return soilp
+
+

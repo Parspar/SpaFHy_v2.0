@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jan 23 15:25:15 2019
+Created on Mon May  3 13:08:47 2021
 
-@author: khaahti
+@author: janousu
 """
 
-from model_driver import driver
+# figures
+
 from iotools import read_results
 import matplotlib.pyplot as plt
 
-# example of calling driver, reading results and plotting gwl
-
-outputfile = driver(create_ncf=True, folder='testcase_input')
+outputfile = 'results/testcase_input.nc'
 
 results = read_results(outputfile)
 

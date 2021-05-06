@@ -106,10 +106,11 @@ def preprocess_parameters(folder=''):
 
     from iotools import read_soil_gisdata, read_cpy_gisdata, read_forcing_gisdata
     from iotools import preprocess_soildata, preprocess_cpydata
-    from parameters import peat_soilprofiles, parameters
+    from parameters import soilprofiles, topsoil, parameters
 
     pgen, pcpy, psp= parameters(folder)
-    peatp = peat_soilprofiles()
+    soilp = soilprofiles()
+    topsoil = topsoil()
     gisdata = {}
 
     if pgen['spatial_soil']:
@@ -124,7 +125,7 @@ def preprocess_parameters(folder=''):
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
 
-    soildata = preprocess_soildata(psp, peatp, gisdata, pgen['spatial_soil'])
+    soildata = preprocess_soildata(psp, soilp, topsoil, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
