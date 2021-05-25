@@ -9,9 +9,9 @@ import pathlib
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '1961-06-01',
-            'end_date': '1961-10-01',
-            'spinup_end': '1961-06-01',  # results after this are saved in result file
+            'start_date': '2018-01-01',
+            'end_date': '2019-10-01',
+            'spinup_end': '2019-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -20,7 +20,7 @@ def parameters(folder=''):
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(folder+r'/parameters')),
-            'forcing_file': str(pathlib.Path(folder+r'/forcing/Weather_id_[forcing_id].csv')),
+            'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + r'.nc',
             'results_folder': r'results/',
@@ -149,28 +149,28 @@ def topsoil():
             'topsoil_id': 1,
             'org_depth': 0.05,
             'org_poros': 0.9,
-            'org_fc': 0.3,
+            'org_fc': 0.4,
             'org_rw': 0.24
             },
         'fen':{
             'topsoil_id': 2,
-            'org_depth': 0.07,
-            'org_poros': 0.9,
+            'org_depth': 0.10,
+            'org_poros': 0.9,   
             'org_fc': 0.5,
             'org_rw': 0.3
             },
         'peatland':{
             'topsoil_id': 3,
-            'org_depth': 0.07,
+            'org_depth': 0.15,
             'org_poros': 0.9,
             'org_fc': 0.6,
             'org_rw': 0.4
             },
         'openmire':{
             'topsoil_id': 4,
-            'org_depth': 0.10,
+            'org_depth': 0.3,
             'org_poros': 0.9,
-            'org_fc': 0.7,
+            'org_fc': 0.8,
             'org_rw': 0.5
             }
         }
@@ -180,29 +180,29 @@ def topsoil():
 def soilprofiles():
     """
     Properties of typical peat profiles...
-    """ #kr 0.44, 0.024, 0.053, 1.251
+    """
     soilp = {
-        'FineTextured':{
+        'CoarseTextured':{
             'soil_id': 1.0,
-            'z': [-0.05, -0.05, -2.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*3,
-                    'ThetaR': [0.03]*3,
-                    'alpha': [0.054]*3,
-                    'n': [1.293]*3},
-            'saturated_conductivity': [1E-06]*3,
-                },
-        'MediumTextured':{
-            'soil_id': 2.0,
             'z': [-0.05, -0.05, -4.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.448]*3,
                     'ThetaR': [0.03]*3,
                     'alpha': [0.054]*3,
                     'n': [1.293]*3},
-            'saturated_conductivity': [1E-05]*3,
+            'saturated_conductivity': [1E-07]*3,
                 },
-        'CoarseTextured':{
+        'MediumTextured':{
+            'soil_id': 2.0,
+            'z': [-0.05, -0.05, -2.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.448]*3,
+                    'ThetaR': [0.03]*3,
+                    'alpha': [0.054]*3,
+                    'n': [1.293]*3},
+            'saturated_conductivity': [1E-07]*3,
+                },
+        'FineTextured':{
             'soil_id': 3.0,
             'z': [-0.05, -0.05, -4.0],
             'pF': {  # vanGenuchten water retention parameters
@@ -210,17 +210,17 @@ def soilprofiles():
                     'ThetaR': [0.03]*3,
                     'alpha': [0.054]*3,
                     'n': [1.293]*3},
-            'saturated_conductivity': [1E-05]*3,
+            'saturated_conductivity': [1E-06]*3,
                 },
         'Peat':{
             'soil_id': 4.0,
-            'z': [-0.05, -0.05, -4.0],
+            'z': [-0.05, -0.05, -2.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.92]*3,
-                    'ThetaR': [0.098]*3,
-                    'alpha': [0.07]*3,
-                    'n': [1.37]*3},
-            'saturated_conductivity': [5e-06]*3,
+                    'ThetaS': [0.888]*3,
+                    'ThetaR': [0.196]*3,
+                    'alpha': [0.072]*3,
+                    'n': [1.255]*3},
+            'saturated_conductivity': [1E-07]*3,
                 },
         'Humus': {
             'soil_id': 5.0,

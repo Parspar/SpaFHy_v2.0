@@ -80,6 +80,7 @@ class SoilGrid_2Dflow(object):
 
         # replace nans (values outside catchment area)
         self.H[np.isnan(self.H)] = -999
+        #self.h[np.isnan(self.h)] = -999
 
         # water storage [m]
         self.Wsto_max = np.full_like(self.h, 0.0)  # storage of fully saturated profile
@@ -90,7 +91,8 @@ class SoilGrid_2Dflow(object):
             self.Wsto[self.soiltype == key] = value(self.h[self.soiltype == key])
 
         # rootzone moisture [m3 m-3], parameters related to transpiration limit during dry conditions
-        self.rootmoist = np.full_like(self.h, 0.0)
+        self.rootmoist = np.full_like(self.Wliq_top, 0.0)
+        self.rootmoist[np.isnan(self.Wliq_top)] = np.nan
         self.root_fc0 = np.full_like(self.h, 0.0)
         self.root_fc1 = np.full_like(self.h, 0.0)
         self.root_wp = np.full_like(self.h, 0.0)
@@ -136,6 +138,8 @@ class SoilGrid_2Dflow(object):
         self.Tr1 = np.zeros((self.rows,self.cols))
         self.Wtso1 = np.zeros((self.rows,self.cols))
         self.tmstep = 1
+        self.conv99 = 0
+        self.totit = 0
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -330,7 +334,8 @@ class SoilGrid_2Dflow(object):
                         a_n[k-self.cols] = 0
                     if k+self.cols < self.n:  # south node
                         a_s[k] = 0
-
+            
+            
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
 
             # Solve: A*Htmp1 = hs
@@ -359,7 +364,10 @@ class SoilGrid_2Dflow(object):
             if conv1 < crit:
                 break
             # end of iteration loop
-        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index])
+        if it == 99:
+            self.conv99 +=1
+        self.totit += it
+        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index], 'it99:', self.conv99, 'it_tot:', self.totit)
 
         """ update state """
         # soil profile

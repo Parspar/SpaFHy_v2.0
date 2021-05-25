@@ -106,11 +106,19 @@ def read_cpy_gisdata(fpath, plotgrids=False):
     # leaf area indices
     try:
         LAI_pine, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_pine.dat'))
-        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))
+        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))        
         LAI_conif = LAI_pine + LAI_spruce
     except:
         LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.dat'))
+    #try:
+    #    LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.dat'))
+    #    LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.dat'))
+    #    LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
+    #    LAI_decid = LAI_decid + LAI_shrub + LAI_grass
+    #except:
     LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
+
+
     
     # for stability, lets replace zeros with eps
     LAI_decid[LAI_decid == 0.0] = eps
@@ -239,7 +247,7 @@ def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
             data['org_rw'][yx] = value['org_rw']
-        
+    
 
     data['wtso_to_gwl'] = {soiltype: soilp[soiltype]['to_gwl'] for soiltype in soilp.keys()}
     data['gwl_to_wsto'] = {soiltype: soilp[soiltype]['to_wsto'] for soiltype in soilp.keys()}
@@ -288,6 +296,7 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
 
     return pcpy
 
+'''
 def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     """
     reads FMI interpolated daily weather data from file
@@ -404,6 +413,95 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     forcing = forcing.fillna(method='ffill')
 
     return forcing
+'''
+
+def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
+    """
+    reads FMI OBSERVED daily weather data from file
+    IN:
+        ID - sve catchment ID. set ID=0 if all data wanted
+        start_date - 'yyyy-mm-dd'
+        end_date - 'yyyy-mm-dd'
+        sourcefile - optional
+        CO2 - atm. CO2 concentration (float), optional
+    OUT:
+        fmi - pd.dataframe with datetimeindex
+            fmi columns:['ID','Kunta','aika','lon','lat','T','Tmax','Tmin',
+                         'Prec','Rg','h2o','dds','Prec_a','Par',
+                         'RH','esa','VPD','doy']
+            units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa],
+            Prec, Prec_a[mm], Rg,Par[Wm-2],lon,lat[deg]
+    """
+    
+    # OmaTunniste;OmaItä;OmaPohjoinen;Kunta;siteid;vuosi;kk;paiva;longitude;latitude;t_mean;t_max;t_min;
+    # rainfall;radiation;hpa;lamposumma_v;rainfall_v;lamposumma;lamposumma_cum
+    # -site number
+    # -date (yyyy mm dd)
+    # -latitude (in KKJ coordinates, metres)
+    # -longitude (in KKJ coordinates, metres)
+    # -T_mean (degrees celcius)
+    # -T_max (degrees celcius)
+    # -T_min (degrees celcius)
+    # -rainfall (mm)
+    # -global radiation (per day in kJ/m2)
+    # -H2O partial pressure (hPa)
+
+    sourcefile = os.path.join(sourcefile)
+    print(sourcefile)
+    ID = int(ID)
+
+    # import forcing data
+    fmi = pd.read_csv(sourcefile, sep=';', header='infer', 
+                      parse_dates=['time'],encoding="ISO-8859-1")
+    
+    time = pd.to_datetime(fmi['time'], format='%Y%m%d')
+
+    fmi.index = time
+    fmi = fmi.rename(columns={'time': 'date', 't_mean': 'air_temperature', 't_max': 'Tmax',
+                              't_min': 'Tmin', 'rainfall': 'precipitation',
+                              'radiation': 'global_radiation', 'hpa': 'h2o', 'lamposumma_v': 'dds',
+                              'rainfall_v': 'Prec_a', 'rh': 'RH'})
+    
+    # get desired period and catchment
+    fmi = fmi[(fmi.index >= start_date) & (fmi.index <= end_date)]
+    if ID > 0:
+        fmi = fmi[fmi['ID'] == ID]
+    
+    fmi['h2o'] = 1e-3*fmi['h2o']  # -> kPa
+    #fmi['global_radiation'] = 1e3 / 86400.0*fmi['global_radiation']  # kJ/m2/d-1 to Wm-2
+    fmi['par'] = 0.5*fmi['global_radiation']
+
+    # saturated vapor pressure
+    esa = 0.6112*np.exp((17.67*fmi['air_temperature']) / (fmi['air_temperature'] + 273.16 - 29.66))  # kPa
+    vpd = esa - fmi['h2o']  # kPa
+    vpd[vpd < 0] = 0.0
+    #rh = 100.0*fmi['h2o'] / esa
+    #rh[rh < 0] = 0.0
+    #rh[rh > 100] = 100.0
+
+    #fmi['RH'] = rh
+    fmi['esa'] = esa
+    fmi['vapor_pressure_deficit'] = vpd
+
+    fmi['doy'] = fmi.index.dayofyear
+    fmi = fmi.drop(['date'], axis=1)
+    # replace nan's in prec with 0.0
+    fmi.loc[fmi['precipitation'].isna(), 'Prec'] = 0.0
+ 
+    
+    # add CO2 concentration to dataframe
+    fmi['CO2'] = float(CO2)
+    '''
+    dates = pd.date_range(start_date, end_date).tolist()
+    if len(dates) != len(fmi):
+        print(str(len(dates) - len(fmi)) + ' days missing from forcing file, interpolated')
+    forcing = pd.DataFrame(index=dates, columns=[])
+    forcing = forcing.merge(fmi, how='outer', left_index=True, right_index=True)
+    forcing = forcing.fillna(method='ffill')
+    '''
+    return fmi
+    
+
 
 def initialize_netcdf(pgen, cmask, filepath, filename, description):
     """
