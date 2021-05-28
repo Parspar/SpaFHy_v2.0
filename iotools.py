@@ -110,13 +110,13 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_conif = LAI_pine + LAI_spruce
     except:
         LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.dat'))
-    #try:
-    #    LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.dat'))
-    #    LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.dat'))
-    #    LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
-    #    LAI_decid = LAI_decid + LAI_shrub + LAI_grass
-    #except:
-    LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
+    try:
+        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.dat'))
+        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.dat'))
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
+        LAI_decid = LAI_decid + LAI_shrub + LAI_grass
+    except:
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
 
 
     

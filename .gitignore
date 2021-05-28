@@ -108,6 +108,7 @@ venv.bak/
 /results
 /data
 /sompa_data
+/calibration
 
 # sandbucket, sandbox
 sand*.py

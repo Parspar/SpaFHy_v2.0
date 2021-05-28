@@ -373,7 +373,6 @@ class SoilGrid_2Dflow(object):
         # soil profile
         self.H = Htmp.copy()
         self.h = self.H - self.ele
-        print('mean GWL:', np.nanmean(self.h))
         for key, value in self.gwl_to_wsto.items():
             self.Wsto[self.soiltype == key] = value(self.h[self.soiltype == key])
 

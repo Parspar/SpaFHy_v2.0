@@ -9,9 +9,9 @@ import pathlib
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2018-01-01',
+            'start_date': '2019-01-01',
             'end_date': '2019-10-01',
-            'spinup_end': '2019-01-01',  # results after this are saved in result file
+            'spinup_end': '2019-05-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -149,29 +149,29 @@ def topsoil():
             'topsoil_id': 1,
             'org_depth': 0.05,
             'org_poros': 0.9,
-            'org_fc': 0.4,
+            'org_fc': 0.33,
             'org_rw': 0.24
             },
         'fen':{
             'topsoil_id': 2,
-            'org_depth': 0.10,
+            'org_depth': 0.05,
             'org_poros': 0.9,   
             'org_fc': 0.5,
             'org_rw': 0.3
             },
         'peatland':{
             'topsoil_id': 3,
-            'org_depth': 0.15,
+            'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.6,
-            'org_rw': 0.4
+            'org_rw': 0.3
             },
         'openmire':{
             'topsoil_id': 4,
-            'org_depth': 0.3,
+            'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.8,
-            'org_rw': 0.5
+            'org_rw': 0.3
             }
         }
     return topsoil
@@ -184,54 +184,54 @@ def soilprofiles():
     soilp = {
         'CoarseTextured':{
             'soil_id': 1.0,
-            'z': [-0.05, -0.05, -4.0],
+            'z': [-0.05, -0.05, -0.4, -3.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*3,
-                    'ThetaR': [0.03]*3,
-                    'alpha': [0.054]*3,
-                    'n': [1.293]*3},
-            'saturated_conductivity': [1E-07]*3,
+                    'ThetaS': [0.448]*4,
+                    'ThetaR': [0.03]*4,
+                    'alpha': [0.054]*4,
+                    'n': [1.293]*4},
+            'saturated_conductivity': [1E-05, 1E-05, 1E-06, 1E-06],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
-            'z': [-0.05, -0.05, -2.0],
+            'z': [-0.05, -0.05, -0.4, -3.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*3,
-                    'ThetaR': [0.03]*3,
-                    'alpha': [0.054]*3,
-                    'n': [1.293]*3},
-            'saturated_conductivity': [1E-07]*3,
+                    'ThetaS': [0.348]*4, #0.448 according to measured and optimized 
+                    'ThetaR': [0.03]*4,
+                    'alpha': [0.054]*4,
+                    'n': [1.293]*4},
+            'saturated_conductivity': [1E-05, 1E-05, 1E-06, 1E-06],
                 },
-        'FineTextured':{
-            'soil_id': 3.0,
-            'z': [-0.05, -0.05, -4.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*3,
-                    'ThetaR': [0.03]*3,
-                    'alpha': [0.054]*3,
-                    'n': [1.293]*3},
-            'saturated_conductivity': [1E-06]*3,
-                },
+        #'FineTextured':{
+        #    'soil_id': 3.0,
+        #    'z': [-0.05, -0.05, -0.8, -4.0],
+        #    'pF': {  # vanGenuchten water retention parameters
+        #            'ThetaS': [0.448]*4,
+        #            'ThetaR': [0.03]*4,
+        #            'alpha': [0.054]*4,
+        #            'n': [1.293]*4},
+        #    'saturated_conductivity': [1E-06]*4,
+        #        },
         'Peat':{
             'soil_id': 4.0,
-            'z': [-0.05, -0.05, -2.0],
+            'z': [-0.05, -0.05, -0.8, -2.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.888]*3,
-                    'ThetaR': [0.196]*3,
-                    'alpha': [0.072]*3,
-                    'n': [1.255]*3},
-            'saturated_conductivity': [1E-07]*3,
+                    'ThetaS': [0.788]*4, #0.888 according to measured and optimized
+                    'ThetaR': [0.196]*4,
+                    'alpha': [0.072]*4,
+                    'n': [1.255]*4},
+            'saturated_conductivity': [1E-05, 1E-05, 5E-06, 1E-06],
                 },
-        'Humus': {
-            'soil_id': 5.0,
-            'z': [-2.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.44],
-                    'ThetaR': [0.024],
-                    'alpha': [0.053],
-                    'n': [1.251]},
-            'saturated_conductivity': [1E-06],
-                },
+        #'Humus': {
+        #    'soil_id': 5.0,
+        #    'z': [-2.0],
+        #    'pF': {  # vanGenuchten water retention parameters
+        #            'ThetaS': [0.44],
+        #            'ThetaR': [0.024],
+        #            'alpha': [0.053],
+        #            'n': [1.251]},
+        #    'saturated_conductivity': [1E-06],
+        #        },
             }
     return soilp
 
