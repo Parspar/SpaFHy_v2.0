@@ -117,8 +117,8 @@ def parameters(folder=''):
                        'swe': 0.0, # snow water equivalent mm
                        },
             'loc': {  # following coordinates used if spatial_forcing == False
-                    'lat': 61.4,  # decimal degrees
-                    'lon': 23.4
+                    'lat': 67.995,  # decimal degrees
+                    'lon': 24.224
                     }
             }
 
