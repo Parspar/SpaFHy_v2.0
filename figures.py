@@ -996,7 +996,6 @@ else:
 
 # QQ plots of the whole season for sitetypes 1 and 4
 
-norm = False
 
 sar_wliq = sar['soilmoisture']*np.array(results['parameters_cmask'])/100
 spa_wliq = np.array(results['soil_rootzone_moisture'])
@@ -1013,9 +1012,9 @@ for i in range(len(dates_sar)):
 spa_wliq = spa_wliq[date_in_spa,:,:]
 spa_wliq_top = spa_wliq_top[date_in_spa,:,:]
 
-sar_wliq_site1 = sar_wliq[:,np.where(sitetype == 1)[0],np.where(sitetype == 1)[1]]
-spa_wliq_site1 = spa_wliq[:,np.where(sitetype == 1)[0],np.where(sitetype == 1)[1]]
-spa_wliq_top_site1 = spa_wliq_top[:,np.where(sitetype == 1)[0],np.where(sitetype == 1)[1]]
+sar_wliq_site1 = sar_wliq[day_hi,np.where(sitetype == 1)[0],np.where(sitetype == 1)[1]]
+spa_wliq_site1 = spa_wliq[day_hi,np.where(sitetype == 1)[0],np.where(sitetype == 1)[1]]
+spa_wliq_top_site1 = spa_wliq_top[day_hi,np.where(sitetype == 1)[0],np.where(sitetype == 1)[1]]
 
 sar_flat_1 = sar_wliq_site1.flatten()
 spa_flat_1 = spa_wliq_site1.flatten()
@@ -1043,46 +1042,65 @@ flat_pd4 = flat_pd4.loc[np.isfinite(flat_pd4['sar']) & np.isfinite(flat_pd4['spa
 
 
 # Plotting
-fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8,4));
-ax1 = axs[0]
-ax2 = axs[1]
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(8,8));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
 
-if norm == False:
-    x1 = sns.regplot(ax=ax1, x=flat_pd4['sar'], y=flat_pd4['spa'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
-    ax1.set(ylim=(0, 1))
-    ax1.set(xlim=(0, 1))
-    #ax1.set_title('Dry day')
+x1 = sns.regplot(ax=ax1, x=flat_pd4['sar'], y=flat_pd4['spa'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
+ax1.set(ylim=(0, 1))
+ax1.set(xlim=(0, 1))
+ax1.set_title('Mire')
 
-    x2 = sns.regplot(ax=ax2, x=flat_pd4['sar'], y=flat_pd4['spa_top'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
-    ax2.set(ylim=(0, 1))
-    ax2.set(xlim=(0, 1))
-    #ax2.set_title('Wet day')
+x2 = sns.regplot(ax=ax2, x=flat_pd4['sar'], y=flat_pd4['spa_top'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
+ax2.set(ylim=(0, 1))
+ax2.set(xlim=(0, 1))
+ax2.set_title('Mire')
+
+x3 = sns.regplot(ax=ax3, x=flat_pd1['sar'], y=flat_pd1['spa_top'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
+ax3.set(ylim=(0, 1))
+ax3.set(xlim=(0, 1))
+ax3.set_title('Mineral')
+
+x4 = sns.regplot(ax=ax4, x=flat_pd1['sar'], y=flat_pd1['spa_top'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
+ax4.set(ylim=(0, 1))
+ax4.set(xlim=(0, 1))
+ax4.set_title('Mineral')
+
+fig.suptitle('SpaFHy v2D')
     
-    fig.suptitle('SpaFHy v2D')
-    
-    if saveplots == True:
-        plt.savefig(f'sar_spa_qq_{today}.pdf')
-        plt.savefig(f'sar_spa_qq_{today}.png')
-    
-else:
-    x1 = sns.regplot(ax=ax1, x=flat_pd['sar']/(flat_pd['sar'].mean()), y=flat_pd['spa']/(flat_pd['spa'].mean()), scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
-    ax1.set(ylim=(0, 2.5))
-    ax1.set(xlim=(0, 2.5))
-    #ax1.set_title('Dry day')
 
-    x2 = sns.regplot(ax=ax2, x=flat_pd['sar']/(flat_pd['sar'].mean()), y=flat_pd['spa_top']/(flat_pd['spa_top'].mean()), scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
-    ax2.set(ylim=(0, 2.5))
-    ax2.set(xlim=(0, 2.5))
-    #ax2.set_title('Wet day')  
-    
-    fig.suptitle('SpaFHy v2D, norm by total means of each')
+# Plotting
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(8,8));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
 
-    
-    if saveplots == True:
-        plt.savefig(f'sar_spa_qq_norm_{today}.pdf')
-        plt.savefig(f'sar_spa_qq_norm_{today}.png')
+x1 = sns.scatterplot(ax=ax1, x=flat_pd4['sar'], y=flat_pd4['spa'], alpha=0.05)
+ax1.set(ylim=(0, 1))
+ax1.set(xlim=(0, 1))
+ax1.set_title('Mire')
 
+x2 = sns.scatterplot(ax=ax2, x=flat_pd4['sar'], y=flat_pd4['spa_top'], alpha=0.05)
+ax2.set(ylim=(0, 1))
+ax2.set(xlim=(0, 1))
+ax2.set_title('Mire')
 
+x3 = sns.scatterplot(ax=ax3, x=flat_pd1['sar'], y=flat_pd1['spa_top'], alpha=0.05)
+ax3.set(ylim=(0, 1))
+ax3.set(xlim=(0, 1))
+ax3.set_title('Mineral')
+
+x4 = sns.scatterplot(ax=ax4, x=flat_pd1['sar'], y=flat_pd1['spa_top'], alpha=0.05)
+ax4.set(ylim=(0, 1))
+ax4.set(xlim=(0, 1))
+ax4.set_title('Mineral')
+
+fig.suptitle('SpaFHy v2D')
+
+   
 #%%
 
 # QQ plots of spa and sar
@@ -1113,6 +1131,7 @@ fig.suptitle('SpaFHy v2D')
 if saveplots == True:
         #plt.savefig(f'qq_spa_spatop_sar_{today}.pdf')
         plt.savefig(f'qq_spa_spatop_sar_{today}.png')
+
 
 #%%
 # drainage plots
@@ -1156,3 +1175,35 @@ if saveplots == True:
         #plt.savefig(f'spafhy2d_drainage_{today}.pdf')
         plt.savefig(f'spafhy2d_drainage_{today}.png')
  
+    
+#%%
+
+# plot slope vs. sar
+from matplotlib.colors import LogNorm
+
+slope, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\Lompolonjanka\16b\sve_slope.txt')
+flowac, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\Lompolonjanka\16b\sve_flow_accum_d8_area.txt')
+
+#scmask = np.where(soilclass != 2)
+sc2 = np.where(soilclass == 2)
+st1 = np.where(sitetype == 1)
+
+fdf = pd.DataFrame()
+fdf['sar'] = sar_wliq[day_hi,sc2[0],sc2[1]].flatten()
+fdf['slope'] = slope[sc2[0],sc2[1]].flatten()
+fdf['flowac'] = flowac[sc2[0],sc2[1]].flatten()
+fdf = fdf.loc[np.isfinite(fdf['sar']) & np.isfinite(fdf['slope'])]
+
+# Plotting
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12,6));
+ax1 = axs[0]
+ax2 = axs[1]
+
+sns.regplot(ax=ax1, x=fdf['sar'], y=fdf['slope'], scatter_kws={'s':15, 'alpha':0.05}, line_kws={"color": "red"})
+#ax1.set(ylim=(0, 10))
+#ax1.set(xlim=(0.05,0.6))
+
+sns.regplot(ax=ax2, x=fdf['sar'], y=fdf['flowac'], scatter_kws={'s':15, 'alpha':0.05}, line_kws={"color": "red"})
+ax2.set_yscale('log') 
+#ax1.set(xlim=(0.05,0.6))
+
