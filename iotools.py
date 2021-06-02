@@ -36,7 +36,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
     # ditches
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
     #ditches[ditches == np.nan] = 0.0
-    
+
     # site type
     try:
         sitetype, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'sitetype.dat'))
@@ -103,10 +103,11 @@ def read_cpy_gisdata(fpath, plotgrids=False):
     # canopy closure [-]
     cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cf.dat'))
 
+
     # leaf area indices
     try:
         LAI_pine, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_pine.dat'))
-        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))        
+        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))
         LAI_conif = LAI_pine + LAI_spruce
     except:
         LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.dat'))
@@ -118,16 +119,21 @@ def read_cpy_gisdata(fpath, plotgrids=False):
     except:
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
     
+
     # for stability, lets replace zeros with eps
     LAI_decid[LAI_decid == 0.0] = eps
     LAI_conif[LAI_conif == 0.0] = eps
     hc[hc == 0.0] = eps
-    
+
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
     else:
         cmask = np.ones(np.shape(hc))
+
+    # ditches, no stand in ditch cells
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    ditch_mask = np.where(ditches < -eps, 0.0, 1)
 
     # dict of all rasters
     gis = {'cmask': cmask,
@@ -135,7 +141,8 @@ def read_cpy_gisdata(fpath, plotgrids=False):
            'LAI_decid': LAI_decid, 'hc': hc, 'cf': cf}
 
     for key in gis.keys():
-        gis[key] *= cmask
+        if key != 'cmask':
+            gis[key] = gis[key] * cmask * ditch_mask
 
     if plotgrids is True:
 
@@ -224,7 +231,6 @@ def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
         #raise ValueError("Soil id in inputs not specified in parameters.py")
 
 
-    i = 0
     for key, value in soilp.items():
         c = value['soil_id']
         ix = np.where(data['soilclass'] == c)
@@ -233,9 +239,7 @@ def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
         value.update(gwl_Wsto(value['z'], value['pF'], value['saturated_conductivity']))
         # interpolation function between root_wsto and gwl
         value.update(gwl_Wsto(value['z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
-        
-        
-    
+
     if spatial == True:
         for key, value in topsoil.items():
             t = value['topsoil_id']
@@ -245,7 +249,11 @@ def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
             data['org_rw'][yx] = value['org_rw']
-    
+
+    # no organic layer in ditch nodes
+    ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
+    for key in ['org_depth','org_poros','org_fc', 'org_sat']:
+        data[key] *= ditch_mask
 
     data['wtso_to_gwl'] = {soiltype: soilp[soiltype]['to_gwl'] for soiltype in soilp.keys()}
     data['gwl_to_wsto'] = {soiltype: soilp[soiltype]['to_wsto'] for soiltype in soilp.keys()}
@@ -430,7 +438,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
             units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa],
             Prec, Prec_a[mm], Rg,Par[Wm-2],lon,lat[deg]
     """
-    
+
     # OmaTunniste;OmaItä;OmaPohjoinen;Kunta;siteid;vuosi;kk;paiva;longitude;latitude;t_mean;t_max;t_min;
     # rainfall;radiation;hpa;lamposumma_v;rainfall_v;lamposumma;lamposumma_cum
     # -site number
@@ -449,9 +457,9 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
     ID = int(ID)
 
     # import forcing data
-    fmi = pd.read_csv(sourcefile, sep=';', header='infer', 
+    fmi = pd.read_csv(sourcefile, sep=';', header='infer',
                       parse_dates=['time'],encoding="ISO-8859-1")
-    
+
     time = pd.to_datetime(fmi['time'], format='%Y%m%d')
 
     fmi.index = time
@@ -459,12 +467,12 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
                               't_min': 'Tmin', 'rainfall': 'precipitation',
                               'radiation': 'global_radiation', 'hpa': 'h2o', 'lamposumma_v': 'dds',
                               'rainfall_v': 'Prec_a', 'rh': 'RH'})
-    
+
     # get desired period and catchment
     fmi = fmi[(fmi.index >= start_date) & (fmi.index <= end_date)]
     if ID > 0:
         fmi = fmi[fmi['ID'] == ID]
-    
+
     fmi['h2o'] = 1e-3*fmi['h2o']  # -> kPa
     #fmi['global_radiation'] = 1e3 / 86400.0*fmi['global_radiation']  # kJ/m2/d-1 to Wm-2
     fmi['par'] = 0.5*fmi['global_radiation']
@@ -485,8 +493,8 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
     fmi = fmi.drop(['date'], axis=1)
     # replace nan's in prec with 0.0
     fmi.loc[fmi['precipitation'].isna(), 'Prec'] = 0.0
- 
-    
+
+
     # add CO2 concentration to dataframe
     fmi['CO2'] = float(CO2)
     '''
@@ -498,7 +506,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
     forcing = forcing.fillna(method='ffill')
     '''
     return fmi
-    
+
 
 
 def initialize_netcdf(pgen, cmask, filepath, filename, description):

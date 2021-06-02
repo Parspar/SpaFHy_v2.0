@@ -56,7 +56,7 @@ class SoilGrid_2Dflow(object):
 
         # initial state: toplayer storage and relative conductance for evaporation
         self.Wsto_top = self.Wsto_top_max * spara['org_sat']
-        self.Wliq_top = self.poros_top * self.Wsto_top / self.Wsto_top_max
+        self.Wliq_top = self.poros_top * self.Wsto_top / (self.Wsto_top_max+eps)
         self.Ree = np.maximum(0.0, np.minimum(
                 0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
 
@@ -179,7 +179,7 @@ class SoilGrid_2Dflow(object):
 
         # moss/organic layer interception & water balance
         interc = np.maximum(0.0, (self.Wsto_top_max - self.Wsto_top))\
-                    * (1.0 - np.exp(-(rr / self.Wsto_top_max)))
+                    * (1.0 - np.exp(-(rr / (self.Wsto_top_max + eps))))
         rr -= interc  # to soil profile
         self.Wsto_top += interc
         evap = np.minimum(evap, self.Wsto_top)
@@ -218,36 +218,22 @@ class SoilGrid_2Dflow(object):
         for k in np.where(ditch_h < -eps)[0]:
             H_ave = 0
             n_neigh = 0
-            H_ave_all = 0
-            n_neigh_all = 0
-            if k%self.cols != 0:  # west node
-                H_ave_all += H[k-1]
-                n_neigh_all += 1
-                if ditch_h[k-1] > -eps: # non-ditch neighbor
+            if k%self.cols != 0 and ditch_h[k-1] > -eps: # west non-ditch neighbor
                     H_ave += H[k-1]
                     n_neigh += 1
-            if (k+1)%self.cols != 0:  # east node
-                H_ave_all += H[k+1]
-                n_neigh_all += 1
-                if ditch_h[k+1] > -eps: # non-ditch neighbor
+            if (k+1)%self.cols != 0 and ditch_h[k+1] > -eps: # east non-ditch neighbor
                     H_ave += H[k+1]
                     n_neigh += 1
-            if k-self.cols >= 0:  # north node
-                H_ave_all += H[k-self.cols]
-                n_neigh_all += 1
-                if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
+            if k-self.cols >= 0 and  ditch_h[k-self.cols] > -eps: # north non-ditch neighbor
                     H_ave += H[k-self.cols]
                     n_neigh += 1
-            if k+self.cols < self.n:  # south node
-                H_ave_all += H[k+self.cols]
-                n_neigh_all += 1
-                if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
+            if k+self.cols < self.n and ditch_h[k+self.cols] > -eps: # sounth non-ditch neighbor
                     H_ave += H[k+self.cols]
                     n_neigh += 1
             if n_neigh > 0:
                 H_neighbours[k] = H_ave / n_neigh  # average of neighboring non-ditch nodes
-            else:  # corners or nodes surrounded by ditches dont have neighbors
-                H_neighbours[k] = H_ave_all / n_neigh_all  # average of neighboring ditch nodes
+            else:  # corners or nodes surrounded by ditches dont have neighbors, given its ditch depth
+                H_neighbours[k] = ele[k] + ditch_h[k] + eps
 
         H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
 
@@ -325,13 +311,6 @@ class SoilGrid_2Dflow(object):
             a_n = -self.implic * TrN1[self.cols:]  # North element
             a_s = -self.implic * TrS1[:self.n-self.cols]  # South element
 
-            # i,j = np.indices(self.A.shape)
-            # self.A[i==j] = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
-            # self.A[i==j+1] = -self.implic * TrW1[1:]  # West element
-            # self.A[i==j-1] = -self.implic * TrE1[:-1]  # East element
-            # self.A[i==j+self.cols] = -self.implic * TrN1[self.cols:]  # North element
-            # self.A[i==j-self.cols] = -self.implic * TrS1[:self.n-self.cols]  # South element
-
             # Knowns: Right hand side of the eq
             Htmp = np.ravel(Htmp)
             hs = (np.ravel(S) * dt * self.dxy**2 + alfa * Htmp
@@ -359,8 +338,6 @@ class SoilGrid_2Dflow(object):
 
             # Solve: A*Htmp1 = hs
             Htmp1 = linalg.spsolve(A,hs)
-
-            # Htmp1 = np.linalg.multi_dot([np.linalg.inv(self.A),hs])
 
             # testing, limit change
             Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
@@ -421,7 +398,7 @@ class SoilGrid_2Dflow(object):
                         + self.TrS0*(self.H - self.HS)))/ self.dxy**2
 
         # organic top layer; maximum that can be hold is Fc
-        self.Wliq_top = self.fc_top * self.Wsto_top / self.Wsto_top_max
+        self.Wliq_top = self.fc_top * self.Wsto_top / (self.Wsto_top_max+eps)
         self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
 
         for key, value in self.gwl_to_rootmoist.items():
