@@ -106,7 +106,9 @@ class SoilGrid_2Dflow(object):
 
         """ parameters for 2D solution """
         # parameters for solving
-        self.implic = 1  # solving method: 0-forward Euler, 1-backward Euler, 0.5-Crank-Nicolson
+        # 0.5 seems to work better when gwl is close to impermeable bottom
+        # (probably because transmissivity does not switch between 0. and > 0 as much)
+        self.implic = 0.5  # solving method: 0-forward Euler, 1-backward Euler, 0.5-Crank-Nicolson
 
         # grid
         self.rows = np.shape(self.h)[0]
@@ -186,7 +188,7 @@ class SoilGrid_2Dflow(object):
         # source/sink during dt [m]
         S = rr - tr
         # air volume [m]
-        airv = self.Wsto_max - self.Wsto
+        airv = np.maximum(0.0, self.Wsto_max - self.Wsto)
         # remove water that cannot fit into soil
         S = np.minimum(S, airv)
 
@@ -201,9 +203,62 @@ class SoilGrid_2Dflow(object):
         # route remaining to surface runoff
         surface_runoff = exfil - to_top_layer
 
+        # ravel 2D arrays
+        HW = np.ravel(self.HW); HE = np.ravel(self.HE)
+        HN = np.ravel(self.HN); HS = np.ravel(self.HS)
+        H = np.ravel(self.H)
+        Wsto = np.ravel(self.Wsto)
+        ditch_h = np.ravel(self.ditch_h)
+        ele = np.ravel(self.ele)
+
+        # Ditches
+        # calculate mean H of neighboring nodes to find out whether ditch is active (constant head)
+        # from previous timestep to avoid switching boundary/no-boundary during iteration
+        H_neighbours = ditch_h.copy()
+        for k in np.where(ditch_h < -eps)[0]:
+            H_ave = 0
+            n_neigh = 0
+            H_ave_all = 0
+            n_neigh_all = 0
+            if k%self.cols != 0:  # west node
+                H_ave_all += H[k-1]
+                n_neigh_all += 1
+                if ditch_h[k-1] > -eps: # non-ditch neighbor
+                    H_ave += H[k-1]
+                    n_neigh += 1
+            if (k+1)%self.cols != 0:  # east node
+                H_ave_all += H[k+1]
+                n_neigh_all += 1
+                if ditch_h[k+1] > -eps: # non-ditch neighbor
+                    H_ave += H[k+1]
+                    n_neigh += 1
+            if k-self.cols >= 0:  # north node
+                H_ave_all += H[k-self.cols]
+                n_neigh_all += 1
+                if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
+                    H_ave += H[k-self.cols]
+                    n_neigh += 1
+            if k+self.cols < self.n:  # south node
+                H_ave_all += H[k+self.cols]
+                n_neigh_all += 1
+                if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
+                    H_ave += H[k+self.cols]
+                    n_neigh += 1
+            if n_neigh > 0:
+                H_neighbours[k] = H_ave / n_neigh  # average of neighboring non-ditch nodes
+            else:  # corners or nodes surrounded by ditches dont have neighbors
+                H_neighbours[k] = H_ave_all / n_neigh_all  # average of neighboring ditch nodes
+
+        H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
+
         # Transmissivity of previous timestep [m2 d-1]
+        # for ditch nodes that are active, transmissivity calculated based on mean H of
+        # neighboring nodes, not ditch depth which would restrict tranmissivity too much
+        # Whole profile depth still considered, but I think that is the usual way..
+        H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
+                            H_neighbours_2d, self.H)
         for key, value in self.gwl_to_Tr.items():
-            self.Tr0[self.soiltype == key] = value(self.h[self.soiltype == key])
+            self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
         TrTmpEW = gmean(self.rolling_window(self.Tr0, 2), -1)
         TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr0), 2), -1))
@@ -223,26 +278,24 @@ class SoilGrid_2Dflow(object):
         # to avoid reshaping, save in other variable
         TrW0 = np.ravel(self.TrW0); TrE0 = np.ravel(self.TrE0)
         TrN0 = np.ravel(self.TrN0); TrS0 = np.ravel(self.TrS0)
-        HW = np.ravel(self.HW); HE = np.ravel(self.HE)
-        HN = np.ravel(self.HN); HS = np.ravel(self.HS)
-        H = np.ravel(self.H)
-        Wsto = np.ravel(self.Wsto)
-        ditch_h = np.ravel(self.ditch_h)
-        ele = np.ravel(self.ele)
 
         # hydraulic heads, new iteration and old iteration
         Htmp = self.H.copy()
         Htmp1 = self.H.copy()
 
-        crit = 1e-4 # convergence criteria
+        # convergence criteria
+        crit = 1e-3  # loosened this criteria from 1e-4, seems mass balance error remains resonable
         maxiter = 100
 
         for it in range(maxiter):
 
             # transmissivity [m2 d-1] to neighbouring cells with HTmp1
+            # for ditch nodes that are active, transmissivity calculated based on mean H of
+            # neighboring nodes, not ditch depth which would restrict tranmissivity too much
+            H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
+                                H_neighbours_2d, Htmp)
             for key, value in self.gwl_to_Tr.items():
-                self.Tr1[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
-
+                self.Tr1[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
             TrTmpEW = gmean(self.rolling_window(self.Tr1, 2),-1)
             TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr1), 2),-1))
             self.TrW1[:,1:] = TrTmpEW
@@ -289,41 +342,8 @@ class SoilGrid_2Dflow(object):
 
             # Ditches
             for k in np.where(ditch_h < -eps)[0]:
-                # update A and calculate mean H of neighboring nodes, from previous timestep to avoid switching boundary during iteration
-                H_ave = 0
-                n_neigh = 0
-                H_ave_all = 0
-                n_neigh_all = 0
-                if k%self.cols != 0:  # west node
-                    H_ave_all += H[k-1]
-                    n_neigh_all += 1
-                    if ditch_h[k-1] > -eps: # non-ditch neighbor
-                        H_ave += H[k-1]
-                        n_neigh += 1
-                if (k+1)%self.cols != 0:  # east node
-                    H_ave_all += H[k+1]
-                    n_neigh_all += 1
-                    if ditch_h[k+1] > -eps: # non-ditch neighbor
-                        H_ave += H[k+1]
-                        n_neigh += 1
-                if k-self.cols >= 0:  # north node
-                    H_ave_all += H[k-self.cols]
-                    n_neigh_all += 1
-                    if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
-                        H_ave += H[k-self.cols]
-                        n_neigh += 1
-                if k+self.cols < self.n:  # south node
-                    H_ave_all += H[k+self.cols]
-                    n_neigh_all += 1
-                    if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
-                        H_ave += H[k+self.cols]
-                        n_neigh += 1
-                if n_neigh > 0:
-                    H_ave = H_ave / n_neigh  # average of neighboring non-ditch nodes
-                else:  # corners or nodes surrounded by ditches dont have neighbors
-                    H_ave = H_ave_all / n_neigh_all  # average of neighboring ditch nodes
                 # update a_x and hs when ditch as constant head
-                if H_ave > ele[k] + ditch_h[k]: # average of neighboring H above ditch depth
+                if H_neighbours[k] > ele[k] + ditch_h[k]: # average of neighboring H above ditch depth
                     hs[k] = ele[k] + ditch_h[k]
                     a_d[k] = 1
                     if k%self.cols != 0:  # west node
@@ -334,8 +354,7 @@ class SoilGrid_2Dflow(object):
                         a_n[k-self.cols] = 0
                     if k+self.cols < self.n:  # south node
                         a_s[k] = 0
-            
-            
+
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
 
             # Solve: A*Htmp1 = hs
@@ -350,16 +369,20 @@ class SoilGrid_2Dflow(object):
 
             max_index = np.unravel_index(np.argmax(np.abs(Htmp1 - Htmp)),(self.rows,self.cols))
 
-            if it > 20:
+            # especially near profile bottom, solution oscillates so added these steps to avoid that
+            if it > 40:
+                Htmp = 0.25*Htmp1+0.75*Htmp
+            elif it > 20:
                 Htmp = 0.5*Htmp1+0.5*Htmp
             else:
                 Htmp = Htmp1.copy()
 
             Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
-            #if it > 90:
-            #    print('\t', it, conv1, max_index, self.ditch_h[max_index],
-            #          Htmp1[max_index]-self.ele[max_index])
+            # print to get sense what's happening when problems in convergence
+            if it > 90:
+                print('\t', it, conv1, max_index, self.ditch_h[max_index],
+                      Htmp[max_index]-self.ele[max_index])
 
             if conv1 < crit:
                 break
@@ -369,12 +392,33 @@ class SoilGrid_2Dflow(object):
         self.totit += it
         print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index], 'it99:', self.conv99, 'it_tot:', self.totit)
 
+        # lateral flow is calculated in two parts: one depending on previous time step
+        # and other on current time step (lateral flowsee 2/2). Their wiegthing depends
+        # on self. implic
+        # lateral flow 1/2
+        lateral_flow = (self.implic*(self.TrW1*(self.H - self.HW)
+                        + self.TrE1*(self.H - self.HE)
+                        + self.TrN1*(self.H - self.HN)
+                        + self.TrS1*(self.H - self.HS)))/ self.dxy**2
+
         """ update state """
         # soil profile
         self.H = Htmp.copy()
         self.h = self.H - self.ele
         for key, value in self.gwl_to_wsto.items():
             self.Wsto[self.soiltype == key] = value(self.h[self.soiltype == key])
+
+        # Head in four neighbouring cells
+        self.HW[:,1:] = self.H[:,:-1]
+        self.HE[:,:-1] = self.H[:,1:]
+        self.HN[1:,:] = self.H[:-1,:]
+        self.HS[:-1,:] = self.H[1:,:]
+
+        # lateral flow 2/2
+        lateral_flow += ((1-self.implic)*(self.TrW0*(self.H - self.HW)
+                        + self.TrE0*(self.H - self.HE)
+                        + self.TrN0*(self.H - self.HN)
+                        + self.TrS0*(self.H - self.HS)))/ self.dxy**2
 
         # organic top layer; maximum that can be hold is Fc
         self.Wliq_top = self.fc_top * self.Wsto_top / self.Wsto_top_max
@@ -383,40 +427,37 @@ class SoilGrid_2Dflow(object):
         for key, value in self.gwl_to_rootmoist.items():
             self.rootmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
 
-        # Koivusalo et al. 2008 HESS without wet side limit
-        self.Rew = np.where(self.rootmoist > self.root_fc1,
-                            np.minimum(1.0, 0.5*(1 + (self.rootmoist - self.root_fc1)/(self.root_fc0 - self.root_fc1))),
-                            np.maximum(0.0, 0.5*(self.rootmoist - self.root_wp)/(self.root_fc1 - self.root_wp))
-                            )
+        # This is limit transpiration when gwl < -0.7 which is not what we want here.
+        # # Koivusalo et al. 2008 HESS without wet side limit
+        # self.Rew = np.where(self.rootmoist > self.root_fc1,
+        #                     np.minimum(1.0, 0.5*(1 + (self.rootmoist - self.root_fc1)/(self.root_fc0 - self.root_fc1))),
+        #                     np.maximum(0.0, 0.5*(self.rootmoist - self.root_wp)/(self.root_fc1 - self.root_wp))
+        #                     )
 
-        # Head in four neighbouring cells
-        self.HW[:,1:] = self.H[:,:-1]
-        self.HE[:,:-1] = self.H[:,1:]
-        self.HN[1:,:] = self.H[:-1,:]
-        self.HS[:-1,:] = self.H[1:,:]
-
-        lateral_flow = (self.TrW1*(self.H - self.HW)
-                        + self.TrE1*(self.H - self.HE)
-                        + self.TrN1*(self.H - self.HN)
-                        + self.TrS1*(self.H - self.HS)) / self.dxy**2
+        # ditches are described as constant heads so the netflow to ditches can
+        # be calculated from their mass balance
+        netflow_to_ditch = (state0  - self.Wsto_top - self.Wsto -
+                           tr - surface_runoff - evap - lateral_flow)
+        netflow_to_ditch = np.where(self.ditch_h < -eps, netflow_to_ditch, 0.0)
 
         # mass balance error [m]
         mbe = (state0  - self.Wsto_top - self.Wsto -
                tr - surface_runoff - evap - lateral_flow)
 
         mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
-        lateral_flow = np.where(self.ditch_h < -eps, 0.0, lateral_flow)
 
         results = {
                 'ground_water_level': self.h,  # [m]
                 'infiltration': (S - tr) * 1e3,  # [mm d-1]
                 'surface_runoff': surface_runoff * 1e3,  # [mm d-1]
                 'evaporation': evap * 1e3,  # [mm d-1]
-                'drainage': lateral_flow * 1e3,  # [mm d-1]
+                'lateral_netflow': -lateral_flow * 1e3,  # [mm d-1]
+                'netflow_to_ditch': netflow_to_ditch * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'water_closure': mbe * 1e3,  # [mm d-1]
                 'transpiration_limitation': self.Rew,  # [-]
                 'rootzone_moisture': self.rootmoist,  # [m3 m-3]
+                'water_storage': (self.Wsto_top + self.Wsto) * 1e3, # [mm]
                 }
 
         return results
@@ -443,16 +484,30 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     z = np.array(z)
     dz = abs(z)
     dz[1:] = z[:-1] - z[1:]
-    z_mid = dz / 2 - np.cumsum(dz)
+
+    # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
+    z_fine=np.arange(0,min(z),-0.01)-0.01
+    dz_fine = z_fine*0.0 + 0.01
+    z_mid_fine = dz_fine / 2 - np.cumsum(dz_fine)
+
+    ix = np.zeros(len(z_fine))
+    for depth in z:
+        ix += np.where(z_fine < depth, 1, 0)
+
+    pF_fine={}
+    for key in pF.keys():
+        pp = np.array([pF[key][int(ix[i])] for i in range(len(z_fine))])
+        pF_fine.update({key: pp})
 
     # --------- connection between gwl and Wsto, Tr, C------------
     gwl = np.arange(1.0, -10., -1e-2)
-    gwl[-1] = -150
     # solve water storage corresponding to gwls
-    # Wsto = [sum(h_to_cellmoist(pF, g - z_mid, dz) * dz) + max(0.0,g) for g in gwl]
-    Wsto = [sum(h_to_cellmoist(pF, g - z_mid, dz) * dz) for g in gwl]
+    Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
+            + max(0.0,g) for g in gwl]  # water storage above ground surface == gwl
+    # Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]  # old
 
     if root:
+        Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]
         Wsto = Wsto/sum(dz)
         GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
         return {'to_rootmoist': GwlToWsto}
@@ -467,9 +522,11 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
 
     # plt.figure(1)
-    # plt.plot(np.array(gwl), np.array(np.gradient(Wsto)/np.gradient(gwl)))
+    # plt.plot(np.array(gwl), np.array(np.gradient(Wsto/np.gradient(gwl))))
     # plt.figure(2)
     # plt.plot(np.array(gwl), np.array(Tr))
+    # plt.figure(3)
+    # plt.plot(np.array(gwl), np.array(Wsto))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -533,7 +590,9 @@ def transmissivity(dz, Ksat, gwl):
 
     ib = sum(dz)
 
-    Hdr = min(max(0, gwl + ib), ib)  # depth of saturated layer above impermeable bottom
+    # depth of saturated layer above impermeable bottom
+    # Hdr = min(max(0, gwl + ib), ib)  # old
+    Hdr = max(0, gwl + ib)  # not restricted to soil profile -> transmissivity increases when gwl above ground surface level
 
     """ drainage from saturated layers above ditch base """
     # layers above ditch bottom where drainage is possible
@@ -541,7 +600,7 @@ def transmissivity(dz, Ksat, gwl):
 
     if Hdr > 0:
         # saturated layer thickness [m]
-        dz_sat = np.minimum(np.maximum(gwl - (z - dz / 2), 0), dz)
+        dz_sat = np.maximum(gwl - (z - dz / 2), 0)
         # transmissivity of layers  [m2 s-1]
         Trans = Ksat * dz_sat
 

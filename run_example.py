@@ -8,6 +8,7 @@ Created on Wed Jan 23 15:25:15 2019
 from model_driver import driver
 from iotools import read_results
 import matplotlib.pyplot as plt
+import numpy as np
 
 # example of calling driver, reading results and plotting gwl
 
@@ -15,37 +16,73 @@ outputfile = driver(create_ncf=True, folder='testcase_input')
 
 results = read_results(outputfile)
 
-# plt.figure()
-# ax = plt.subplot(4,1,1)
-# results['canopy_snow_water_equivalent'][:,4,:].plot.line(x='date')
-# plt.subplot(4,1,2, sharex=ax)
-# results['soil_rootzone_moisture'][:,4,:].plot.line(x='date')
-# plt.subplot(4,1,3, sharex=ax)
-# results['soil_ground_water_level'][:,4,:].plot.line(x='date')
-# plt.subplot(4,1,4, sharex=ax)
-# results['canopy_leaf_area_index'][:,4,:].plot.line(x='date')
+results['soil_ground_water_level_abs'] = results['soil_ground_water_level'][-1,:,:] + results['parameters_elevation']
+results['soil_netflow_to_ditch'] = results['soil_netflow_to_ditch'] * results['parameters_cmask']
+results['soil_lateral_netflow'] = results['soil_lateral_netflow'] * results['parameters_cmask']
+results['soil_water_storage'] = results['soil_water_storage'] - results['soil_water_storage'][0,:,:]
 
-plt.figure()
-results['soil_ground_water_level'][:,150,100].plot.line(x='date')
-
-plt.figure()
+plt.figure(figsize=(25,15))
+ax=plt.subplot(2,4,1)
 results['soil_ground_water_level'][-1,:,:].plot()
-
-plt.figure()
-results['soil_drainage'][:,:,:].mean(dim='date').plot()
-
-plt.figure()
+plt.subplot(2,4,2, sharex=ax, sharey=ax)
 results['parameters_elevation'][:,:].plot()
+plt.subplot(2,4,3, sharex=ax, sharey=ax)
+results['soil_rootzone_moisture'][-1,:,:].plot()
+plt.subplot(2,4,4, sharex=ax, sharey=ax)
+results['soil_moisture_top'][-1,:,:].plot()
+plt.subplot(2,4,5, sharex=ax, sharey=ax)
+results['soil_netflow_to_ditch'][-1,:,:].plot()
+plt.subplot(2,4,6, sharex=ax, sharey=ax)
+results['soil_lateral_netflow'][-1,:,:].plot()
+plt.subplot(2,4,7, sharex=ax, sharey=ax)
+results['soil_surface_runoff'][-1,:,:].plot()
+plt.subplot(2,4,8, sharex=ax, sharey=ax)
+results['soil_water_closure'][-1,:,:].plot()
 
-plt.figure()
-results['soil_water_closure'][:,1:-1,1:-1].mean(dim='date').plot()
+# plt.figure(figsize=(20,15))
+# ax=plt.subplot(2,3,1)
+# results['soil_ground_water_level'][30,:,:].plot(vmin=-3,vmax=3, cmap='RdBu')
+# plt.subplot(2,3,2, sharex=ax, sharey=ax)
+# results['soil_rootzone_moisture'][30,:,:].plot(vmin=0,vmax=1, cmap='RdBu')
+# plt.subplot(2,3,3, sharex=ax, sharey=ax)
+# results['soil_moisture_top'][30,:,:].plot(vmin=0,vmax=1, cmap='RdBu')
+# plt.subplot(2,3,4, sharex=ax, sharey=ax)
+# results['soil_ground_water_level'][-53,:,:].plot(vmin=-3,vmax=3, cmap='RdBu')
+# plt.subplot(2,3,5, sharex=ax, sharey=ax)
+# results['soil_rootzone_moisture'][-53,:,:].plot(vmin=0,vmax=1, cmap='RdBu')
+# plt.subplot(2,3,6, sharex=ax, sharey=ax)
+# results['soil_moisture_top'][-53,:,:].plot(vmin=0,vmax=1, cmap='RdBu')
 
-plt.figure()
-results['soil_drainage'][:,1:-1,1:-1].mean(dim=['i','j']).plot()
+plt.figure(figsize=(20,8))
+ax=plt.subplot(2,1,1)
+plt.plot(results['date'],results['soil_netflow_to_ditch'].mean(['i','j']),label='soil_netflow_to_ditch')
+plt.plot(results['date'],results['soil_netflow_to_ditch'].mean(['i','j'])
+         +results['soil_surface_runoff'].mean(['i','j']), label='+soil_surface_runoff')
+plt.legend()
+plt.subplot(2,1,2,sharex=ax)
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j']), label='soil_water_storage')
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j'])+
+         np.cumsum(results['canopy_evaporation'].mean(['i','j'])), label='+canopy_evaporation')
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j'])+
+         np.cumsum(results['canopy_evaporation'].mean(['i','j'])
+                   + results['canopy_transpiration'].mean(['i','j'])), label='+canopy_transpiration')
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j'])+
+         np.cumsum(results['canopy_evaporation'].mean(['i','j'])
+                   + results['canopy_transpiration'].mean(['i','j'])
+                   + results['soil_evaporation'].mean(['i','j'])), label='+soil_evaporation')
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j'])+
+         np.cumsum(results['canopy_evaporation'].mean(['i','j'])
+                   + results['canopy_transpiration'].mean(['i','j'])
+                   + results['soil_evaporation'].mean(['i','j'])
+                   + results['soil_netflow_to_ditch'].mean(['i','j'])), label='+soil_netflow_to_ditch')
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j'])+
+         np.cumsum(results['canopy_evaporation'].mean(['i','j'])
+                   + results['canopy_transpiration'].mean(['i','j'])
+                   + results['soil_evaporation'].mean(['i','j'])
+                   + results['soil_netflow_to_ditch'].mean(['i','j'])
+                   + results['soil_surface_runoff'].mean(['i','j'])), label='+soil_surface_runoff')
+plt.plot(results['date'],np.cumsum(results['forcing_precipitation']),'--k', label='forcing_precipitation')
+plt.legend()
 
-plt.figure()
-results['soil_water_closure'][:,1:-1,1:-1].mean(dim=['i','j']).plot()
-
-plt.figure()
-results['soil_rootzone_moisture'][:,150,100].plot.line(x='date')
-results.close()
+plt.figure(figsize=(20,5))
+plt.plot(results['date'],results['soil_water_closure'].mean(['i','j']))
