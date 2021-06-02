@@ -203,9 +203,62 @@ class SoilGrid_2Dflow(object):
         # route remaining to surface runoff
         surface_runoff = exfil - to_top_layer
 
+        # ravel 2D arrays
+        HW = np.ravel(self.HW); HE = np.ravel(self.HE)
+        HN = np.ravel(self.HN); HS = np.ravel(self.HS)
+        H = np.ravel(self.H)
+        Wsto = np.ravel(self.Wsto)
+        ditch_h = np.ravel(self.ditch_h)
+        ele = np.ravel(self.ele)
+
+        # Ditches
+        # calculate mean H of neighboring nodes to find out whether ditch is active (constant head)
+        # from previous timestep to avoid switching boundary/no-boundary during iteration
+        H_neighbours = ditch_h.copy()
+        for k in np.where(ditch_h < -eps)[0]:
+            H_ave = 0
+            n_neigh = 0
+            H_ave_all = 0
+            n_neigh_all = 0
+            if k%self.cols != 0:  # west node
+                H_ave_all += H[k-1]
+                n_neigh_all += 1
+                if ditch_h[k-1] > -eps: # non-ditch neighbor
+                    H_ave += H[k-1]
+                    n_neigh += 1
+            if (k+1)%self.cols != 0:  # east node
+                H_ave_all += H[k+1]
+                n_neigh_all += 1
+                if ditch_h[k+1] > -eps: # non-ditch neighbor
+                    H_ave += H[k+1]
+                    n_neigh += 1
+            if k-self.cols >= 0:  # north node
+                H_ave_all += H[k-self.cols]
+                n_neigh_all += 1
+                if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
+                    H_ave += H[k-self.cols]
+                    n_neigh += 1
+            if k+self.cols < self.n:  # south node
+                H_ave_all += H[k+self.cols]
+                n_neigh_all += 1
+                if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
+                    H_ave += H[k+self.cols]
+                    n_neigh += 1
+            if n_neigh > 0:
+                H_neighbours[k] = H_ave / n_neigh  # average of neighboring non-ditch nodes
+            else:  # corners or nodes surrounded by ditches dont have neighbors
+                H_neighbours[k] = H_ave_all / n_neigh_all  # average of neighboring ditch nodes
+
+        H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
+
         # Transmissivity of previous timestep [m2 d-1]
+        # for ditch nodes that are active, transmissivity calculated based on mean H of
+        # neighboring nodes, not ditch depth which would restrict tranmissivity too much
+        # Whole profile depth still considered, but I think that is the usual way..
+        H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
+                            H_neighbours_2d, self.H)
         for key, value in self.gwl_to_Tr.items():
-            self.Tr0[self.soiltype == key] = value(self.h[self.soiltype == key])
+            self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
         TrTmpEW = gmean(self.rolling_window(self.Tr0, 2), -1)
         TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr0), 2), -1))
@@ -225,12 +278,6 @@ class SoilGrid_2Dflow(object):
         # to avoid reshaping, save in other variable
         TrW0 = np.ravel(self.TrW0); TrE0 = np.ravel(self.TrE0)
         TrN0 = np.ravel(self.TrN0); TrS0 = np.ravel(self.TrS0)
-        HW = np.ravel(self.HW); HE = np.ravel(self.HE)
-        HN = np.ravel(self.HN); HS = np.ravel(self.HS)
-        H = np.ravel(self.H)
-        Wsto = np.ravel(self.Wsto)
-        ditch_h = np.ravel(self.ditch_h)
-        ele = np.ravel(self.ele)
 
         # hydraulic heads, new iteration and old iteration
         Htmp = self.H.copy()
@@ -243,9 +290,12 @@ class SoilGrid_2Dflow(object):
         for it in range(maxiter):
 
             # transmissivity [m2 d-1] to neighbouring cells with HTmp1
+            # for ditch nodes that are active, transmissivity calculated based on mean H of
+            # neighboring nodes, not ditch depth which would restrict tranmissivity too much
+            H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
+                                H_neighbours_2d, Htmp)
             for key, value in self.gwl_to_Tr.items():
-                self.Tr1[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
-
+                self.Tr1[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
             TrTmpEW = gmean(self.rolling_window(self.Tr1, 2),-1)
             TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr1), 2),-1))
             self.TrW1[:,1:] = TrTmpEW
@@ -292,41 +342,8 @@ class SoilGrid_2Dflow(object):
 
             # Ditches
             for k in np.where(ditch_h < -eps)[0]:
-                # update A and calculate mean H of neighboring nodes, from previous timestep to avoid switching boundary during iteration
-                H_ave = 0
-                n_neigh = 0
-                H_ave_all = 0
-                n_neigh_all = 0
-                if k%self.cols != 0:  # west node
-                    H_ave_all += H[k-1]
-                    n_neigh_all += 1
-                    if ditch_h[k-1] > -eps: # non-ditch neighbor
-                        H_ave += H[k-1]
-                        n_neigh += 1
-                if (k+1)%self.cols != 0:  # east node
-                    H_ave_all += H[k+1]
-                    n_neigh_all += 1
-                    if ditch_h[k+1] > -eps: # non-ditch neighbor
-                        H_ave += H[k+1]
-                        n_neigh += 1
-                if k-self.cols >= 0:  # north node
-                    H_ave_all += H[k-self.cols]
-                    n_neigh_all += 1
-                    if ditch_h[k-self.cols] > -eps: # non-ditch neighbor
-                        H_ave += H[k-self.cols]
-                        n_neigh += 1
-                if k+self.cols < self.n:  # south node
-                    H_ave_all += H[k+self.cols]
-                    n_neigh_all += 1
-                    if ditch_h[k+self.cols] > -eps: # non-ditch neighbor
-                        H_ave += H[k+self.cols]
-                        n_neigh += 1
-                if n_neigh > 0:
-                    H_ave = H_ave / n_neigh  # average of neighboring non-ditch nodes
-                else:  # corners or nodes surrounded by ditches dont have neighbors
-                    H_ave = H_ave_all / n_neigh_all  # average of neighboring ditch nodes
                 # update a_x and hs when ditch as constant head
-                if H_ave > ele[k] + ditch_h[k]: # average of neighboring H above ditch depth
+                if H_neighbours[k] > ele[k] + ditch_h[k]: # average of neighboring H above ditch depth
                     hs[k] = ele[k] + ditch_h[k]
                     a_d[k] = 1
                     if k%self.cols != 0:  # west node
