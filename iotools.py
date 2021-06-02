@@ -117,8 +117,6 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_decid = LAI_decid + LAI_shrub + LAI_grass
     except:
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
-
-
     
     # for stability, lets replace zeros with eps
     LAI_decid[LAI_decid == 0.0] = eps
