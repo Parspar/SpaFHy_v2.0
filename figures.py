@@ -21,8 +21,12 @@ from iotools import read_AsciiGrid
 
 
 # reading the results
-outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input.nc'
+outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_latest.nc'
 results = read_results(outputfile)
+
+
+sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
+sar = Dataset(sar_path, 'r')
 
 dates_spa = []
 for d in range(len(results['date'])):
@@ -113,11 +117,11 @@ fig.colorbar(im2, ax=ax2)
 ax2.title.set_text(f'soil water closure dates[{plt_ind}]')
 
 
-norm = mcolors.TwoSlopeNorm(vmin=np.nanmin(results['soil_drainage'][plt_ind,:,:]), 
-                            vmax=np.nanmax(results['soil_drainage'][plt_ind,:,:]), vcenter=0)
-im3 = ax3.imshow(results['soil_drainage'][-1,:,:], cmap=plt.cm.RdBu, norm=norm)
+norm = mcolors.TwoSlopeNorm(vmin=np.nanmin(results['soil_lateral_netflow'][plt_ind,:,:]), 
+                            vmax=np.nanmax(results['soil_lateral_netflow'][plt_ind,:,:]), vcenter=0)
+im3 = ax3.imshow(results['soil_lateral_netflow'][-1,:,:], cmap=plt.cm.RdBu, norm=norm)
 fig.colorbar(im3, ax=ax3)
-ax3.title.set_text(f'soil drainage dates[{plt_ind}]')
+ax3.title.set_text(f'soil_lateral_netflow dates[{plt_ind}]')
 
 
 im4 = ax4.imshow(results['parameters_elevation'], cmap='bwr')
@@ -234,9 +238,9 @@ fig.suptitle('SpaFHy v2D')
 wet_day = np.nansum(results['soil_rootzone_moisture'], axis=(1,2)).argmax()
 dry_day = np.nansum(results['soil_rootzone_moisture'], axis=(1,2)).argmin()
 
-sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
+#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2.nc'
-sar = Dataset(sar_path, 'r')
+#sar = Dataset(sar_path, 'r')
 
 
 # Plotting
@@ -269,16 +273,14 @@ ax4.title.set_text('soil moisture root dry')
 # sar soil moisture plots
 import pandas as pd
 
-# define a big catchment mask
-
 # cell locations of kenttarova
 kenttarova, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\Lompolonjanka\16b\sve_kenttarova_soilmoist.asc')
 kenttarova_loc = np.where(kenttarova == 0)
 kenttarova_loc = list([int(kenttarova_loc[0]), int(kenttarova_loc[1])])
 
 # reading sar data
-sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_mean4.nc'
-sar = Dataset(sar_path, 'r')
+#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_mean4.nc'
+#sar = Dataset(sar_path, 'r')
 
 sar_wliq = sar['soilmoisture']*np.array(results['parameters_cmask'])/100
 spa_wliq = results['soil_rootzone_moisture']
@@ -380,8 +382,225 @@ if saveplots == True:
     
 #%%
 
-#plt.imshow(spa_wliq[35,:,:], cmap='coolwarm_r')   
+# poikki ja pituusleikkaukset
 
+x = 100
+y = 90
+sar_long = np.array(sar_wliq[:,:,x])
+spa_long = np.array(spa_wliq[:,:,x])
+spa_top_long = np.array(spa_wliq_top[:,:,x])
+
+sar_cross = np.array(sar_wliq[:,y,:])
+spa_cross = np.array(spa_wliq[:,y,:])
+spa_top_cross = np.array(spa_wliq_top[:,y,:])
+
+
+# Plotting
+fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(16,8));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
+ax5 = axs[2][0]
+ax6 = axs[2][1]
+
+ax1.plot(sar_long[day_hi])
+ax1.plot(spa_long[day_hi])
+ax1.plot(spa_top_long[day_hi])
+ax1.legend(['SAR', 'SPA', 'SPATOP'], ncol = 3)
+ax1.title.set_text('wet day')
+
+
+ax2.plot(sar_long[day_low])
+ax2.plot(spa_long[day_low])
+ax2.plot(spa_top_long[day_low])
+ax2.title.set_text('dry day')
+
+
+ax3.plot(sar_cross[day_hi])
+ax3.plot(spa_cross[day_hi])
+ax3.plot(spa_top_cross[day_hi])
+#ax3.legend(['SAR', 'SPA', 'SPATOP'], ncol = 3)
+
+ax4.plot(sar_cross[day_low])
+ax4.plot(spa_cross[day_low])
+ax4.plot(spa_top_cross[day_low])
+
+ax1.text(200, 0.85, f'Cross x={x}', fontsize=12)
+ax3.text(133, 0.85, f'Cross y={y}', fontsize=12)
+
+ax5.imshow(sar_wliq[day_hi], cmap='coolwarm_r')
+ax6.imshow(sar_wliq[day_low], cmap='coolwarm_r')
+ax5.axvline(x=x,color='red')
+ax5.axhline(y=y,color='red')
+ax6.axvline(x=x,color='red')
+ax6.axhline(y=y,color='red')
+ax5.title.set_text('SAR')
+ax6.title.set_text('SAR')
+
+#ax5.axis("off")
+#ax6.axis("off")
+
+fig.suptitle('SpaFHy v2D')
+
+
+if saveplots == True:
+    plt.savefig(f'SAR_vs_SPAFHY_soilmoist_cross_{today}.pdf')
+    plt.savefig(f'SAR_vs_SPAFHY_soilmoist_cross_{today}.png')
+
+#%%
+# check with 17 6 21 measurements
+
+# sar soil moisture plots
+import pandas as pd
+
+# cell locations of kenttarova
+measured, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\SOIL\GIS\soilmoist_170621.asc')
+sar_wliq = sar['soilmoisture']*np.array(results['parameters_cmask'])/100
+
+sar_wliq_mean = np.nanmean(sar_wliq[8:22], axis=(0))
+sar_wliq_mean_flat = sar_wliq_mean.flatten()
+measured_flat = measured.flatten()
+
+compar = pd.DataFrame()
+compar['meas'] = measured_flat[np.isfinite(measured_flat)]
+compar['sar'] = sar_wliq_mean_flat[np.isfinite(measured_flat)]
+
+# Plotting
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8,4));
+
+ax.plot(compar['meas'])
+ax.plot(compar['sar'])
+ax.legend(['meas', 'SAR'])
+
+#%%
+'''
+from matplotlib import gridspec
+
+# plot it
+fig = plt.figure(figsize=(8, 6))
+
+gs = gridspec.GridSpec(6, 6)
+
+ax0 = plt.subplot(gs[0,0])
+ax0.plot(x, y)
+ax1 = plt.subplot(gs[1,1])
+ax1.plot(y, x)
+ax2 = plt.subplot(gs[0,2])
+ax2.plot(y, x)
+
+ax3 = plt.subplot(gs[1,3])
+ax3.plot(x, y)
+ax4 = plt.subplot(gs[2:4,1])
+ax4.plot(y, x)
+ax5 = plt.subplot(gs[4:6,0])
+ax5.plot(y, x)
+
+ax6 = plt.subplot(gs[4:6,1])
+#ax6.plot(x, y)
+ax7 = plt.subplot(gs[4:6,2])
+#ax7.plot(y, x)
+
+
+plt.tight_layout()
+plt.savefig('grid_figure.png')
+
+plt.show()
+'''
+
+#%%
+
+# GW levels low and high day
+gwsum = np.nansum(results['soil_ground_water_level'], axis=(1,2))
+hi = np.where(gwsum == gwsum.max())[0][0]
+lo = np.where(gwsum == gwsum.min())[0][0]
+
+#norm = mcolors.TwoSlopeNorm(vmin=results['soil_ground_water_level'][lo,:,:].min(), vmax = results['soil_ground_water_level'][hi,:,:].max(), vcenter=0)
+norm = mcolors.TwoSlopeNorm(vmin=-4, vcenter=0, vmax = 4)
+
+# Plotting
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(8,12));
+ax1 = axs[0]
+ax2 = axs[1]
+
+im1 = ax1.imshow(results['soil_ground_water_level'][hi,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax2.imshow(results['soil_ground_water_level'][lo,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax1.title.set_text(f'GW level high {dates_spa[hi]}')
+ax2.title.set_text(f'GW level low {dates_spa[lo]}')
+
+ax1.axis("off")
+ax2.axis("off")
+
+plt.tight_layout()
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.83, 0.35, 0.015, 0.3])
+bar1 = fig.colorbar(im1, cax=cbar_ax)
+
+if saveplots == True:
+    plt.savefig(f'GW_levels_hi_low_{today}.pdf')
+    plt.savefig(f'GW_levels_hi_low_{today}.png')
+
+#%%
+
+# Comparing GW level with two sets of results
+
+
+norm = mcolors.TwoSlopeNorm(vmin=-4, vcenter=0, vmax = 2)
+norm = mcolors.TwoSlopeNorm(vmin=results_raw['soil_ground_water_level'][lo,:,:].min(), vmax = results_raw['soil_ground_water_level'][hi,:,:].max(), vcenter=0)
+
+raw_sum = np.nansum(results_raw['soil_ground_water_level'][hi,:,:]) + np.nansum(results_raw['soil_ground_water_level'][lo,:,:])
+d4_sum = np.nansum(results_d4['soil_ground_water_level'][hi,:,:]) + np.nansum(results_d4['soil_ground_water_level'][lo,:,:])
+d8_sum = np.nansum(results_d8['soil_ground_water_level'][hi,:,:]) + np.nansum(results_d8['soil_ground_water_level'][lo,:,:])
+
+# Plotting
+fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(12,16));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
+ax5 = axs[2][0]
+ax6 = axs[2][1]
+
+im1 = ax1.imshow(results_raw['soil_ground_water_level'][hi,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax1.title.set_text(f'GW level high {dates_spa[hi]}')
+
+ax2.imshow(results_raw['soil_ground_water_level'][lo,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax2.title.set_text(f'GW level low {dates_spa[lo]}')
+
+ax3.imshow(results_d4['soil_ground_water_level'][hi,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax3.title.set_text(f'GW level high {dates_spa[hi]}')
+
+ax4.imshow(results_d4['soil_ground_water_level'][lo,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax4.title.set_text(f'GW level low {dates_spa[lo]}')
+
+ax5.imshow(results_d8['soil_ground_water_level'][hi,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax5.title.set_text(f'GW level high {dates_spa[hi]}')
+
+ax6.imshow(results_d8['soil_ground_water_level'][lo,:,:], cmap=plt.cm.RdBu, norm=norm)
+ax6.title.set_text(f'GW level low {dates_spa[lo]}')
+
+ax1.text(200, -15, 'RAW DEM', fontsize=15)
+ax3.text(200, -15, 'D4 FILL DEM', fontsize=15)
+ax5.text(200, -15, 'D8 FILL DEM', fontsize=15)
+
+
+ax1.axis("off")
+ax2.axis("off")
+ax3.axis("off")
+ax4.axis("off")
+ax5.axis("off")
+ax6.axis("off")
+
+plt.tight_layout()
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.83, 0.35, 0.015, 0.3])
+bar1 = fig.colorbar(im1, cax=cbar_ax)
+
+if saveplots == True:
+    plt.savefig(f'GW_levels_hi_low_comp_dems_{today}.pdf')
+    plt.savefig(f'GW_levels_hi_low_comp_dems_{today}.png')
 
 #%%
 
@@ -621,6 +840,8 @@ if saveplots == True:
 #%%
 
 # point examples from mineral and openmire
+#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5.nc'
+#sar = Dataset(sar_path, 'r')
 
 # soilscouts at Kenttarova
 folder = r'C:\SpaFHy_v1_Pallas\data\obs'
@@ -672,8 +893,8 @@ ax2 = axs[1]
 #fig.suptitle('Volumetric water content', fontsize=15)
 
 im1 = ax1.plot(sar_wliq[:,k_loc[0],k_loc[1]])
-ax1.plot(spa_wliq[:,k_loc[0],k_loc[1]])
-ax1.plot(spa_wliq_top[:,k_loc[0],k_loc[1]])
+#ax1.plot(spa_wliq[:,k_loc[0],k_loc[1]])
+#ax1.plot(spa_wliq_top[:,k_loc[0],k_loc[1]])
 ax1.plot(soilm['s3'])
 ax1.plot(soilm['s5'])
 ax1.plot(soilm['s18'])
@@ -1058,7 +1279,7 @@ ax2.set(ylim=(0, 1))
 ax2.set(xlim=(0, 1))
 ax2.set_title('Mire')
 
-x3 = sns.regplot(ax=ax3, x=flat_pd1['sar'], y=flat_pd1['spa_top'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
+x3 = sns.regplot(ax=ax3, x=flat_pd1['sar'], y=flat_pd1['spa'], scatter_kws={'s':10, 'alpha':0.005}, line_kws={"color": "red"})
 ax3.set(ylim=(0, 1))
 ax3.set(xlim=(0, 1))
 ax3.set_title('Mineral')
@@ -1088,7 +1309,7 @@ ax2.set(ylim=(0, 1))
 ax2.set(xlim=(0, 1))
 ax2.set_title('Mire')
 
-x3 = sns.scatterplot(ax=ax3, x=flat_pd1['sar'], y=flat_pd1['spa_top'], alpha=0.05)
+x3 = sns.scatterplot(ax=ax3, x=flat_pd1['sar'], y=flat_pd1['spa'], alpha=0.05)
 ax3.set(ylim=(0, 1))
 ax3.set(xlim=(0, 1))
 ax3.set_title('Mineral')

@@ -31,7 +31,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # soil classification
-    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id.dat'))
+    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id_peatsoils.dat'))
 
     # ditches
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
@@ -47,7 +47,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # dem
     try:
-        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem.dat'))
+        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem_d4_filled.dat'))
     except:
         print('Constant elevation')
         dem = np.full_like(soilclass, 0.0)
@@ -192,7 +192,7 @@ def read_forcing_gisdata(fpath):
 
     return gis
 
-def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
+def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
     """
     creates input dictionary for initializing SoilGrid
     Args:
@@ -249,6 +249,17 @@ def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
             data['org_rw'][yx] = value['org_rw']
+            
+    if spatial == True:
+        for key, value in rootp.items():
+            t = value['soil_id']
+            yx = np.where(data['soilclass'] == t)
+            #data['sitetype'][yx] = key
+            data['root_fc'][yx] = value['root_fc']
+            data['root_ksat'][yx] = value['root_ksat']
+            data['root_poros'][yx] = value['root_poros']
+            data['root_wp'][yx] = value['root_wp']        
+            data['root_beta'][yx] = value['root_beta']        
 
     # no organic layer in ditch nodes
     ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
@@ -260,7 +271,7 @@ def preprocess_soildata(psp, soilp, topsoil, gisdata, spatial=True):
     data['gwl_to_C'] = {soiltype: soilp[soiltype]['to_C'] for soiltype in soilp.keys()}
     data['gwl_to_Tr'] = {soiltype: soilp[soiltype]['to_Tr'] for soiltype in soilp.keys()}
     data['gwl_to_rootmoist'] = {soiltype: soilp[soiltype]['to_rootmoist'] for soiltype in soilp.keys()}
-
+    print(data['wtso_to_gwl'])
     data['dxy'] = gisdata['dxy']
     data['cmask'] = gisdata['cmask']
 

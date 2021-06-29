@@ -53,36 +53,14 @@ class SoilGrid_2Dflow(object):
         self.fc_top = spara['org_fc']  # field capacity m3 m-3
         self.rw_top = spara['org_rw']  # ree parameter m3 m-3
         self.Wsto_top_max = self.fc_top * self.dz_top  # maximum storage m
-        
-        """ rootzone layer """
-        # rootzone layer properties
-        self.fc_root = spara['root_fc']
-        self.wp_root = spara['root_wp']
-        self.poros_root = spara['root_poros']
-        self.beta_root = spara['root_beta']
-        self.ksat_root = spara['root_ksat']
-        self.dz_root = spara['root_depth']
-        self.Wsto_root_max = self.dz_root*self.poros_root  # maximum soil water storage, m
 
         # initial state: toplayer storage and relative conductance for evaporation
         self.Wsto_top = self.Wsto_top_max * spara['org_sat']
         self.Wliq_top = self.poros_top * self.Wsto_top / (self.Wsto_top_max+eps)
         self.Ree = np.maximum(0.0, np.minimum(
                 0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
-        
-        # root zone storage and relative extractable water
-        self.Wsto_root = np.minimum(spara['root_sat']*self.dz_root*self.poros_root, self.dz_root*self.poros_root)
-        
-        self.Wliq_root = self.poros_root*self.Wsto_root / self.Wsto_root_max
-        self.Wair_root = self.poros_root - self.Wliq_root
-        self.Sat_root = self.Wliq_root/self.poros_root
-        self.Rew_root = np.minimum((self.Wliq_root - self.wp_root) / (self.fc_root - self.wp_root + eps), 1.0)
-        
-        # grid total drainage to ground water [m]
-        #self._drainage_to_gw = 0.0
 
-
-        """ deep soil """
+        """ soil """
         # soil/peat type
         self.soiltype = spara['soiltype']
 

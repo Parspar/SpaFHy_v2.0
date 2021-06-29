@@ -10,7 +10,7 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2019-05-01',
+            'start_date': '2019-01-01',
             'end_date': '2019-10-01',
             'spinup_end': '2019-05-01',  # results after this are saved in result file
             'dt': 86400.0,
@@ -134,6 +134,14 @@ def parameters(folder=''):
             'org_poros': 0.9, # porosity (-)
             'org_fc': 0.3, # field capacity (-)
             'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
+            # rootzone layer
+            'root_depth': 0.4, # depth of rootzone layer (m)
+            'root_sat': 0.6, # root zone saturation ratio (-)
+            'root_fc': 0.33, # root zone field capacity
+            'root_poros': 0.43, # root zone porosity
+            'root_wp': 0.13, # root zone wilting point
+            'root_ksat': 1e-05, # root zone hydraulic conductivity
+            'root_beta': 4.7,
             # initial states
             'ground_water_level': -0.5,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
@@ -141,6 +149,7 @@ def parameters(folder=''):
             }
 
     return pgen, pcpy, psp
+
 
 def topsoil():
     """
@@ -190,9 +199,9 @@ def soilprofiles():
     soilp = {
         'CoarseTextured':{
             'soil_id': 1.0,
-            'z': [-0.05, -0.1, -0.4, -3.0],
+            'z': [-0.05, -0.1, -0.4, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*4,
+                    'ThetaS': [0.348]*4,
                     'ThetaR': [0.03]*4,
                     'alpha': [0.054]*4,
                     'n': [1.293]*4},
@@ -200,7 +209,7 @@ def soilprofiles():
                 },
         'MediumTextured':{
             'soil_id': 2.0,
-            'z': [-0.05, -0.1, -0.4, -3.0],
+            'z': [-0.05, -0.1, -0.4, -4.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.348]*4, #0.448 according to measured and optimized
                     'ThetaR': [0.03]*4,
@@ -220,7 +229,7 @@ def soilprofiles():
         #        },
         'Peat':{
             'soil_id': 4.0,
-            'z': [-0.05, -0.1, -0.8, -1.2, -2.0],
+            'z': [-0.05, -0.1, -0.8, -1.2, -4.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.788]*5, #0.888 according to measured and optimized
                     'ThetaR': [0.196]*5,
@@ -241,4 +250,78 @@ def soilprofiles():
             }
     return soilp
 
+
+def rootproperties():
+    """
+    Defines 5 soil types: Fine, Medium and Coarse textured + organic Peat
+    and Humus.
+    Currently SpaFHy needs following parameters: soil_id, poros, dc, wp, wr,
+    n, alpha, Ksat, beta
+    """
+    psoil = {
+             'FineTextured': 
+                 {'root_airentry': 34.2,
+                  'root_alpha': 0.018, # van genuchten parameter
+                  'root_beta': 7.9,
+                  'root_fc': 0.34,
+                  'root_ksat': 1e-06, # saturated hydraulic conductivity
+                  'root_n': 1.16, # van genuchten parameter
+                  'root_poros': 0.5, # porosity (-)
+                  'soil_id': 1.0,
+                  'root_wp': 0.25, # wilting point (-)
+                  'root_wr': 0.07,
+                 },
+
+             'MediumTextured': 
+                 {'root_airentry': 20.8,
+                  'root_alpha': 0.024,
+                  'root_beta': 4.7,
+                  'root_fc': 0.30,
+                  'root_ksat': 1e-05,
+                  'root_n': 1.2,
+                  'root_poros': 0.43,
+                  'soil_id': 2.0,
+                  'root_wp': 0.13,
+                  'root_wr': 0.05,
+                 },
+
+            'CoarseTextured':
+                 {'root_airentry': 20.8,
+                  'root_alpha': 0.024,
+                  'root_beta': 4.7,
+                  'root_fc': 0.33,
+                  'root_ksat': 1e-05,
+                  'root_n': 1.2,
+                  'root_poros': 0.43,
+                  'soil_id': 3.0,
+                  'root_wp': 0.13,
+                  'root_wr': 0.05,
+                 },
+
+             'Peat':
+                 {'root_airentry': 29.2,
+                  'root_alpha': 0.123,
+                  'root_beta': 6.0,
+                  'root_fc': 0.514,
+                  'root_ksat': 5e-05,
+                  'root_n': 1.28,
+                  'root_poros': 0.9,
+                  'soil_id': 4.0,
+                  'root_wp': 0.11,
+                  'root_wr': 0.0,
+                 },
+              'Humus':
+                 {'root_airentry': 29.2,
+                  'root_alpha': 0.123,
+                  'root_beta': 6.0,
+                  'root_fc': 0.35,
+                  'root_ksat': 8e-06,
+                  'root_n': 1.28,
+                  'root_poros': 0.85,
+                  'soil_id': 5.0,
+                  'root_wp': 0.15,
+                  'root_wr': 0.01,
+                 },
+            }
+    return psoil
 
