@@ -79,7 +79,7 @@ class SoilGrid_2Dflow(object):
         self.Rew_root = np.minimum((self.Wliq_root - self.wp_root) / (self.fc_root - self.wp_root + eps), 1.0)
         
         # grid total drainage to ground water [m]
-        #self._drainage_to_gw = 0.0
+        self._drainage_to_gw = 0.0
 
 
         """ deep soil """
@@ -480,9 +480,9 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
             'to_Tr'
     """
 
-    z = np.array(z)
-    dz = abs(z)
-    dz[1:] = z[:-1] - z[1:]
+    z = np.array(z) # profile depths 
+    dz = abs(z) 
+    dz[1:] = z[:-1] - z[1:] # profile depths into profile thicknesses
 
     # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
     z_fine=np.arange(0,min(z),-0.01)-0.01
@@ -520,12 +520,12 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
 
-    # plt.figure(1)
-    # plt.plot(np.array(gwl), np.array(np.gradient(Wsto/np.gradient(gwl))))
-    # plt.figure(2)
-    # plt.plot(np.array(gwl), np.array(Tr))
-    # plt.figure(3)
-    # plt.plot(np.array(gwl), np.array(Wsto))
+    plt.figure(1)
+    plt.plot(np.array(gwl), np.array(np.gradient(Wsto/np.gradient(gwl))))
+    plt.figure(2)
+    plt.plot(np.array(gwl), np.array(Tr))
+    plt.figure(3)
+    plt.plot(np.array(gwl), np.array(Wsto))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -566,7 +566,7 @@ def h_to_cellmoist(pF, h, dz):
     else:
         ixx = ix
     # moisture of unsaturated part
-    x[ix] = -(dz[ix]/2 - h[ix]) / 2
+    x[ix] = -(dz[ix]/2 - h[ix]) / 2 
     theta[ix] = Tr[ixx] + (Ts[ixx] - Tr[ixx]) / (1 + abs(alfa[ixx] * 100 * x[ix])**n[ixx])**m[ixx]
     # total moisture as weighted average
     theta[ix] = (theta[ix] * (dz[ix]/2 - h[ix]) + Ts[ixx] * (dz[ix]/2 + h[ix])) / (dz[ix])

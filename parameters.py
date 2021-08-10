@@ -162,28 +162,28 @@ def topsoil():
             'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.33,
-            'org_rw': 0.24
+            'org_rw': 0.15
             },
         'fen':{
             'topsoil_id': 2,
             'org_depth': 0.05,
             'org_poros': 0.9,
-            'org_fc': 0.5,
-            'org_rw': 0.3
+            'org_fc': 0.514,
+            'org_rw': 0.15
             },
         'peatland':{
             'topsoil_id': 3,
             'org_depth': 0.05,
             'org_poros': 0.9,
-            'org_fc': 0.6,
-            'org_rw': 0.3
+            'org_fc': 0.514,
+            'org_rw': 0.15
             },
         'openmire':{
             'topsoil_id': 4,
             'org_depth': 0.05,
             'org_poros': 0.9,
-            'org_fc': 0.8,
-            'org_rw': 0.3
+            'org_fc': 0.514,
+            'org_rw': 0.15
             }
         }
     return topsoil
@@ -233,7 +233,7 @@ def soilprofiles():
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.788]*5, #0.888 according to measured and optimized
                     'ThetaR': [0.196]*5,
-                    'alpha': [0.072]*5,
+                    'alpha': [0.072]*5, 
                     'n': [1.255]*5},
             'saturated_conductivity': [5E-04, 5E-04, 1E-04, 1E-05, 5E-07],
                 },
