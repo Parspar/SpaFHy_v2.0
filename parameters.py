@@ -10,9 +10,9 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2019-01-01',
-            'end_date': '2019-10-01',
-            'spinup_end': '2019-05-01',  # results after this are saved in result file
+            'start_date': '2019-06-01',
+            'end_date': '2019-07-01',
+            'spinup_end': '2019-06-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -134,6 +134,7 @@ def parameters(folder=''):
             'org_poros': 0.9, # porosity (-)
             'org_fc': 0.3, # field capacity (-)
             'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
+            'maxpond': 0.0,
             # rootzone layer
             'root_depth': 0.4, # depth of rootzone layer (m)
             'root_sat': 0.6, # root zone saturation ratio (-)
@@ -259,32 +260,6 @@ def rootproperties():
     n, alpha, Ksat, beta
     """
     psoil = {
-             'FineTextured': 
-                 {'root_airentry': 34.2,
-                  'root_alpha': 0.018, # van genuchten parameter
-                  'root_beta': 7.9,
-                  'root_fc': 0.34,
-                  'root_ksat': 1e-06, # saturated hydraulic conductivity
-                  'root_n': 1.16, # van genuchten parameter
-                  'root_poros': 0.5, # porosity (-)
-                  'soil_id': 1.0,
-                  'root_wp': 0.25, # wilting point (-)
-                  'root_wr': 0.07,
-                 },
-
-             'MediumTextured': 
-                 {'root_airentry': 20.8,
-                  'root_alpha': 0.024,
-                  'root_beta': 4.7,
-                  'root_fc': 0.30,
-                  'root_ksat': 1e-05,
-                  'root_n': 1.2,
-                  'root_poros': 0.43,
-                  'soil_id': 2.0,
-                  'root_wp': 0.13,
-                  'root_wr': 0.05,
-                 },
-
             'CoarseTextured':
                  {'root_airentry': 20.8,
                   'root_alpha': 0.024,
@@ -293,11 +268,34 @@ def rootproperties():
                   'root_ksat': 1e-05,
                   'root_n': 1.2,
                   'root_poros': 0.43,
-                  'soil_id': 3.0,
+                  'soil_id': 1.0,
                   'root_wp': 0.13,
                   'root_wr': 0.05,
                  },
-
+             'MediumTextured': 
+                 {'root_airentry': 20.8,
+                  'root_alpha': 0.024,
+                  'root_beta': 4.7,
+                  'root_fc': 0.34,
+                  'root_ksat': 1e-05,
+                  'root_n': 1.2,
+                  'root_poros': 0.43,
+                  'soil_id': 2.0,
+                  'root_wp': 0.13,
+                  'root_wr': 0.05,
+                 },
+             'FineTextured': 
+                 {'root_airentry': 34.2,
+                  'root_alpha': 0.018, # van genuchten parameter
+                  'root_beta': 7.9,
+                  'root_fc': 0.34,
+                  'root_ksat': 1e-06, # saturated hydraulic conductivity
+                  'root_n': 1.16, # van genuchten parameter
+                  'root_poros': 0.5, # porosity (-)
+                  'soil_id': 3.0,
+                  'root_wp': 0.25, # wilting point (-)
+                  'root_wr': 0.07,
+                 },
              'Peat':
                  {'root_airentry': 29.2,
                   'root_alpha': 0.123,

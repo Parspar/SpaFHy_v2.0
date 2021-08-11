@@ -9,6 +9,7 @@ Created on Fri Oct 28 16:18:57 2016
 import numpy as np
 import pandas as pd
 from canopygrid import CanopyGrid
+from bucketgrid import BucketGrid
 # from soilprofile import SoilGrid
 from soilprofile2D import SoilGrid_2Dflow as SoilGrid
 
@@ -79,6 +80,9 @@ class SpaFHy():
     def __init__(self, pgen, pcpy, psoil):
 
         self.dt = pgen['dt']  # s
+        
+        """--- initialize BucketGrid ---"""
+        self.bu = BucketGrid(psoil)        
 
         """--- initialize CanopyGrid ---"""
         self.cpy = CanopyGrid(pcpy, pcpy['state'])
@@ -105,21 +109,28 @@ class SpaFHy():
         prec = forc['precipitation'].values
         co2 = forc['CO2'].values
         u = forc['wind_speed'].values + eps
+        
+        # run Soilprofile water balance
+        RR = self.bu.drain
+        bu_airv = self.bu.Wair_root
+        soil_results = self.soil.run_timestep(
+                dt=self.dt / 86400.,
+                RR=RR,
+                bu_airv=bu_airv)
 
         # run CanopyGrid
         canopy_results = self.cpy.run_timestep(
                 doy, self.dt, ta, prec, rg, par, vpd, U=u, CO2=co2,
-                beta=self.soil.Ree, Rew=self.soil.Rew, P=101300.0)
-        # run Soilprofile water balance
-        soil_results = self.soil.run_timestep(
-                dt=self.dt / 86400.,  # kokeilin saada toimimaan suoraan sekuntteina muutamalla myös transmissiviteetin yksikön mutten onnistunut
-                rr=1e-3*canopy_results['potential_infiltration'],
-                tr=1e-3*canopy_results['transpiration'],
-                evap=1e-3*canopy_results['forestfloor_evaporation'])
-        # soil_results = self.soil.watbal(
-        #         dt=self.dt,
-        #         rr=1e-3*canopy_results['potential_infiltration'],
-        #         tr=1e-3*canopy_results['transpiration'],
-        #         evap=1e-3*canopy_results['forestfloor_evaporation'])
+                beta=self.bu.Ree, Rew=self.bu.Rew, P=101300.0)
+        
+        # run BucketGrid
+        bucket_results = self.bu.run_timestep(
+            dt=self.dt,
+            rr=1e-3*canopy_results['potential_infiltration'],
+            tr=1e-3*canopy_results['transpiration'],
+            evap=1e-3*canopy_results['forestfloor_evaporation'],
+            airv_deep=self.soil.airv_deep),#,
+            #retflow=qr)
+        
 
-        return canopy_results, soil_results
+        return soil_results, canopy_results, bucket_results

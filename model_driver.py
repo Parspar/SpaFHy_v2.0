@@ -67,11 +67,12 @@ def driver(create_ncf=False, output=True, folder=''):
     for k in range(0, Nsteps):
 #        print(k)
 
-        canopy_results, soil_results = spa.run_timestep(forcing.isel(date=k))
+        soil_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
 
         if k >= Nspin:  # save results after spinup done
-            results = _append_results('canopy', canopy_results, results, k - Nsaved - 1)
             results = _append_results('soil', soil_results, results, k - Nsaved - 1)
+            results = _append_results('canopy', canopy_results, results, k - Nsaved - 1)
+            results = _append_results('bucket', bucket_results, results, k - Nsaved - 1)
 
             if k in Nsaveresults and create_ncf:
                 interval += 1
