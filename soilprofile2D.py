@@ -112,6 +112,7 @@ class SoilGrid_2Dflow(object):
         
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
+        self.retflow = np.full_like(self.h, 0.0)
 
 
         # rootzone moisture [m3 m-3], parameters related to transpiration limit during dry conditions
@@ -300,7 +301,7 @@ class SoilGrid_2Dflow(object):
 
         # convergence criteria
         crit = 1e-3  # loosened this criteria from 1e-4, seems mass balance error remains resonable
-        maxiter = 20
+        maxiter = 100
 
         for it in range(maxiter):
 
@@ -435,7 +436,7 @@ class SoilGrid_2Dflow(object):
 
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
-        
+        #self.retflow = np.maximum(bu_airv, self.Wsto_deep_max - self.Wsto_deep) # !!!
 
         # This is limit transpiration when gwl < -0.7 which is not what we want here.
         # # Koivusalo et al. 2008 HESS without wet side limit

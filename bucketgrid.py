@@ -86,10 +86,10 @@ class BucketGrid(object):
         self.drain = np.full_like(self.Wliq_root, 0.0)
         self.drain[np.isnan(self.Wliq_root)] = np.nan
         
-        # create dictionary of empty lists for saving results
+        '''# create dictionary of empty lists for saving results
         if outputs:
             self.results = {'Infil': [], 'Retflow': [], 'Drain': [], 'Roff': [], 'ET': [],
-            'Mbe': [], 'Wliq': [], 'PondSto': [], 'Wliq_top': [], 'Ree': []}
+            'Mbe': [], 'Wliq': [], 'PondSto': [], 'Wliq_top': [], 'Ree': []}'''
 
     def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=0.0, retflow=0.0):
         """
