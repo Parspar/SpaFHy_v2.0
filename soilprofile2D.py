@@ -173,7 +173,7 @@ class SoilGrid_2Dflow(object):
         strides = a.strides + (a.strides[-1],)
         return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
-    def run_timestep(self, dt=1.0, RR=0.0, bu_airv=0.0):
+    def run_timestep(self, dt=1.0, RR=0.0):
 
         r""" Solves soil water storage in column assuming hydrostatic equilibrium.
 
@@ -466,7 +466,7 @@ class SoilGrid_2Dflow(object):
                 #'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'water_closure': mbe * 1e3,  # [mm d-1]
                 #'transpiration_limitation': self.Rew,  # [-]
-                'rootzone_moisture': self.deepmoist,  # [m3 m-3]
+                'moisture_deep': self.deepmoist,  # [m3 m-3]
                 'water_storage': (self.Wsto_deep) * 1e3, # [mm]
                 }
 

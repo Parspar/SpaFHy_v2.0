@@ -91,7 +91,7 @@ class BucketGrid(object):
             self.results = {'Infil': [], 'Retflow': [], 'Drain': [], 'Roff': [], 'ET': [],
             'Mbe': [], 'Wliq': [], 'PondSto': [], 'Wliq_top': [], 'Ree': []}'''
 
-    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=0.0, retflow=0.0):
+    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=0.0):
         """
         Computes 2-layer bucket model water balance for one timestep dt
         Top layer is interception storage and contributes only to evap.
@@ -116,8 +116,8 @@ class BucketGrid(object):
         """
         gridshape = np.shape(self.Wliq_root)  # rows, cols
     
-        if np.shape(retflow) != gridshape:
-            retflow = retflow * np.ones(gridshape)
+        #if np.shape(retflow) != gridshape:
+        #    retflow = retflow * np.ones(gridshape)
         if np.shape(rr) != gridshape:
             rr = rr * np.ones(gridshape)
         
@@ -153,10 +153,10 @@ class BucketGrid(object):
         # This delays drying of cells which receive water from topmodel storage
         # ... and removes oscillation of water content at those cells.
         self.drain = np.minimum(self.hydrCond() * dt, np.maximum(0.0, (self.Wliq_root - self.Fc_root))*self.D_root)
-        self.drain[retflow > 0.0] = 0.0
+        #self.drain[retflow > 0.0] = 0.0
         self.drain = np.minimum(self.drain, airv_deep)
         # inflow to root zone: restricted by potential inflow or available pore space
-        Qin = (retflow + rr)  # m, pot. inflow
+        Qin = rr #(retflow + rr)  # m, pot. inflow
         inflow = np.minimum(Qin, self.MaxWatStoRoot - self.WatStoRoot + self.drain)
         
         dSto = (inflow - self.drain)
@@ -183,8 +183,8 @@ class BucketGrid(object):
         
         # mass balance error [m]
         mbe = (self.WatStoRoot - WatStoRoot0)  + (self.WatStoTop - WatStoTop0) + (self.PondSto - PondSto0) \
-            - (rr0 + retflow - tr - evap - self.drain - roff)
-            
+            - (rr0 - tr - evap - self.drain - roff)
+        #print('uniq:', np.unique(self.Wliq_top), 'shape:', self.Wliq_top.shape)
         results = {
                 'infiltration': inflow,  # [mm d-1] # !!! inflow - retflow
                 'evaporation': evap,  # [mm d-1]

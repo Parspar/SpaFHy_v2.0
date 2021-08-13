@@ -10,9 +10,9 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2019-06-01',
-            'end_date': '2019-09-01',
-            'spinup_end': '2019-06-01',  # results after this are saved in result file
+            'start_date': '2019-01-01',
+            'end_date': '2019-10-01',
+            'spinup_end': '2019-05-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -133,7 +133,7 @@ def parameters(folder=''):
             # soil profile, following properties are used if spatial_soil = False
             'soil_id': 2.0,
             # organic (moss) layer
-            'org_depth': 0.04, # depth of organic top layer (m)
+            'org_depth': 0.05, # depth of organic top layer (m)
             'org_poros': 0.9, # porosity (-)
             'org_fc': 0.3, # field capacity (-)
             'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
@@ -203,23 +203,23 @@ def soilprofiles():
     soilp = {
         'CoarseTextured':{
             'soil_id': 1.0,
-            'z': [-0.05, -0.1, -0.4, -4.0],
+            'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348]*4,
-                    'ThetaR': [0.03]*4,
-                    'alpha': [0.054]*4,
-                    'n': [1.293]*4},
-            'saturated_conductivity': [1E-04, 1E-04, 1E-05, 1E-05],
+                    'ThetaS': [0.348]*2,
+                    'ThetaR': [0.03]*2,
+                    'alpha': [0.054]*2,
+                    'n': [1.293]*2},
+            'saturated_conductivity': [1E-04, 1E-05],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
-            'z': [-0.05, -0.1, -0.4, -4.0],
+            'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348]*4, #0.448 according to measured and optimized
-                    'ThetaR': [0.03]*4,
-                    'alpha': [0.054]*4,
-                    'n': [1.293]*4},
-            'saturated_conductivity': [1E-04, 1E-04, 1E-05, 1E-05],
+                    'ThetaS': [0.348]*2, #0.448 according to measured and optimized
+                    'ThetaR': [0.03]*2,
+                    'alpha': [0.054]*2,
+                    'n': [1.293]*2},
+            'saturated_conductivity': [1E-04, 1E-05],
                 },
         #'FineTextured':{
         #    'soil_id': 3.0,
@@ -233,13 +233,13 @@ def soilprofiles():
         #        },
         'Peat':{
             'soil_id': 4.0,
-            'z': [-0.05, -0.1, -0.8, -1.2, -4.0],
+            'z': [-0.3, -0.6, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.788]*5, #0.888 according to measured and optimized
-                    'ThetaR': [0.196]*5,
-                    'alpha': [0.072]*5, 
-                    'n': [1.255]*5},
-            'saturated_conductivity': [5E-04, 5E-04, 1E-04, 1E-05, 5E-07],
+                    'ThetaS': [0.93, 0.91, 0.91], #0.888 according to measured and optimized
+                    'ThetaR': [0.24, 0.33, 0.33],
+                    'alpha': [0.05, 0.04, 0.04], 
+                    'n': [1.5, 1.53, 1.53]},
+            'saturated_conductivity': [3E-05, 3.5E-06, 5E-07],
                 },
         #'Humus': {
         #    'soil_id': 5.0,
@@ -268,7 +268,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.33,
-                  'root_ksat': 1e-05,
+                  'root_ksat': 1E-04,
                   'root_n': 1.2,
                   'root_poros': 0.43,
                   'soil_id': 1.0,
@@ -280,7 +280,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.34,
-                  'root_ksat': 1e-05,
+                  'root_ksat': 1E-04,
                   'root_n': 1.2,
                   'root_poros': 0.43,
                   'soil_id': 2.0,
@@ -292,7 +292,7 @@ def rootproperties():
                   'root_alpha': 0.018, # van genuchten parameter
                   'root_beta': 7.9,
                   'root_fc': 0.34,
-                  'root_ksat': 1e-06, # saturated hydraulic conductivity
+                  'root_ksat': 1E-04, # saturated hydraulic conductivity
                   'root_n': 1.16, # van genuchten parameter
                   'root_poros': 0.5, # porosity (-)
                   'soil_id': 3.0,
@@ -301,14 +301,14 @@ def rootproperties():
                  },
              'Peat':
                  {'root_airentry': 29.2,
-                  'root_alpha': 0.123,
+                  'root_alpha': 0.08,
                   'root_beta': 6.0,
-                  'root_fc': 0.514,
-                  'root_ksat': 5e-05,
-                  'root_n': 1.28,
-                  'root_poros': 0.9,
+                  'root_fc': 0.53,
+                  'root_ksat': 6e-05,
+                  'root_n': 1.75,
+                  'root_poros': 0.93,
                   'soil_id': 4.0,
-                  'root_wp': 0.11,
+                  'root_wp': 0.36,
                   'root_wr': 0.0,
                  },
               'Humus':

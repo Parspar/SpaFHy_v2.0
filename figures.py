@@ -21,7 +21,7 @@ from iotools import read_AsciiGrid
 
 
 # reading the results
-outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_latest.nc'
+outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108131445.nc'
 results = read_results(outputfile)
 
 
@@ -84,7 +84,7 @@ results.close()
 #%%
 # spatial figures
 
-plt_ind = 30
+plt_ind = 20
 
 # Plotting
 fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(14,14));
@@ -138,13 +138,13 @@ fig.colorbar(im6, ax=ax6)
 ax6.title.set_text('ditches and ponds')
 
 
-im7 = ax7.imshow(results['soil_moisture_top'][plt_ind,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im7 = ax7.imshow(results['bucket_moisture_top'][plt_ind,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im7, ax=ax7)
 ax7.title.set_text(f'soil moisture top dates[{plt_ind}]')
 
-im8 = ax8.imshow(results['soil_rootzone_moisture'][plt_ind,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im8 = ax8.imshow(results['bucket_moisture_root'][plt_ind,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im8, ax=ax8)
-ax8.title.set_text(f'soil rootzone_moisture dates[{plt_ind}]')
+ax8.title.set_text(f'bucket_moisture_root dates[{plt_ind}]')
 
 #im9 = ax9.imshow(results['parameters_lai_conif'] + results['parameters_lai_decid_max'], cmap='coolwarm_r')
 #fig.colorbar(im9, ax=ax9)
@@ -235,8 +235,8 @@ fig.suptitle('SpaFHy v2D')
 # soil moist plots
 
 # spafhy
-wet_day = np.nansum(results['soil_rootzone_moisture'], axis=(1,2)).argmax()
-dry_day = np.nansum(results['soil_rootzone_moisture'], axis=(1,2)).argmin()
+wet_day = np.nansum(results['bucket_moisture_root'], axis=(1,2)).argmax()
+dry_day = np.nansum(results['bucket_moisture_root'], axis=(1,2)).argmin()
 
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2.nc'
@@ -244,28 +244,38 @@ dry_day = np.nansum(results['soil_rootzone_moisture'], axis=(1,2)).argmin()
 
 
 # Plotting
-fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12,12));
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(18,12));
 ax1 = axs[0][0]
 ax2 = axs[0][1]
 ax3 = axs[1][0]
 ax4 = axs[1][1]
+ax5 = axs[0][2]
+ax6 = axs[1][2]
 
-im1 = ax1.imshow(results['soil_moisture_top'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+
+im1 = ax1.imshow(results['bucket_moisture_top'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im1, ax=ax1)
 ax1.title.set_text('soil moisture top wet')
 
-im2 = ax2.imshow(results['soil_moisture_top'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im2 = ax2.imshow(results['bucket_moisture_top'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im2, ax=ax2)
 ax2.title.set_text('soil moisture top dry')
 
-im3 = ax3.imshow(results['soil_rootzone_moisture'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im3 = ax3.imshow(results['bucket_moisture_root'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im3, ax=ax3)
 ax3.title.set_text('soil moisture root wet')
 
-im4 = ax4.imshow(results['soil_rootzone_moisture'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im4 = ax4.imshow(results['bucket_moisture_root'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im4, ax=ax4)
 ax4.title.set_text('soil moisture root dry')
 
+im5 = ax5.imshow(results['soil_ground_water_level'][wet_day,:,:], vmin=-4.0, vmax=1.0, cmap='coolwarm_r')
+fig.colorbar(im5, ax=ax5)
+ax5.title.set_text('soil ground water level root wet')
+
+im6 = ax6.imshow(results['soil_ground_water_level'][dry_day,:,:], vmin=-4.0, vmax=1.0, cmap='coolwarm_r')
+fig.colorbar(im6, ax=ax6)
+ax6.title.set_text('soil ground water level root dry')
 
 
 #%%

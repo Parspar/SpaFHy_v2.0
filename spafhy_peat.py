@@ -115,8 +115,7 @@ class SpaFHy():
         bu_airv = self.bu.Wair_root
         soil_results = self.soil.run_timestep(
                 dt=self.dt / 86400.,
-                RR=RR,
-                bu_airv=bu_airv)
+                RR=RR)
 
         # run CanopyGrid
         canopy_results = self.cpy.run_timestep(
@@ -129,8 +128,7 @@ class SpaFHy():
             rr=1e-3*canopy_results['potential_infiltration'],
             tr=1e-3*canopy_results['transpiration'],
             evap=1e-3*canopy_results['forestfloor_evaporation'],
-            airv_deep=self.soil.airv_deep),#,
-            #retflow=qr)
+            airv_deep=self.soil.airv_deep)
         
 
         return soil_results, canopy_results, bucket_results

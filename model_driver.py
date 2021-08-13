@@ -73,6 +73,10 @@ def driver(create_ncf=False, output=True, folder=''):
             results = _append_results('soil', soil_results, results, k - Nsaved - 1)
             results = _append_results('canopy', canopy_results, results, k - Nsaved - 1)
             results = _append_results('bucket', bucket_results, results, k - Nsaved - 1)
+            #print(np.unique(results['bucket_moisture_top']))
+            #print(bucket_results.keys())
+            #print(np.unique(bucket_results['moisture_top']))
+
 
             if k in Nsaveresults and create_ncf:
                 interval += 1
