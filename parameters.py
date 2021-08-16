@@ -199,23 +199,23 @@ def soilprofiles():
     soilp = {
         'CoarseTextured':{
             'soil_id': 1.0,
-            'z': [-0.05, -0.1, -0.4, -4.0],
+            'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348]*4,
-                    'ThetaR': [0.03]*4,
-                    'alpha': [0.054]*4,
-                    'n': [1.293]*4},
-            'saturated_conductivity': [1E-04, 1E-04, 1E-05, 1E-05],
+                    'ThetaS': [0.348]*2,
+                    'ThetaR': [0.03]*2,
+                    'alpha': [0.054]*2,
+                    'n': [1.293]*2},
+            'saturated_conductivity': [1E-04, 1E-05],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
-            'z': [-0.05, -0.1, -0.4, -4.0],
+            'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348]*4, #0.448 according to measured and optimized
-                    'ThetaR': [0.03]*4,
-                    'alpha': [0.054]*4,
-                    'n': [1.293]*4},
-            'saturated_conductivity': [1E-04, 1E-04, 1E-05, 1E-05],
+                    'ThetaS': [0.348]*2, #0.448 according to measured and optimized
+                    'ThetaR': [0.03]*2,
+                    'alpha': [0.054]*2,
+                    'n': [1.293]*2},
+            'saturated_conductivity': [1E-04, 1E-05],
                 },
         #'FineTextured':{
         #    'soil_id': 3.0,
@@ -229,13 +229,13 @@ def soilprofiles():
         #        },
         'Peat':{
             'soil_id': 4.0,
-            'z': [-0.05, -0.1, -0.8, -1.2, -4.0],
+            'z': [-0.3, -0.6, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.788]*5, #0.888 according to measured and optimized
-                    'ThetaR': [0.196]*5,
-                    'alpha': [0.072]*5, 
-                    'n': [1.255]*5},
-            'saturated_conductivity': [5E-04, 5E-04, 1E-04, 1E-05, 5E-07],
+                    'ThetaS': [0.93, 0.91, 0.91], #0.888 according to measured and optimized
+                    'ThetaR': [0.24, 0.33, 0.33],
+                    'alpha': [0.05, 0.04, 0.04], 
+                    'n': [1.5, 1.53, 1.53]},
+            'saturated_conductivity': [3E-05, 3.5E-06, 5E-07],
                 },
         #'Humus': {
         #    'soil_id': 5.0,
