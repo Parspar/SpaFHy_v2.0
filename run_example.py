@@ -20,6 +20,8 @@ results['soil_ground_water_level_abs'] = results['soil_ground_water_level'][-1,:
 results['soil_netflow_to_ditch'] = results['soil_netflow_to_ditch'] * results['parameters_cmask']
 results['soil_lateral_netflow'] = results['soil_lateral_netflow'] * results['parameters_cmask']
 results['soil_water_storage'] = results['soil_water_storage'] - results['soil_water_storage'][0,:,:]
+results['bucket_water_storage'] = results['bucket_water_storage'] - results['bucket_water_storage'][0,:,:]
+results['soil_water_storage'] = results['soil_water_storage'] + results['bucket_water_storage']
 
 plt.figure(figsize=(25,15))
 ax=plt.subplot(2,4,1)
@@ -61,7 +63,7 @@ plt.plot(results['date'],results['soil_netflow_to_ditch'].mean(['i','j'])
 plt.legend()
 
 plt.subplot(2,1,2,sharex=ax)
-plt.plot(results['date'],results['soil_water_storage'].mean(['i','j']), label='soil_water_storage')
+plt.plot(results['date'],results['soil_water_storage'].mean(['i','j']), label='soil+bucket_water_storage')
 
 plt.plot(results['date'],results['soil_water_storage'].mean(['i','j'])+
          np.cumsum(results['canopy_evaporation'].mean(['i','j'])), label='+canopy_evaporation')
