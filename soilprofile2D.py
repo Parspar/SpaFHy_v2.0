@@ -112,8 +112,7 @@ class SoilGrid_2Dflow(object):
         
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
-        self.retflow = np.full_like(self.h, 0.0)
-
+        self.retflow = np.full_like(self.h, 0.0) # retflow not in use
 
         # rootzone moisture [m3 m-3], parameters related to transpiration limit during dry conditions
         self.deepmoist = np.full_like(self.h, 0.0)
@@ -165,8 +164,8 @@ class SoilGrid_2Dflow(object):
         self.Tr1 = np.zeros((self.rows,self.cols))
         self.Wtso1_deep = np.zeros((self.rows,self.cols))
         self.tmstep = 0
-        self.conv99 = 0
-        self.totit = 0
+        #self.conv99 = 0
+        #self.totit = 0
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -228,10 +227,12 @@ class SoilGrid_2Dflow(object):
         # route remaining to surface runoff
         surface_runoff = exfil - to_top_layer
         '''
-        # for computing mass balance later
-        state0 = RR + self.Wsto_deep # Wsto_deep ????
+        # for computing mass balance later, RR: drainage from bucketgrid
+        #RR = np.minimum(RR, self.airv_deep)
         S = RR
         S[np.isnan(S)] = 0.0
+
+        state0 = self.Wsto_deep + S # Wsto_deep ????
         
         # ravel 2D arrays
         HW = np.ravel(self.HW); HE = np.ravel(self.HE)
@@ -396,8 +397,8 @@ class SoilGrid_2Dflow(object):
             # end of iteration loop
         if it == 99:
             self.conv99 +=1
-        self.totit += it
-        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index], 'it99:', self.conv99, 'it_tot:', self.totit)
+        #self.totit += it
+        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index])
 
         # lateral flow is calculated in two parts: one depending on previous time step
         # and other on current time step (lateral flowsee 2/2). Their wiegthing depends
@@ -436,7 +437,7 @@ class SoilGrid_2Dflow(object):
 
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
-        #self.retflow = np.maximum(bu_airv, self.Wsto_deep_max - self.Wsto_deep) # !!!
+        #self.retflow = np.maximum(bu_airv, self.Wsto_deep_max - self.Wsto_deep) # retflow not in use
 
         # This is limit transpiration when gwl < -0.7 which is not what we want here.
         # # Koivusalo et al. 2008 HESS without wet side limit
@@ -447,12 +448,11 @@ class SoilGrid_2Dflow(object):
 
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
-        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow) # !!! lisää retflow
+        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow) 
         netflow_to_ditch = np.where(self.ditch_h < -eps, netflow_to_ditch, 0.0)
 
         # mass balance error [m]
-        mbe = (state0  - self.Wsto_deep - # !!! lisää retflow
-               lateral_flow)
+        mbe = (state0  - self.Wsto_deep - lateral_flow)
 
         mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
 

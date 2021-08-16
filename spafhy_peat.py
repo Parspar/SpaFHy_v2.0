@@ -111,8 +111,8 @@ class SpaFHy():
         u = forc['wind_speed'].values + eps
         
         # run Soilprofile water balance
-        RR = self.bu.drain
-        bu_airv = self.bu.Wair_root
+        RR = self.bu.drain*1e-3
+        #bu_airv = self.bu.Wair_root
         soil_results = self.soil.run_timestep(
                 dt=self.dt / 86400.,
                 RR=RR)

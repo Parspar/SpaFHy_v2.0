@@ -11,8 +11,8 @@ def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
             'start_date': '2019-01-01',
-            'end_date': '2019-10-01',
-            'spinup_end': '2019-05-01',  # results after this are saved in result file
+            'end_date': '2020-01-01',
+            'spinup_end': '2019-01-01',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)

@@ -154,6 +154,7 @@ class BucketGrid(object):
         # ... and removes oscillation of water content at those cells.
         self.drain = np.minimum(self.hydrCond() * dt, np.maximum(0.0, (self.Wliq_root - self.Fc_root))*self.D_root)
         #self.drain[retflow > 0.0] = 0.0
+        airv_deep = airv_deep * 1e3
         self.drain = np.minimum(self.drain, airv_deep)
         # inflow to root zone: restricted by potential inflow or available pore space
         Qin = rr #(retflow + rr)  # m, pot. inflow
@@ -186,12 +187,12 @@ class BucketGrid(object):
             - (rr0 - tr - evap - self.drain - roff)
         #print('uniq:', np.unique(self.Wliq_top), 'shape:', self.Wliq_top.shape)
         results = {
-                'infiltration': inflow,  # [mm d-1] # !!! inflow - retflow
-                'evaporation': evap,  # [mm d-1]
-                'transpiration': tr,  # [mm d-1]
-                'drainage': self.drain, #     !!!
-                'surface_runoff': roff, #  !!!
-                'water_closure': mbe,  # [mm d-1]
+                'infiltration': inflow * 1e3,  # [mm d-1]
+                'evaporation': evap * 1e3,  # [mm d-1]
+                'transpiration': tr * 1e3,  # [mm d-1]
+                'drainage': self.drain * 1e3, #     !!!
+                'surface_runoff': roff * 1e3, #  !!!
+                'water_closure': mbe * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'moisture_root': self.Wliq_root,  # [m3 m-3]
                 'transpiration_limitation': self.Rew,  # [-] !!!

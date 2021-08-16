@@ -21,7 +21,7 @@ from iotools import read_AsciiGrid
 
 
 # reading the results
-outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108131445.nc'
+outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108161216.nc'
 results = read_results(outputfile)
 
 
