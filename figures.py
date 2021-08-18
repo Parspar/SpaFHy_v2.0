@@ -21,7 +21,7 @@ from iotools import read_AsciiGrid
 
 
 # reading the results
-outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108161216.nc'
+outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108170922.nc'
 results = read_results(outputfile)
 
 
@@ -873,8 +873,8 @@ kenttarova_loc = np.where(kenttarova == 0)
 k_loc = list([int(kenttarova_loc[0]), int(kenttarova_loc[1])])
 l_loc = [60, 60]
 sar_wliq = sar['soilmoisture']*np.array(results['parameters_cmask'])/100
-spa_wliq = results['soil_rootzone_moisture']
-spa_wliq_top = results['soil_moisture_top']
+spa_wliq = results['bucket_moisture_root']
+spa_wliq_top = results['bucket_moisture_top']
 
 dates_sar = sar['time'][:]
 dates_sar = pd.to_datetime(dates_sar, format='%Y%m%d') 
@@ -942,8 +942,8 @@ kenttarova_loc = np.where(kenttarova == 0)
 k_loc = list([int(kenttarova_loc[0]), int(kenttarova_loc[1])])
 l_loc = [60, 60]
 sar_wliq = sar['soilmoisture']*np.array(results['parameters_cmask'])/100
-spa_wliq = results['soil_rootzone_moisture']
-spa_wliq_top = results['soil_moisture_top']
+spa_wliq = results['bucket_moisture_root']
+spa_wliq_top = results['bucket_moisture_top']
 
 dates_sar = sar['time'][:]
 dates_sar = pd.to_datetime(dates_sar, format='%Y%m%d') 
@@ -1373,8 +1373,8 @@ area = len(np.array(results['parameters_cmask']).flatten()[np.isfinite(np.array(
 # 
 
 Qs = pd.DataFrame()
-Qs['Qdrain'] = np.nanmean(results['soil_drainage']*cmask, axis=(1,2))
-Qs['Qsurf'] = np.nanmean(results['soil_surface_runoff']*cmask, axis=(1,2))
+Qs['Qdrain'] = np.nanmean(results['soil_netflow_to_ditch']*cmask, axis=(1,2))
+Qs['Qsurf'] = np.nanmean(results['bucket_surface_runoff']*cmask, axis=(1,2))
 Qs.index = dates_spa
 
 Qm = pd.read_csv('C:\SpaFHy_v1_Pallas_2D\calibration\Runoffs1d_SVEcatchments_mmd.csv', 

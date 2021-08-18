@@ -91,7 +91,7 @@ class BucketGrid(object):
             self.results = {'Infil': [], 'Retflow': [], 'Drain': [], 'Roff': [], 'ET': [],
             'Mbe': [], 'Wliq': [], 'PondSto': [], 'Wliq_top': [], 'Ree': []}'''
 
-    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=0.0):
+    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=1000.0):
         """
         Computes 2-layer bucket model water balance for one timestep dt
         Top layer is interception storage and contributes only to evap.
@@ -154,7 +154,7 @@ class BucketGrid(object):
         # ... and removes oscillation of water content at those cells.
         self.drain = np.minimum(self.hydrCond() * dt, np.maximum(0.0, (self.Wliq_root - self.Fc_root))*self.D_root)
         #self.drain[retflow > 0.0] = 0.0
-        airv_deep = airv_deep * 1e3
+        #airv_deep = airv_deep * 1e3
         self.drain = np.minimum(self.drain, airv_deep)
         # inflow to root zone: restricted by potential inflow or available pore space
         Qin = rr #(retflow + rr)  # m, pot. inflow
@@ -182,6 +182,9 @@ class BucketGrid(object):
         # update grid total drainage to ground water [m]
         self._drainage_to_gw = np.nansum(self.drain)
         
+        # update self.drain into mm
+        self.drain = self.drain * 1e3
+        
         # mass balance error [m]
         mbe = (self.WatStoRoot - WatStoRoot0)  + (self.WatStoTop - WatStoTop0) + (self.PondSto - PondSto0) \
             - (rr0 - tr - evap - self.drain - roff)
@@ -190,7 +193,7 @@ class BucketGrid(object):
                 'infiltration': inflow * 1e3,  # [mm d-1]
                 'evaporation': evap * 1e3,  # [mm d-1]
                 'transpiration': tr * 1e3,  # [mm d-1]
-                'drainage': self.drain * 1e3, #     !!!
+                'drainage': self.drain, #     !!!
                 'surface_runoff': roff * 1e3, #  !!!
                 'water_closure': mbe * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]

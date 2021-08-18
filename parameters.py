@@ -49,6 +49,7 @@ def parameters(folder=''):
                     ['bucket_infiltration', 'infiltration [mm d-1]'],
                     ['bucket_surface_runoff', 'surface runoff [mm d-1]'],
                     ['bucket_evaporation', 'evaporation from soil surface [mm d-1]'],
+                    ['bucket_drainage', 'drainage from root layer [mm d-1]'],
                     ['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
                     ['soil_water_storage', 'soil water storage (deeplayer) [m]'],
