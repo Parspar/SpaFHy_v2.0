@@ -10,7 +10,7 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2016-01-01',
+            'start_date': '2015-08-01',
             'end_date': '2019-10-01',
             'spinup_end': '2016-05-01',  # results after this are saved in result file
             'dt': 86400.0,
@@ -137,7 +137,7 @@ def parameters(folder=''):
             'org_depth': 0.05, # depth of organic top layer (m)
             'org_poros': 0.9, # porosity (-)
             'org_fc': 0.3, # field capacity (-)
-            'org_rw': 0.24, # critical vol. moisture content (-) for decreasing phase in Ef
+            'org_rw': 0.15, # critical vol. moisture content (-) for decreasing phase in Ef
             'maxpond': 0.0,
             # rootzone layer
             'root_depth': 0.4, # depth of rootzone layer (m)

@@ -21,12 +21,12 @@ from iotools import read_AsciiGrid
 
 
 # reading the stand results
-outputfile_1 = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108191322.nc'
-results_stand = read_results(outputfile_1)
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
+results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2 = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108191223.nc'
-results_2d = read_results(outputfile_2)
+outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_2d.nc'
+results_2d = read_results(outputfile_2d)
 
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
 #sar = Dataset(sar_path, 'r')
@@ -64,6 +64,25 @@ results_2d['soil_netflow_to_ditch'] = results_2d['soil_netflow_to_ditch'] * resu
 
 # stand
 results_stand['bucket_water_storage'] = results_stand['bucket_water_storage'] - results_stand['bucket_water_storage'][0,:,:]
+
+#%%
+
+# results from spafhy topmodel to comparable form
+
+ncf_file = r'C:\SpaFHy_v1_Pallas\results\C3_catch.nc'
+dat = Dataset(ncf_file, 'r')
+
+bu_catch = dat['bu']
+cpy_catch = dat['cpy']
+top_catch = dat['top']
+
+ix = np.where(np.array(bu_catch['Wliq'][:,100,100]) <= 1.0)[0][0]
+Wliq = bu_catch['Wliq'][ix:,:,:]
+Wliq_top = bu_catch['Wliq_top'][ix:,:,:]
+Transpi = cpy_catch['Transpi'][ix:,:,:]
+Efloor = cpy_catch['Efloor'][ix:,:,:]
+Evap = cpy_catch['Evap'][ix:,:,:]
+
 
 
 #%%
@@ -298,6 +317,11 @@ spa_wliq_df['spa_k_st_root'] = spa_wliq_st_root[:,k_loc[0],k_loc[1]]
 spa_wliq_df['spa_l_st_root'] = spa_wliq_st_root[:,l_loc[0],l_loc[1]]
 spa_wliq_df['spa_k_st_top'] = spa_wliq_st_top[:,k_loc[0],k_loc[1]]
 spa_wliq_df['spa_l_st_top'] = spa_wliq_st_top[:,l_loc[0],l_loc[1]]
+spa_wliq_df['spa_k_ca_root'] = Wliq[:,k_loc[0],k_loc[1]]
+spa_wliq_df['spa_l_ca_root'] = Wliq[:,l_loc[0],l_loc[1]]
+spa_wliq_df['spa_k_ca_top'] = Wliq[:,k_loc[0],k_loc[1]]
+spa_wliq_df['spa_l_ca_top'] = Wliq[:,l_loc[0],l_loc[1]]
+
 spa_wliq_df['time'] = dates_spa
 #spa_wliq_df.index = dates_spa
 
@@ -319,7 +343,11 @@ ax2 = axs[1]
 
 im1 = ax1.plot(soilm['spa_k_2d_root'])
 ax1.plot(soilm['spa_k_st_root'])
-ax1.plot(soilm.index[poi], soilm['spa_k_2d_root'][poi], marker='o', mec='k', mfc='r', alpha=0.5, ms=8.0)
+ax1.plot(soilm['spa_k_ca_root'])
+#ax1.plot(soilm.index[poi], 0.05, marker='o', mec='k', mfc='r', alpha=0.5, ms=8.0)
+#ax1.axvline(soilm.index[poi], 0, 0.6, label='pyplot vertical line')
+ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
+
 #ax1.plot(soilm['s3'], 'r', alpha=0.4)
 #ax1.plot(soilm['s5'], alpha=0.4)
 #ax1.plot(soilm['s18'], 'r', alpha=0.9)
@@ -328,19 +356,21 @@ ax1.plot(soilm.index[poi], soilm['spa_k_2d_root'][poi], marker='o', mec='k', mfc
 #ax1.plot(soilm['SH-20A'], 'g', alpha=0.8)
 #ax1.plot(soilm['SH-20B'], 'g', alpha=0.95)
 ax1.title.set_text('Mineral')
-ax1.legend(['2D root', 'stand root'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
+ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
 y = ax1.set_ylabel(r"${\Theta}$")
 y.set_rotation(0)
 ax1.set_ylim(0,0.6)
 
 im2 = ax2.plot(soilm['spa_l_2d_root'])
 ax2.plot(soilm['spa_l_st_root'])
-ax2.plot(soilm.index[poi], soilm['spa_l_2d_root'][poi], marker='o', mec='k', mfc='g', alpha=0.5, ms=8.0)
+ax2.plot(soilm['spa_l_ca_root'])
+#ax2.plot(soilm.index[poi], 0.45, marker='o', mec='k', mfc='g', alpha=0.5, ms=8.0)
+ax2.axvline(soilm.index[poi], ymin=0, ymax=1, color='k', alpha=0.4)
 ax2.title.set_text('Mire')
 ax2.set_ylim(0.4,1.0)
 y = ax2.set_ylabel(r"${\Theta}$")
 y.set_rotation(0)
-#ax2.legend(['spa 2d root', 'spa st root'], ncol = 2)
+ax2.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
 
 #g.suptitle('SpaFHy stand vs. 2D')
 
@@ -360,22 +390,61 @@ dry_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmin()
 #sar = Dataset(sar_path, 'r')
 
 # Plotting
-fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(14,6));
+fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(21,6));
 ax1 = axs[0]
 ax2 = axs[1]
+ax3 = axs[2]
 
 
 # 2D root moist
 im1 = ax1.imshow(results_2d['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im1, ax=ax1)
-ax1.scatter(k_loc[0],k_loc[1],color='r')
-ax1.scatter(l_loc[1],l_loc[0],color='g')
+ax1.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
+ax1.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
 ax1.title.set_text(f'2D root {dates_spa[poi]}')
 
+# stand moist
 im2 = ax2.imshow(results_stand['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im2, ax=ax2)
-ax2.scatter(l_loc[1],l_loc[0],color='g')
-ax2.scatter(k_loc[0],k_loc[1],color='r')
+ax2.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
+ax2.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
 ax2.title.set_text(f'stand root {dates_spa[poi]}')
+
+# catchment moist
+im3 = ax3.imshow(Wliq[poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+fig.colorbar(im3, ax=ax3)
+ax3.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
+ax3.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
+ax3.title.set_text(f'catch root {dates_spa[poi]}')
+
+
+#%%
+
+# ET comparison
+
+# Plotting
+fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(12,12));
+ax1 = axs[0]
+ax2 = axs[1]
+ax3 = axs[2]
+
+#fig.suptitle('Volumetric water content', fontsize=15)
+ax1.set_title('Tr')
+ax1.plot(dates_spa, results_2d['canopy_transpiration'][:,k_loc[0],k_loc[1]], 'b', alpha=0.6)
+ax1.plot(dates_spa, results_stand['canopy_transpiration'][:,k_loc[0],k_loc[1]], 'r', alpha=0.6)
+ax1.plot(dates_spa, Transpi[:,k_loc[0],k_loc[1]], 'k', alpha=0.3)
+ax1.legend(['2d', 'stand',' top'])
+
+ax2.set_title('Ef')
+ax2.plot(dates_spa, results_2d['bucket_evaporation'][:,k_loc[0],k_loc[1]], 'b', alpha=0.6)
+ax2.plot(dates_spa, results_stand['bucket_evaporation'][:,k_loc[0],k_loc[1]], 'r', alpha=0.6)
+ax2.plot(dates_spa, Efloor[:,k_loc[0],k_loc[1]], 'k', alpha=0.3)
+#ax2.legend(['2d', 'stand',' top'])
+
+ax3.set_title('E')
+ax3.plot(dates_spa, results_2d['canopy_evaporation'][:,k_loc[0],k_loc[1]], 'b', alpha=0.6)
+ax3.plot(dates_spa, results_stand['canopy_evaporation'][:,k_loc[0],k_loc[1]], 'r', alpha=0.6)
+ax3.plot(dates_spa, Evap[:,k_loc[0],k_loc[1]], 'k', alpha=0.3)
+#ax3.legend(['2d', 'stand',' top'])
 
 
