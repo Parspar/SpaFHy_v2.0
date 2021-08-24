@@ -69,6 +69,8 @@ def parameters(folder=''):
                     ['canopy_phenostate', 'canopy phenological state [-]'],
                     ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     ['canopy_degree_day_sum', 'sum of degree days [degC]'],
+                    ['canopy_fLAI', 'state of LAI'],    
+                    ['canopy_water_storage', 'canopy intercepted water storage'],                    
                     ]
              }
 

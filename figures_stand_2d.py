@@ -15,13 +15,13 @@ from datetime import date
 import os
 from netCDF4 import Dataset #, date2num
 import pandas as pd
-import pickle
-import seaborn as sns
+#import pickle
+#import seaborn as sns
 from iotools import read_AsciiGrid
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108241439.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
@@ -69,7 +69,7 @@ results_stand['bucket_water_storage'] = results_stand['bucket_water_storage'] - 
 
 # results from spafhy topmodel to comparable form
 
-ncf_file = r'C:\SpaFHy_v1_Pallas\results\C3_catch.nc'
+ncf_file = r'C:\SpaFHy_v1_Pallas\results\C3.nc'
 dat = Dataset(ncf_file, 'r')
 
 bu_catch = dat['bu']
@@ -367,7 +367,7 @@ ax2.plot(soilm['spa_l_ca_root'])
 #ax2.plot(soilm.index[poi], 0.45, marker='o', mec='k', mfc='g', alpha=0.5, ms=8.0)
 ax2.axvline(soilm.index[poi], ymin=0, ymax=1, color='k', alpha=0.4)
 ax2.title.set_text('Mire')
-ax2.set_ylim(0.4,1.0)
+ax2.set_ylim(0.35,1.0)
 y = ax2.set_ylabel(r"${\Theta}$")
 y.set_rotation(0)
 ax2.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
@@ -418,33 +418,34 @@ ax3.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
 ax3.title.set_text(f'catch root {dates_spa[poi]}')
 
 
+
+
+
+
+
+
 #%%
 
-# ET comparison
+# et sim. obs
+# ET at Kenttarova
+folder = r'C:\SpaFHy_v1_Pallas\data\obs'
+file = 'ec_kr_et.csv'
+fp = os.path.join(folder, file)
+ec_kr = pd.read_csv(fp, sep=';', date_parser=['time'])
+ec_kr['time'] = pd.to_datetime(ec_kr['time'])
+#ec_kr.index = ec_kr['time']
+ec_kr = ec_kr[['time', 'ET-2', 'ET-3']]
+ec_kr = ec_kr[ec_kr['time'].isin(dates_spa)]
 
 # Plotting
-fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(12,12));
-ax1 = axs[0]
-ax2 = axs[1]
-ax3 = axs[2]
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,6));
 
-#fig.suptitle('Volumetric water content', fontsize=15)
-ax1.set_title('Tr')
-ax1.plot(dates_spa, results_2d['canopy_transpiration'][:,k_loc[0],k_loc[1]], 'b', alpha=0.6)
-ax1.plot(dates_spa, results_stand['canopy_transpiration'][:,k_loc[0],k_loc[1]], 'r', alpha=0.6)
-ax1.plot(dates_spa, Transpi[:,k_loc[0],k_loc[1]], 'k', alpha=0.3)
-ax1.legend(['2d', 'stand',' top'])
+ax.set_title('Dry ET')
+ax.plot(dates_spa, (results_2d['bucket_evaporation'][:,k_loc[0],k_loc[1]] + results_2d['canopy_transpiration'][:,k_loc[0],k_loc[1]]), alpha=0.7)
+ax.plot(dates_spa, (results_stand['bucket_evaporation'][:,k_loc[0],k_loc[1]] + results_stand['canopy_transpiration'][:,k_loc[0],k_loc[1]]), alpha=0.7)
+ax.plot(dates_spa, ec_kr['ET-3'], 'k.', alpha=0.7)
+plt.legend(['2d dry et', 'stand dry et','ec et'])
 
-ax2.set_title('Ef')
-ax2.plot(dates_spa, results_2d['bucket_evaporation'][:,k_loc[0],k_loc[1]], 'b', alpha=0.6)
-ax2.plot(dates_spa, results_stand['bucket_evaporation'][:,k_loc[0],k_loc[1]], 'r', alpha=0.6)
-ax2.plot(dates_spa, Efloor[:,k_loc[0],k_loc[1]], 'k', alpha=0.3)
-#ax2.legend(['2d', 'stand',' top'])
+#%%
 
-ax3.set_title('E')
-ax3.plot(dates_spa, results_2d['canopy_evaporation'][:,k_loc[0],k_loc[1]], 'b', alpha=0.6)
-ax3.plot(dates_spa, results_stand['canopy_evaporation'][:,k_loc[0],k_loc[1]], 'r', alpha=0.6)
-ax3.plot(dates_spa, Evap[:,k_loc[0],k_loc[1]], 'k', alpha=0.3)
-#ax3.legend(['2d', 'stand',' top'])
-
-
+# self.LAI comparison

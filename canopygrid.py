@@ -56,10 +56,11 @@ class CanopyGrid():
         self.phenopara = cpara['phenopara']
 
         # canopy parameters and state
-        self.hc = state['hc'] + epsi
-        self.cf = state['cf'] + epsi
+        self.hc = state['hc'] + eps
+        self.cf = state['cf'] + eps
 
-        self._LAIconif = np.maximum(state['lai_conif'], epsi)  # m2m-2
+        self._LAIconif = np.maximum(state['lai_conif'], eps)  # m2m-2
+        #self._LAIconif = state['lai_conif']  # m2m-2
         self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
         self.LAI = self._LAIconif + self._LAIdecid
 
@@ -152,6 +153,12 @@ class CanopyGrid():
         Transpi = Transpi * dt
         Efloor = Efloor * dt
         ET = Transpi + Efloor
+        
+        #print('LAI stand suo:', self.LAI[60,60])
+        #print('cf stand suo:', self.cf[60,60])
+        #print('hc stand suo:', self.hc[60,60])
+        
+
 
         results = {
                 'potential_infiltration': PotInf,  # [mm d-1]
@@ -165,7 +172,9 @@ class CanopyGrid():
                 'phenostate': fPheno,  # [-]
                 'leaf_area_index': self.LAI,  # [m2 m-2]
                 'stomatal_conductance': Gc,  # [m s-1]
-                'degree_day_sum': self.DDsum  # [degC]
+                'degree_day_sum': self.DDsum,  # [degC]
+                'fLAI': self.LAI,
+                'water_storage': self.W
                 }
 
         return results
@@ -274,7 +283,6 @@ class CanopyGrid():
         # ---Amax and g1 as LAI -weighted average of conifers and decid.
 
         rhoa = 101300.0 / (8.31 * (Ta + 273.15)) # mol m-3
-
         Amax = 1./self.LAI * (self._LAIconif * self.physpara['amax']
                 + self._LAIdecid *self.physpara['amax']) # umolm-2s-1
 
@@ -298,8 +306,8 @@ class CanopyGrid():
         # fQ = 1./ kp * np.log((Qp + q50) / (Qp*np.exp(-kp*self.LAI) + q50))
 
         # soil moisture response: Lagergren & Lindroth, xxxx"""
-#        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
-        fRew = Rew
+        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
+        #fRew = Rew
 
         # CO2 -response of canopy conductance, derived from APES-simulations
         # (Launiainen et al. 2016, Global Change Biology). relative to 380 ppm

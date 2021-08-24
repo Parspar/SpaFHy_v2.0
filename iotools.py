@@ -761,6 +761,7 @@ def create_input_GIS(fpath, plotgrids=False):
     LAI_pine = 1e-3*bmleaf_pine*SLA['pine']  # 1e-3 converts 10kg/ha to kg/m2
     LAI_spruce = 1e-3*bmleaf_spruce*SLA['spruce']
     LAI_decid = 1e-3*bmleaf_decid*SLA['decid']
+        
 
     # tree height
     hc, _, pos, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'keskipituus.asc'))
