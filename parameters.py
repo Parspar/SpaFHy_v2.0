@@ -29,6 +29,8 @@ def parameters(folder=''):
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
                     ['parameters_lai_decid_max', 'leaf area index of decidious trees [m2 m-2]'],
+                    ['parameters_lai_shrub', 'leaf area index of shrubs [m2 m-2]'],    
+                    ['parameters_lai_grass', 'leaf area index of grass [m2 m-2]'],                        
                     ['parameters_hc', 'canopy height [m]'],
                     ['parameters_cf', 'canopy closure [-]'],
                     ['parameters_soilclass', 'soil class index'],
@@ -103,6 +105,28 @@ def parameters(folder=''):
                         # soil evaporation
                         'gsoil': 1e-2 # soil surface conductance if soil is fully wet (m/s)
                         },
+            'spec_para': {
+                        'conif': {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                    'g1': 2.1, # stomatal parameter
+                                    'q50': 50.0, # light response parameter (Wm-2)
+                                    'lai_cycle': False,
+                                     },
+                        'decid': {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                     'g1': 3.5, # stomatal parameter
+                                     'q50': 50.0, # light response parameter (Wm-2)
+                                     'lai_cycle': True,
+                                     },                                 
+                        'shrub':    {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                     'g1': 3.0, # stomatal parameter
+                                     'q50': 50.0, # light response parameter (Wm-2)
+                                     'lai_cycle': False,
+                                     },
+                        'grass':    {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                     'g1': 5.0, # stomatal parameter
+                                     'q50': 50.0, # light response parameter (Wm-2)
+                                     'lai_cycle': True,
+                                     },
+                        },            
             'phenopara': {
                         # seasonal cycle of physiology: smax [degC], tau[d], xo[degC],fmin[-](residual photocapasity)
                         'smax': 18.5, # degC
@@ -119,6 +143,8 @@ def parameters(folder=''):
             'state': {  # following properties are used if spatial_cpy == False
                        'lai_conif': 3.5, # conifer 1-sided LAI (m2 m-2)
                        'lai_decid_max': 0.5, # maximum annual deciduous 1-sided LAI (m2 m-2)
+                       'lai_shrub': 0.1,
+                       'lai_grass': 0.2,
                        'hc': 16.0, # canopy height (m)
                        'cf': 0.6, # canopy closure fraction (-)
                        #initial state of canopy storage [mm] and snow water equivalent [mm]

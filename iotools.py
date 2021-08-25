@@ -115,15 +115,15 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.dat'))
         LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.dat'))
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
-        LAI_decid = LAI_decid + LAI_shrub + LAI_grass
+        LAI_decid = LAI_decid + LAI_grass + LAI_shrub
     except:
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
     
 
     # for stability, lets replace zeros with eps
-    LAI_decid[LAI_decid == 0.0] = eps
-    LAI_conif[LAI_conif == 0.0] = eps
-    hc[hc == 0.0] = eps
+    #LAI_decid[LAI_decid == 0.0] = eps
+    #LAI_conif[LAI_conif == 0.0] = eps
+    #hc[hc == 0.0] = eps
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
@@ -137,8 +137,8 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     # dict of all rasters
     gis = {'cmask': cmask,
-           'LAI_conif': LAI_conif,
-           'LAI_decid': LAI_decid, 'hc': hc, 'cf': cf}
+           'LAI_conif': LAI_conif, 'LAI_decid': LAI_decid, 'LAI_shrub': LAI_shrub, 'LAI_grass': LAI_grass,
+           'hc': hc, 'cf': cf}
 
     for key in gis.keys():
         if key != 'cmask':
@@ -298,6 +298,8 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
     if spatial:
         cstate['lai_conif'] = gisdata['LAI_conif']
         cstate['lai_decid_max'] = gisdata['LAI_decid']
+        cstate['lai_shrub'] = gisdata['LAI_shrub']
+        cstate['lai_grass'] = gisdata['LAI_grass']
         cstate['cf'] = gisdata['cf']
         cstate['hc'] = gisdata['hc']
         for key in ['w', 'swe']:

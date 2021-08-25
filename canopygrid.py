@@ -54,15 +54,54 @@ class CanopyGrid():
 
         # phenology
         self.phenopara = cpara['phenopara']
+        #spec_para = cpara['spec_para']
 
         # canopy parameters and state
         self.hc = state['hc'] + eps
         self.cf = state['cf'] + eps
+        
+        '''
+        state['lai_decid'] = state['lai_decid_max']
 
+        ptypes = {}
+        LAI = 0.0
+
+        for pt in list(spec_para.keys()):
+            ptypes[pt] = spec_para[pt]
+            ptypes[pt]['LAImax'] = state['lai_' + pt]            
+
+        self.ptypes = ptypes
+        
+        # compute gridcell average LAI and photosynthesis-stomatal conductance parameters:
+        LAI = 0.0
+        Amax = 0.0
+        q50 = 0.0
+        g1 = 0.0
+        for pt in self.ptypes.keys():
+            if self.ptypes[pt]['lai_cycle']:
+                pt_lai = self.ptypes[pt]['LAImax'] * self.phenopara['lai_decid_min']
+            else:
+                pt_lai = self.ptypes[pt]['LAImax']
+            
+            LAI += pt_lai
+            Amax += pt_lai * ptypes[pt]['amax']
+            q50 += pt_lai * ptypes[pt]['q50']
+            g1 += pt_lai * ptypes[pt]['g1']
+        
+        self.LAI = LAI + eps
+        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
+
+        del Amax, q50, g1, pt, LAI, pt_lai
+        '''
+        
         self._LAIconif = np.maximum(state['lai_conif'], eps)  # m2m-2
-        #self._LAIconif = state['lai_conif']  # m2m-2
         self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
-        self.LAI = self._LAIconif + self._LAIdecid
+        self._LAIgrass_max = state['lai_grass']
+        self._LAIgrass = state['lai_grass'] * self.phenopara['lai_decid_min']
+        #print(self._LAIgrass[60,60])
+        self._LAIshrub = np.maximum(state['lai_shrub'], eps)
+
+        self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
 
         self._LAIdecid_max = state['lai_decid_max']  # m2m-2
 
@@ -104,6 +143,7 @@ class CanopyGrid():
         # NOTE: this assumes simulations start 1st Jan each year !!!
         self.DDsum = self.W * 0.0
         self.X = self.W * 0.0
+        #self._relative_lai = self.phenopara['lai_decid_min']
         self._growth_stage = self.W * 0.0
         self._senesc_stage = self.W *0.0
 
@@ -134,6 +174,7 @@ class CanopyGrid():
 
 
         """ --- update phenology: self.ddsum & self.X ---"""
+        #self.update_daily(Ta, doy)
         self._degreeDays(Ta, doy)
         fPheno = self._photoacclim(Ta)
 
@@ -152,7 +193,7 @@ class CanopyGrid():
 
         Transpi = Transpi * dt
         Efloor = Efloor * dt
-        ET = Transpi + Efloor
+        #ET = Transpi + Efloor
         
         #print('LAI stand suo:', self.LAI[60,60])
         #print('cf stand suo:', self.cf[60,60])
@@ -178,6 +219,45 @@ class CanopyGrid():
                 }
 
         return results
+    '''
+    def update_daily(self, T, doy):
+        """
+        updates temperature sum, leaf-area development, phenology and
+        computes effective parameters for grid-cell
+        Args:
+            T - daily mean temperature (degC)
+            doy - day of year
+        Returns:
+            None
+        """
+        
+        self._degreeDays(T, doy)
+        self._photoacclim(T)
+        
+        # deciduous relative leaf-area index
+        self._lai_dynamics(doy)
+        
+        # canopy effective photosynthesis-stomatal conductance parameters:
+        LAI = 0.0 
+        Amax = 0.0
+        q50 = 0.0
+        g1 = 0.0
+        for pt in self.ptypes.keys():
+            if self.ptypes[pt]['lai_cycle']:
+                pt_lai = self.ptypes[pt]['LAImax'] * self._relative_lai
+            else:
+                pt_lai = self.ptypes[pt]['LAImax']
+            LAI += pt_lai    
+            Amax += pt_lai * self.ptypes[pt]['amax']
+            q50 += pt_lai * self.ptypes[pt]['q50']
+            g1 += pt_lai * self.ptypes[pt]['g1']
+        
+        self.LAI = LAI + eps
+        
+        #print(doy, LAI, Amax / self.LAI, g1 / self.LAI)
+        
+        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI}) 
+        '''
 
     def _degreeDays(self, T, doy):
         """
@@ -243,7 +323,8 @@ class CanopyGrid():
 
         # update self.LAIdecid and total LAI
         self._LAIdecid = self._LAIdecid_max * f
-        self.LAI = self._LAIconif + self._LAIdecid
+        self._LAIgrass = self._LAIgrass_max * f
+        self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
         return f
 
     def dry_canopy_et(self, D, Qp, AE, Ta, Ra=25.0, Ras=250.0, CO2=380.0, Rew=1.0, beta=1.0, fPheno=1.0):
@@ -556,9 +637,9 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
 
     x = (s * AE + rho * cp * Ga * D) / (s + g * (1.0 + Ga / (Gs + eps)))  # Wm-2
 
-    if units is 'mm':
+    if units == 'mm':
         x = x / L  # kgm-2s-1 = mms-1
-    if units is 'mol':
+    if units == 'mol':
         x = x / L / Mw  # mol m-2 s-1
 
     x = np.maximum(x, 0.0)

@@ -21,7 +21,7 @@ from iotools import read_AsciiGrid
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108241439.nc'
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108251256.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
@@ -38,11 +38,24 @@ results_2d = read_results(outputfile_2d)
 kenttarova, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\Lompolonjanka\16b\sve_kenttarova_soilmoist.asc')
 kenttarova_loc = np.where(kenttarova == 0)
 k_loc = list([int(kenttarova_loc[1])-2, int(kenttarova_loc[0])-2])
+l_loc = [60, 60]
 
 dates_spa = []
 for d in range(len(results_stand['date'])):
     dates_spa.append(pd.to_datetime(str(results_stand['date'][d])[36:46]))
 
+# forcing file
+folder = r'C:\SpaFHy_v1_Pallas_2D\testcase_input\forcing'
+ffile = 'Kenttarova_forcing.csv'
+fp = os.path.join(folder, ffile)
+forc = pd.read_csv(fp, sep=';', date_parser=['time'])
+forc['time'] = pd.to_datetime(forc['time'])
+forc.index = forc['time']
+forc = forc[forc['time'].isin(dates_spa)]
+
+ix_no_p = np.where(forc['rainfall'] == 0)[0]
+ix_p = np.where(forc['rainfall'] > 0)[0]
+#ix_no_p_d = forc.index[np.where(forc['rainfall'] == 0)[0]]
 
 # change working dir
 os.chdir(r'C:\SpaFHy_v1_Pallas_2D\figures')
@@ -65,7 +78,6 @@ results_2d['soil_netflow_to_ditch'] = results_2d['soil_netflow_to_ditch'] * resu
 # stand
 results_stand['bucket_water_storage'] = results_stand['bucket_water_storage'] - results_stand['bucket_water_storage'][0,:,:]
 
-#%%
 
 # results from spafhy topmodel to comparable form
 
@@ -341,9 +353,9 @@ ax2 = axs[1]
 
 #fig.suptitle('Volumetric water content', fontsize=15)
 
-im1 = ax1.plot(soilm['spa_k_2d_root'])
-ax1.plot(soilm['spa_k_st_root'])
-ax1.plot(soilm['spa_k_ca_root'])
+im1 = ax1.plot(soilm['spa_k_2d_root'], alpha=0.8)
+ax1.plot(soilm['spa_k_st_root'], alpha=0.8)
+ax1.plot(soilm['spa_k_ca_root'], alpha=0.8)
 #ax1.plot(soilm.index[poi], 0.05, marker='o', mec='k', mfc='r', alpha=0.5, ms=8.0)
 #ax1.axvline(soilm.index[poi], 0, 0.6, label='pyplot vertical line')
 ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
@@ -361,9 +373,9 @@ y = ax1.set_ylabel(r"${\Theta}$")
 y.set_rotation(0)
 ax1.set_ylim(0,0.6)
 
-im2 = ax2.plot(soilm['spa_l_2d_root'])
-ax2.plot(soilm['spa_l_st_root'])
-ax2.plot(soilm['spa_l_ca_root'])
+im2 = ax2.plot(soilm['spa_l_2d_root'], alpha=0.8)
+ax2.plot(soilm['spa_l_st_root'], alpha=0.8)
+ax2.plot(soilm['spa_l_ca_root'], alpha=0.8)
 #ax2.plot(soilm.index[poi], 0.45, marker='o', mec='k', mfc='g', alpha=0.5, ms=8.0)
 ax2.axvline(soilm.index[poi], ymin=0, ymax=1, color='k', alpha=0.4)
 ax2.title.set_text('Mire')
@@ -419,32 +431,123 @@ ax3.title.set_text(f'catch root {dates_spa[poi]}')
 
 
 
+#%%
 
+# et sim. obs
+# ET obs
+folder = r'C:\SpaFHy_v1_Pallas\data\obs'
+file = 'ec_et.csv'
+fp = os.path.join(folder, file)
+ec_full = pd.read_csv(fp, sep=';', date_parser=['time'])
+ec_full['time'] = pd.to_datetime(ec_full['time'])
+#ec_kr.index = ec_kr['time']
+ec = ec_full[ec_full['time'].isin(dates_spa)]
+ec.index = ec['time']
+ec_full.index = ec_full['time']
+ec['ET-1-KR'].iloc[ec['time'] < '2017-01-01'] = np.nan
+ec['ET-1-LV'].iloc[ec['time'] < '2017-01-01'] = np.nan
+ec['ET-1-KR'].iloc[ix_p] = np.nan
+ec['ET-1-LV'].iloc[ix_p] = np.nan
+
+#dry et
+results_2d['dry_et'] = results_2d['canopy_evaporation'] + results_2d['bucket_evaporation'] + results_2d['canopy_transpiration']
+results_2d['dry_et'][ix_p,:,:] = np.nan
+results_stand['dry_et'] = results_stand['canopy_evaporation'] + results_stand['bucket_evaporation'] + results_stand['canopy_transpiration']
+results_stand['dry_et'][ix_p,:,:] = np.nan
+catch_dry_et = Transpi + Efloor + Evap
+catch_dry_et[ix_p,:,:] = np.nan
+
+
+# Plotting
+fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(20,8));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
+ax5 = axs[2][0]
+ax6 = axs[2][1]
+
+ax1.set_title('Kenttärova')
+ax1.plot(dates_spa, results_stand['dry_et'][:,k_loc[0],k_loc[1]], alpha=0.7)
+ax1.plot(ec['ET-1-KR'], 'k.', alpha=0.4)
+ax1.legend(['stand dry et', 'ec et'])
+
+ax2.set_title('Lompolo')
+ax2.plot(dates_spa, results_stand['dry_et'][:,l_loc[0],l_loc[1]], alpha=0.7)
+ax2.plot(ec['ET-1-LV'], 'k.', alpha=0.4)
+ax2.legend(['2d dry et', 'stand dry et', 'catch dry et', 'ec et'])
+
+ax3.set_title('Kenttärova')
+ax3.plot(dates_spa, results_2d['dry_et'][:,k_loc[0],k_loc[1]], alpha=0.7)
+ax3.plot(ec['ET-1-KR'], 'k.', alpha=0.4)
+ax3.legend(['2d dry et', 'ec et'])
+
+ax4.set_title('Lompolo')
+ax4.plot(dates_spa, results_2d['dry_et'][:,l_loc[0],l_loc[1]], alpha=0.7)
+ax4.plot(ec['ET-1-LV'], 'k.', alpha=0.4)
+ax4.legend(['2d dry et', 'ec et'])
+
+ax5.set_title('Kenttärova')
+ax5.plot(dates_spa, catch_dry_et[:,k_loc[0],k_loc[1]], alpha=0.7)
+ax5.plot(ec['ET-1-KR'], 'k.', alpha=0.4)
+ax5.legend(['catch dry et', 'ec et'])
+
+ax6.set_title('Lompolo')
+ax6.plot(dates_spa, catch_dry_et[:,l_loc[0],l_loc[1]], alpha=0.7)
+ax6.plot(ec['ET-1-LV'], 'k.', alpha=0.4)
+ax6.legend(['catch dry et', 'ec et'])
 
 
 
 
 #%%
+import seaborn as sns
 
-# et sim. obs
-# ET at Kenttarova
-folder = r'C:\SpaFHy_v1_Pallas\data\obs'
-file = 'ec_kr_et.csv'
-fp = os.path.join(folder, file)
-ec_kr = pd.read_csv(fp, sep=';', date_parser=['time'])
-ec_kr['time'] = pd.to_datetime(ec_kr['time'])
-#ec_kr.index = ec_kr['time']
-ec_kr = ec_kr[['time', 'ET-2', 'ET-3']]
-ec_kr = ec_kr[ec_kr['time'].isin(dates_spa)]
+# scatter et sim vs. obs
+ET_flat = pd.DataFrame()
+ET_flat['stand_kr_et'] = results_stand['dry_et'][:,k_loc[0],k_loc[0]]
+ET_flat['stand_lv_et'] = results_stand['dry_et'][:,l_loc[0],l_loc[0]]
+ET_flat['2D_kr_et'] = results_2d['dry_et'][:,k_loc[0],k_loc[0]]
+ET_flat['2D_lv_et'] = results_2d['dry_et'][:,l_loc[0],l_loc[0]] 
+ET_flat['catch_kr_et'] = catch_dry_et[:,k_loc[0],k_loc[0]] 
+ET_flat['catch_lv_et'] = catch_dry_et[:,l_loc[0],l_loc[0]]
+ET_flat['ET-1-KR'] = ec['ET-1-KR'].reset_index(drop=True)
+ET_flat['ET-1-LV'] = ec['ET-1-LV'].reset_index(drop=True)
+ET_flat = ET_flat.dropna()
+ET_flat = ET_flat[(ET_flat > 0).all(1)]
 
 # Plotting
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12,6));
+fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(8,12));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[1][0]
+ax4 = axs[1][1]
+ax5 = axs[2][0]
+ax6 = axs[2][1]
 
-ax.set_title('Dry ET')
-ax.plot(dates_spa, (results_2d['bucket_evaporation'][:,k_loc[0],k_loc[1]] + results_2d['canopy_transpiration'][:,k_loc[0],k_loc[1]]), alpha=0.7)
-ax.plot(dates_spa, (results_stand['bucket_evaporation'][:,k_loc[0],k_loc[1]] + results_stand['canopy_transpiration'][:,k_loc[0],k_loc[1]]), alpha=0.7)
-ax.plot(dates_spa, ec_kr['ET-3'], 'k.', alpha=0.7)
-plt.legend(['2d dry et', 'stand dry et','ec et'])
+x1 = sns.regplot(ax=ax1, x=ET_flat['stand_kr_et'], y=ET_flat['ET-1-KR'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+x1.plot([1, 1], [4, 4])
+ax1.set(ylim=(0, 5))
+ax1.set(xlim=(0, 5))
+x2 = sns.regplot(ax=ax2, x=ET_flat['stand_lv_et'], y=ET_flat['ET-1-LV'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+ax2.set(ylim=(0, 5))
+ax2.set(xlim=(0, 5))
+
+x3 = sns.regplot(ax=ax3, x=ET_flat['2D_kr_et'], y=ET_flat['ET-1-KR'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+x3.plot([1, 1], [4, 4])
+ax3.set(ylim=(0, 5))
+ax3.set(xlim=(0, 5))
+x4 = sns.regplot(ax=ax4, x=ET_flat['2D_lv_et'], y=ET_flat['ET-1-LV'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+ax4.set(ylim=(0, 5))
+ax4.set(xlim=(0, 5))
+
+x5 = sns.regplot(ax=ax5, x=ET_flat['catch_kr_et'], y=ET_flat['ET-1-KR'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+x5.plot([1, 1], [4, 4])
+ax5.set(ylim=(0, 5))
+ax5.set(xlim=(0, 5))
+x6 = sns.regplot(ax=ax6, x=ET_flat['catch_lv_et'], y=ET_flat['ET-1-LV'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+ax6.set(ylim=(0, 5))
+ax6.set(xlim=(0, 5))
 
 #%%
 

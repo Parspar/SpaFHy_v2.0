@@ -23,7 +23,7 @@ from iotools import read_AsciiGrid
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108241439.nc'
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108251251.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
@@ -159,7 +159,7 @@ ax3.plot(dates_spa, Evap[:,l_loc[0],l_loc[1]], 'b', alpha=0.6)
 # self.LAI comparison
 
 plt.plot(dates_spa, results_stand['canopy_fLAI'][:,l_loc[0],l_loc[1]], 'r', alpha=0.6)
-plt.plot(dates_spa, cpy_catch['fLAI'][ix:,l_loc[0],l_loc[1]], 'g')
+plt.plot(dates_spa, cpy_catch['fLAI'][ix:,l_loc[0],l_loc[1]], 'k.')
 plt.legend(['2d','top'])
 
 
@@ -181,8 +181,8 @@ ax2 = axs[1]
 ax3 = axs[2]
 ax4 = axs[3]
 
-tt = 700
-tt1 = 730
+tt = 600
+tt1 = 800
 ax1.plot(dates_spa[tt:tt1], cpy_catch['Evap'][ix+tt:ix+tt1,l_loc[0],l_loc[1]], 'k.')
 ax1.plot(dates_spa[tt:tt1], results_stand['canopy_evaporation'][tt:tt1,l_loc[0],l_loc[1]], 'r')
 #ax1.plot(dates_spa[tt:tt1], Wliq[tt:tt1,l_loc[0], l_loc[1]], 'g')
