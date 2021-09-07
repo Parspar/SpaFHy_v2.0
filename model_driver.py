@@ -195,9 +195,10 @@ def _create_results(pgen, cmask, Nsteps):
             var_shape.append(Nsteps)
         if (var_name.split('_')[0] != 'forcing' or
             pgen['spatial_forcing'] == True):
-            var_shape.append(i)
-            var_shape.append(j)
-
+            if (var_name.split('_')[0] != 'top'):
+                var_shape.append(i)
+                var_shape.append(j)
+                
         results[var_name] = np.full(var_shape, np.NAN)
 
     return results

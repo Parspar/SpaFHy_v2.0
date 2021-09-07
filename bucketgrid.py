@@ -85,13 +85,14 @@ class BucketGrid(object):
         self._drainage_to_gw = 0.0
         self.drain = np.full_like(self.Wliq_root, 0.0)
         self.drain[np.isnan(self.Wliq_root)] = np.nan
-        
+        self.retflow = np.full_like(self.Wliq_root, 0.0)
+
         '''# create dictionary of empty lists for saving results
         if outputs:
             self.results = {'Infil': [], 'Retflow': [], 'Drain': [], 'Roff': [], 'ET': [],
             'Mbe': [], 'Wliq': [], 'PondSto': [], 'Wliq_top': [], 'Ree': []}'''
 
-    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=1000.0):
+    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0, airv_deep=1000.0, retflow=0.0):
         """
         Computes 2-layer bucket model water balance for one timestep dt
         Top layer is interception storage and contributes only to evap.
@@ -116,8 +117,10 @@ class BucketGrid(object):
         """
         gridshape = np.shape(self.Wliq_root)  # rows, cols
     
-        #if np.shape(retflow) != gridshape:
-        #    retflow = retflow * np.ones(gridshape)
+        self.retflow = retflow
+        if np.shape(self.retflow) != gridshape:
+            self.retflow = self.retflow * np.ones(gridshape)
+            
         if np.shape(rr) != gridshape:
             rr = rr * np.ones(gridshape)
         
@@ -153,11 +156,12 @@ class BucketGrid(object):
         # This delays drying of cells which receive water from topmodel storage
         # ... and removes oscillation of water content at those cells.
         self.drain = np.minimum(self.hydrCond() * dt, np.maximum(0.0, (self.Wliq_root - self.Fc_root))*self.D_root)
-        #self.drain[retflow > 0.0] = 0.0
+        self.drain[self.retflow > 0.0] = 0.0
         #airv_deep = airv_deep * 1e3
         self.drain = np.minimum(self.drain, airv_deep)
         # inflow to root zone: restricted by potential inflow or available pore space
-        Qin = rr #(retflow + rr)  # m, pot. inflow
+        Qin = self.retflow + rr  # m, pot. inflow
+        
         inflow = np.minimum(Qin, self.MaxWatStoRoot - self.WatStoRoot + self.drain)
         
         dSto = (inflow - self.drain)
@@ -184,10 +188,13 @@ class BucketGrid(object):
         
         # update self.drain into mm
         self.drain = self.drain * 1e3
+        self.retflow = self.retflow * 1e3
+
         
         # mass balance error [m]
         mbe = (self.WatStoRoot - WatStoRoot0)  + (self.WatStoTop - WatStoTop0) + (self.PondSto - PondSto0) \
-            - (rr0 - tr - evap - self.drain - roff)
+            - (rr0 + self.retflow - tr - evap - self.drain - roff)
+            
         #print('uniq:', np.unique(self.Wliq_top), 'shape:', self.Wliq_top.shape)
         results = {
                 'infiltration': inflow * 1e3,  # [mm d-1]
@@ -200,6 +207,7 @@ class BucketGrid(object):
                 'moisture_root': self.Wliq_root,  # [m3 m-3]
                 'transpiration_limitation': self.Rew,  # [-] !!!
                 'water_storage': (self.WatStoTop + self.WatStoRoot) * 1e3, # [mm]
+                'return_flow': self.retflow # [mm d-1]
                 }
 
         return results

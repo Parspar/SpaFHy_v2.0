@@ -192,6 +192,57 @@ def read_forcing_gisdata(fpath):
 
     return gis
 
+def read_top_gisdata(fpath, plotgrids=False):
+    """
+    reads gis-data grids and returns numpy 2d-arrays
+    Args:
+        fpath - relative path to data folder (str)
+        plotgrids - True plots
+    Returns:
+        gis - dict of gis-data rasters
+            cmask
+            soil_id
+            ditch_depth
+            ditch_spacing
+    """
+    fpath = os.path.join(workdir, fpath)
+
+    # flow accumulation
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc.dat'))
+
+    # slope
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope.dat'))
+
+    # twi
+    twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
+
+    # catchment mask cmask[i,j] == 1, np.NaN outside
+    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+    else:
+        cmask = np.ones(np.shape(slope))
+
+    # dict of all rasters
+    gis = {'cmask': cmask,
+           'flowacc': flowacc,
+           'slope': slope,
+           'twi': twi,
+           }
+
+    for key in gis.keys():
+        gis[key] *= cmask
+
+    if plotgrids is True:
+        plt.figure()
+        plt.subplot(311); plt.imshow(slope); plt.colorbar(); plt.title('soiltype')
+        plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('dem')
+        plt.subplot(313); plt.imshow(flowacc); plt.colorbar(); plt.title('ditches')
+
+    gis.update({'dxy': cellsize})
+
+    return gis
+
+
 def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
     """
     creates input dictionary for initializing SoilGrid
@@ -314,6 +365,38 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
     pcpy['state'] = cstate
 
     return pcpy
+
+def preprocess_topdata(ptopmodel, gisdata, spatial=True):
+    """
+    creates input dictionary for initializing CanopyGrid
+    Args:
+        canopy parameters
+        gisdata
+            cmask
+            LAI_pine, LAI_spruce - pine and spruce LAI (m2m-2)
+            LAI_conif - conifer total annual max LAI (m2m-2)
+            LAI_dedid - deciduous annual max LAI (m2m-2)
+            cf - canopy closure (-)
+            hc - mean stand height (m)
+            (lat, lon)
+        spatial
+    """
+    # inputs for CanopyGrid initialization: update pcpy using spatial data
+
+    if spatial:
+        ptopmodel['slope'] = gisdata['slope']
+        ptopmodel['flowacc'] = gisdata['flowacc']
+        ptopmodel['twi'] = gisdata['twi']
+        ptopmodel['cmask'] = gisdata['cmask']
+        if {'lat','lon'}.issubset(gisdata.keys()):
+            ptopmodel['loc']['lat'] = gisdata['lat']
+            ptopmodel['loc']['lon'] = gisdata['lon']
+    else:
+        for key in ptopmodel.keys():
+            ptopmodel[key] *= gisdata['cmask']
+
+    return ptopmodel
+
 
 '''
 def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
@@ -569,6 +652,8 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
         if (var_name.split('_')[0] == 'forcing' and
             pgen['spatial_forcing'] == False):
             var_dim = ('date')
+        elif (var_name.split('_')[0] == 'top'):
+            var_dim = ('date')            
         elif var_name.split('_')[0] == 'parameters':
             var_dim = ('i', 'j')
         else:
@@ -604,6 +689,8 @@ def write_ncf(results, ncf, steps=None):
                     ncf[key][steps[0]:steps[1],:,:] = results[key][0:steps[1]-steps[0],:,:]
             elif len(ncf[key].shape) > 1:
                 ncf[key][:,:] = results[key]
+            elif len(ncf[key].shape) == 1:
+                ncf[key][steps[0]:steps[1]] = results[key][0:steps[1]-steps[0]]                
             else:
                 if steps==None:
                     ncf[key][:] = results[key]

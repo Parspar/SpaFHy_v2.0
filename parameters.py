@@ -17,6 +17,7 @@ def parameters(folder=''):
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
             'spatial_soil': True,  # if False uses soil_id, ditch_depth, ditch_spacing from psp
+            'topmodel': True,
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
@@ -54,6 +55,7 @@ def parameters(folder=''):
                     ['bucket_drainage', 'drainage from root layer [mm d-1]'],
                     ['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
+                    ['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],                    
                     ['soil_water_storage', 'soil water storage (deeplayer) [m]'],
                     ['soil_ground_water_level', 'ground water level [m]'],                    
                     ['soil_lateral_netflow', 'subsurface lateral netflow [mm d-1]'],
@@ -72,8 +74,11 @@ def parameters(folder=''):
                     ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     ['canopy_degree_day_sum', 'sum of degree days [degC]'],
                     ['canopy_fLAI', 'state of LAI'],    
-                    ['canopy_water_storage', 'canopy intercepted water storage'],                    
-                    ]
+                    ['canopy_water_storage', 'canopy intercepted water storage'],
+                    ['top_baseflow', 'topmodel baseflow [mm d-1]'],
+                    ['top_water_closure', 'topmodel water balance error [mm d-1]'],
+                    ['top_saturated_area', 'topmodel saturated area'],
+                    ]                                        
              }
 
     f=1.0
@@ -182,6 +187,20 @@ def parameters(folder=''):
             }
 
     return pgen, pcpy, psp
+
+
+def ptopmodel():
+    """
+    parameters of topmodel submodel
+    """
+    ptopmodel = {'dt': 86400.0, # timestep (s)
+            'm': 0.025, # scaling depth (m)
+            'ko': 0.001, # transmissivity parameter (ms-1)
+            'twi_cutoff': 99.5,  # cutoff of cumulative twi distribution (%)
+            'so': 0.05 # initial saturation deficit (m)
+           }
+    return ptopmodel
+
 
 
 def topsoil():
