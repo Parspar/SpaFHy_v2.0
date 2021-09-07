@@ -83,6 +83,9 @@ cmask = results_stand['parameters_cmask']
 sitetype = results_stand['parameters_sitetype']
 soilclass = results_stand['parameters_soilclass']
 
+# indexes for tighet plots
+zx = np.arange(20, 171, 1)
+zy = np.arange(20, 246, 1)
 
 # results from spafhy topmodel to comparable form
 
@@ -322,82 +325,11 @@ plt.plot(results_stand['date'],results_stand['bucket_water_storage'].mean(['i','
 plt.plot(results_stand['date'],np.cumsum(results_stand['forcing_precipitation']),'k.', alpha=0.5, label='forcing_precipitation')
 plt.legend()
 
-#%%
-
-# soil moist plots
-
-# spafhy
-wet_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmax()
-dry_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmin()
-
-#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
-#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2.nc'
-#sar = Dataset(sar_path, 'r')
-
-# Plotting
-fig, axs = plt.subplots(nrows=2, ncols=4, figsize=(24,12));
-ax1 = axs[0][0]
-ax2 = axs[0][1]
-ax3 = axs[0][2]
-ax4 = axs[0][3]
-ax5 = axs[1][0]
-ax6 = axs[1][1]
-ax7 = axs[1][2]
-ax8 = axs[1][3]
-
-# 2D top moist
-im1 = ax1.imshow(results_2d['bucket_moisture_top'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-#fig.colorbar(im1, ax=ax1)
-ax1.title.set_text('2D top wet')
-
-im2 = ax2.imshow(results_2d['bucket_moisture_top'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-#fig.colorbar(im2, ax=ax2)
-ax2.title.set_text('2D top dry')
-
-# 2D root moist
-im3 = ax3.imshow(results_2d['bucket_moisture_root'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-#fig.colorbar(im3, ax=ax3)
-ax3.title.set_text('2D root wet')
-
-im4 = ax4.imshow(results_2d['bucket_moisture_root'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-fig.colorbar(im4, ax=ax4)
-ax4.title.set_text('2D root dry')
-
-# stand top moist
-im5 = ax5.imshow(results_stand['bucket_moisture_top'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-#fig.colorbar(im5, ax=ax5)
-ax5.title.set_text('stand top wet')
-
-im6 = ax6.imshow(results_stand['bucket_moisture_top'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-#fig.colorbar(im6, ax=ax6)
-ax6.title.set_text('stand top dry')
-
-# stand root moist
-im7 = ax7.imshow(results_stand['bucket_moisture_root'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-#fig.colorbar(im7, ax=ax7)
-ax7.title.set_text('stand root wet')
-
-im8 = ax8.imshow(results_stand['bucket_moisture_root'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-fig.colorbar(im8, ax=ax8)
-ax8.title.set_text('stand root dry')
-
-'''
-ax1.axis("off")
-ax2.axis("off")
-ax3.axis("off")
-ax4.axis("off")
-ax5.axis("off")
-ax6.axis("off")
-ax7.axis("off")
-ax8.axis("off")
-'''
 
 #%%
 
 # soil moist plots without topsoil
 
-# soil moist plots
-
 # spafhy
 wet_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmax()
 dry_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmin()
@@ -407,35 +339,59 @@ dry_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmin()
 #sar = Dataset(sar_path, 'r')
 
 # Plotting
-fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(12,12));
-ax1 = axs[0][0]
-ax2 = axs[0][1]
-ax3 = axs[1][0]
-ax4 = axs[1][1]
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(14,12));
+ax1 = axs[0][2]
+ax2 = axs[1][2]
+
+ax3 = axs[0][0]
+ax4 = axs[1][0]
+
+ax5 = axs[0][1]
+ax6 = axs[1][1]
 
 # 2D root moist
-im1 = ax1.imshow(results_2d['bucket_moisture_root'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im1 = ax1.imshow(results_2d['bucket_moisture_root'][wet_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 #fig.colorbar(im3, ax=ax3)
 ax1.title.set_text('2D root wet')
 
-im2 = ax2.imshow(results_2d['bucket_moisture_root'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-fig.colorbar(im2, ax=ax2)
+im2 = ax2.imshow(results_2d['bucket_moisture_root'][dry_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+fig.colorbar(im2, cax=cbar_ax, label=r'$\theta$ m$^3$m$^{-3}$')
+
+#fig.colorbar(im2, ax=ax2, orientation='horizontal')
 ax2.title.set_text('2D root dry')
 
 # stand root moist
-im3 = ax3.imshow(results_stand['bucket_moisture_root'][wet_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im3 = ax3.imshow(results_stand['bucket_moisture_root'][wet_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 #fig.colorbar(im7, ax=ax7)
 ax3.title.set_text('stand root wet')
 
-im4 = ax4.imshow(results_stand['bucket_moisture_root'][dry_day,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
-fig.colorbar(im4, ax=ax4)
+im4 = ax4.imshow(results_stand['bucket_moisture_root'][dry_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+#fig.colorbar(im4, ax=ax4)
 ax4.title.set_text('stand root dry')
 
+im5 = ax5.imshow(bu_catch['Wliq'][ix+wet_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+ax5.title.set_text('catch root wet')
+
+im6 = ax6.imshow(bu_catch['Wliq'][ix+dry_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+ax6.title.set_text('catch root dry')
+
+ax1.axis('off')
+ax2.axis('off')
+ax3.axis('off')
+ax4.axis('off')
+ax5.axis('off')
+ax6.axis('off')
+
+
+if saveplots == True:
+        plt.savefig(f'theta_wet_dry_{today}.pdf')
+        plt.savefig(f'theta_wet_dry_{today}.png')
 
 #%%
-
-# point examples from mineral and openmire without SAR
-
+# preparing soil moisture datas
+# point examples from mineral and openmire
 # soilscouts at Kenttarova
 folder = r'C:\SpaFHy_v1_Pallas\data\obs'
 soil_file = 'soilscouts_s3_s5_s18.csv'
@@ -451,7 +407,6 @@ ecmoist['time'] = pd.to_datetime(ecmoist['time'])
 #soilm = soilscout.merge(ecmoist)
 
 soilm = pd.concat([ecmoist, soilscout]).sort_values('time').reset_index(drop=True)
-
 
 l_loc = [60, 60]
 spa_wliq_2d_root = results_2d['bucket_moisture_root']
@@ -500,9 +455,10 @@ soilm.index = soilm['time']
 
 #soilm = soilm.loc[(soilm.index > '2018-04-01') & (soilm.index < '2019-12-01')]
 
-
 poi = 1085
-# Plotting
+
+#%%
+# Plotting soil moisture comparison
 fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(12,4));
 ax1 = axs[0]
 ax2 = axs[1]
@@ -514,7 +470,7 @@ ax1.plot(soilm['spa_k_st_root'], alpha=0.8)
 ax1.plot(soilm['spa_k_ca_root'], alpha=0.8)
 #ax1.plot(soilm.index[poi], 0.05, marker='o', mec='k', mfc='r', alpha=0.5, ms=8.0)
 #ax1.axvline(soilm.index[poi], 0, 0.6, label='pyplot vertical line')
-ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
+#ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
 
 #ax1.plot(soilm['s3'], 'r', alpha=0.4)
 #ax1.plot(soilm['s5'], alpha=0.4)
@@ -523,24 +479,32 @@ ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
 #ax1.plot(soilm['SH-5B'], 'g', alpha=0.2)
 #ax1.plot(soilm['SH-20A'], 'g', alpha=0.8)
 #ax1.plot(soilm['SH-20B'], 'g', alpha=0.95)
-ax1.title.set_text('Mineral')
-ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
-y = ax1.set_ylabel(r"${\Theta}$")
-y.set_rotation(0)
-ax1.set_ylim(0,0.6)
+#ax1.title.set_text('Mineral')
+ax1.text(dates_spa[1], 0.53, 'Mineral')
+#ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], 
+#           ncol=3, loc='upper center')# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
+ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], bbox_to_anchor=(0.7,1.3), ncol=3)
+y = ax1.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
+#y.set_rotation(0)
+ax1.set_ylim(0.1,0.5)
+ax1.axes.get_xaxis().set_visible(False)
+
 
 im2 = ax2.plot(soilm['spa_l_2d_root'], alpha=0.8)
 ax2.plot(soilm['spa_l_st_root'], alpha=0.8)
 ax2.plot(soilm['spa_l_ca_root'], alpha=0.8)
 #ax2.plot(soilm.index[poi], 0.45, marker='o', mec='k', mfc='g', alpha=0.5, ms=8.0)
-ax2.axvline(soilm.index[poi], ymin=0, ymax=1, color='k', alpha=0.4)
-ax2.title.set_text('Mire')
-ax2.set_ylim(0.35,1.0)
-y = ax2.set_ylabel(r"${\Theta}$")
-y.set_rotation(0)
-ax2.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
+#ax2.axvline(soilm.index[poi], ymin=0, ymax=1, color='k', alpha=0.4)
+ax2.text(dates_spa[1], 1.03, 'Mire')
+#ax2.title.set_text('Mire')
+ax2.set_ylim(0.3,1.0)
+y = ax2.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
+#y.set_rotation(0)
+#ax2.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
 
-#g.suptitle('SpaFHy stand vs. 2D')
+if saveplots == True:
+        plt.savefig(f'theta_model_ts_{today}.pdf')
+        plt.savefig(f'theta_model_ts_{today}.png')
 
 #%% 
 
