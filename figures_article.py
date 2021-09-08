@@ -25,15 +25,15 @@ from matplotlib.patches import Polygon
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202109081716.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_2d.nc'
+outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202109081605.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
-outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_catch.nc'
+outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202109081605.nc'
 results_catch = read_results(outputfile_catch)
 
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
@@ -45,7 +45,7 @@ results_catch = read_results(outputfile_catch)
 # cell locations of kenttarova
 kenttarova, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\Lompolonjanka\16b\sve_kenttarova_soilmoist.asc')
 kenttarova_loc = np.where(kenttarova == 0)
-k_loc = list([int(kenttarova_loc[1])-2, int(kenttarova_loc[0])-2])
+k_loc = list([int(kenttarova_loc[1]), int(kenttarova_loc[0])])
 l_loc = [60, 60]
 
 dates_spa = []
@@ -60,6 +60,7 @@ forc = pd.read_csv(fp, sep=';', date_parser=['time'])
 forc['time'] = pd.to_datetime(forc['time'])
 forc.index = forc['time']
 forc = forc[forc['time'].isin(dates_spa)]
+forc = forc[0:-105]
 ix_no_p = np.where(forc['rainfall'] == 0)[0]
 ix_p = np.where(forc['rainfall'] > 0)[0]
 ix_pp = ix_p - 1
@@ -328,6 +329,22 @@ if saveplots == True:
         plt.savefig(f'theta_wet_dry_{today}.png')
 
 #%%
+
+# day with average bucket water storage as reference
+
+stand_av = np.nansum(results_stand['bucket_water_storage'], axis=(1,2))
+stand_av_ix = np.where(stand_av == np.median(stand_av))[0][0]
+catch_av = np.nansum(results_catch['bucket_water_storage'], axis=(1,2))
+catch_av_ix = np.where(catch_av == np.median(catch_av))[0][0]
+td_av = np.nansum(results_2d['bucket_water_storage'], axis=(1,2))
+td_av_ix = np.where(td_av == np.median(td_av))[0][0]
+
+
+
+
+
+#%%
+
 # preparing soil moisture datas
 # point examples from mineral and openmire
 # soilscouts at Kenttarova
@@ -416,15 +433,13 @@ ax1.plot(soilm['spa_k_ca_root'], alpha=0.8)
 #ax1.plot(soilm['s3'], 'r', alpha=0.4)
 #ax1.plot(soilm['s5'], alpha=0.4)
 #ax1.plot(soilm['s18'], 'r', alpha=0.9)
-#ax1.plot(soilm['SH-5A'], 'g', alpha=0.6)
-#ax1.plot(soilm['SH-5B'], 'g', alpha=0.2)
-#ax1.plot(soilm['SH-20A'], 'g', alpha=0.8)
-#ax1.plot(soilm['SH-20B'], 'g', alpha=0.95)
-#ax1.title.set_text('Mineral')
+#ax1.plot(soilm['SH-5A'], 'b', alpha=0.6)
+#ax1.plot(soilm['SH-5B'], 'b', alpha=0.2)
+ax1.plot(soilm['SH-20A'], 'b', alpha=0.8)
+ax1.plot(soilm['SH-20B'], 'b', alpha=0.95)
 ax1.text(dates_spa[1], 0.53, 'Mineral')
-#ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], 
-#           ncol=3, loc='upper center')# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
-ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], bbox_to_anchor=(0.7,1.3), ncol=3)
+#ax1.legend(['2D root', 'stand root', 'catch root', 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
+#ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], bbox_to_anchor=(0.7,1.3), ncol=3)
 y = ax1.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
 #y.set_rotation(0)
 ax1.set_ylim(0.1,0.5)
@@ -506,12 +521,12 @@ ec_full['time'] = pd.to_datetime(ec_full['time'])
 ec = ec_full[ec_full['time'].isin(dates_spa)]
 ec.index = ec['time']
 ec_full.index = ec_full['time']
-#ec['ET-1-KR'].iloc[ec['time'] < '2017-01-01'] = np.nan
-#ec['ET-1-LV'].iloc[ec['time'] < '2017-01-01'] = np.nan
+ec['ET-1-KR'].iloc[(ec['time'] < '2017-01-01') & (ec['time'] > '2016-01-01')] = np.nan
+#ec['ET-1-LV'].iloc[(ec['time'] < '2017-01-01') & (ec['time'] > '2016-01-01')] = np.nan
 ec['ET-1-KR'].iloc[ix_p] = np.nan; ec['ET-1-LV'].iloc[ix_p] = np.nan
 ec['ET-1-KR'].iloc[ix_pp] = np.nan; ec['ET-1-LV'].iloc[ix_pp] = np.nan
 ec['ET-1-KR'].loc[ec['ET-1-KR'] < 0] = np.nan
-ec['ET-1-LV'].loc[ec['ET-1-KR'] < 0] = np.nan
+ec['ET-1-LV'].loc[ec['ET-1-LV'] < 0] = np.nan
 
 #dry et
 results_2d['dry_et'] = results_2d['canopy_evaporation'] + results_2d['bucket_evaporation'] + results_2d['canopy_transpiration']
@@ -650,6 +665,55 @@ if saveplots == True:
         
 #%%
 
+# KENTTÄROVA AND LOMPOLO VS STAND
+
+
+fig3 = plt.figure(constrained_layout=True, figsize=(14,7))
+gs = fig3.add_gridspec(2, 4)
+
+f3_ax1 = fig3.add_subplot(gs[0, :3])
+f3_ax1.set_title('Kenttärova')
+f3_ax1.plot(dates_spa, results_stand['dry_et'][:,k_loc[0],k_loc[1]], alpha=0.9)
+#f3_ax1.plot(dates_spa, results_stand['forcing_vapor_pressure_deficit'])
+f3_ax1.plot(ec['ET-1-KR'], 'k.',  alpha=0.4,markersize=10)
+f3_ax1.legend(['stand', 'ec'], loc='upper right')
+f3_ax1.axes.get_xaxis().set_visible(False)
+f3_ax1.set(ylim=(-0.5, 9))
+f3_ax1.set_ylabel(r'ET mm d$^{-1}$')
+
+f3_ax2 = fig3.add_subplot(gs[0, 3])
+x2 = sns.regplot(ax=f3_ax2, x=ET_flat['stand_kr_et'], y=ET_flat['ET-1-KR'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+f3_ax2.set(ylim=(0, 5))
+f3_ax2.set(xlim=(0, 5))
+#f3_ax2.axes.get_xaxis().set_visible(False)
+f3_ax2.yaxis.tick_right()
+f3_ax2.set_ylabel(r'ET$_{obs}$ (mm d$^{-1}$)')
+f3_ax2.set_xlabel(r'ET$_{mod}$ (mm d$^{-1}$)')
+
+
+# Plotting Lompolonjänkkä ET mod vs. obs
+
+f3_ax3 = fig3.add_subplot(gs[1, :3])
+f3_ax3.set_title('Lompolonjänkkä')
+f3_ax3.plot(dates_spa, results_stand['dry_et'][:,l_loc[0],l_loc[1]], alpha=0.9)
+f3_ax3.plot(ec['ET-1-LV'], 'k.', alpha=0.4,markersize=10)
+f3_ax3.legend(['stand', 'ec'], loc='upper right')
+f3_ax3.set(ylim=(-0.5, 9))
+f3_ax3.set_ylabel(r'ET mm d$^{-1}$')
+
+f3_ax4 = fig3.add_subplot(gs[1, 3])
+x4 = sns.regplot(ax=f3_ax4, x=ET_flat['stand_lv_et'], y=ET_flat['ET-1-LV'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+f3_ax4.set(ylim=(0, 5))
+f3_ax4.set(xlim=(0, 5))
+f3_ax4.yaxis.tick_right()
+f3_ax4.set_ylabel(r'ET$_{obs}$ (mm d$^{-1}$)')
+f3_ax4.set_xlabel(r'ET$_{mod}$ (mm d$^{-1}$)')
+
+if saveplots == True:
+        plt.savefig(f'ET_MOD_OBS_KR_LV_{today}.pdf')
+        plt.savefig(f'ET_MOD_OBS_KR_LV_{today}.png')
+
+#%%
 # SWE file
 
 fn = r'C:\SpaFHy_v1_Pallas\data\obs\SWE_survey_2018-02-22_2021-05-16.txt'
@@ -704,24 +768,28 @@ if saveplots == True:
 # specific discharge
 
 # Plotting
-fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(14,8));
+fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(14,6));
 ax1 = axs[0]
 ax2 = axs[1]
-ax3 = axs[2]
 
-ax1.plot(dates_spa, np.nanmean(results_stand['bucket_drainage'], axis=(1,2)) + np.nanmean(results_stand['bucket_surface_runoff'], axis=(1,2)))
+#ax1.plot(dates_spa, np.nanmean(results_stand['bucket_drainage'], axis=(1,2)) + np.nanmean(results_stand['bucket_surface_runoff'], axis=(1,2)))
+#ax1.plot(q)
+#ax1.legend(['stand SD', 'obs SD'], loc='upper right')
+#ax1.set(ylim=(0, 10))
+
+ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2)))
 ax1.plot(q)
-ax1.legend(['stand SD', 'obs SD'], loc='upper right')
-ax1.set(ylim=(0, 10))
+ax1.legend(['catch', 'obs'], loc='upper right')
+ax1.set(ylim=(-1, 25))
+ax1.set_ylabel(r'Qf mm d$^{-1}$')
+ax1.axes.get_xaxis().set_visible(False)
 
-ax2.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2)))
+ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2)))
 ax2.plot(q)
-ax2.legend(['catch SD', 'obs SD'], loc='upper right')
-ax2.set(ylim=(0, 10))
+ax2.legend(['2D', 'obs'], loc='upper right')
+ax2.set(ylim=(-1, 25))
+ax2.set_ylabel(r'Qf mm d$^{-1}$')
 
-ax3.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2)))
-ax3.plot(q)
-ax3.legend(['2D SD', 'obs SD'], loc='upper right')
-ax3.set(ylim=(0, 10))
-
-
+if saveplots == True:
+        plt.savefig(f'QF_MOD_OBS_{today}.pdf')
+        plt.savefig(f'QF_MOD_OBS_{today}.png')

@@ -172,7 +172,11 @@ class CanopyGrid():
         Rn = np.maximum(2.57 * self.LAI / (2.57 * self.LAI + 0.57) - 0.2,
                         0.55) * Rg  # Launiainen et al. 2016 GCB, fit to Fig 2a
 
+        # vpd limit
+        #if VPD < 0.1:
+        #    VPD = 0.1
 
+        
         """ --- update phenology: self.ddsum & self.X ---"""
         #self.update_daily(Ta, doy)
         self._degreeDays(Ta, doy)
@@ -184,7 +188,7 @@ class CanopyGrid():
         """ --- aerodynamic conductances --- """
         Ra, _, Ras, _, _, _ = aerodynamics(self.LAI, self.hc, U, w=0.01, zm=self.zmeas,
                                                   zg=self.zground, zos=self.zo_ground)
-
+        
         """ --- interception, evaporation and snowpack --- """
         PotInf, Trfall, Evap, Interc, MBE, erate, unload, fact = self.canopy_water_snow(dt, Ta, Prec, Rn, VPD, Ra=Ra)
 
