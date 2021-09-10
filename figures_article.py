@@ -25,15 +25,15 @@ from matplotlib.patches import Polygon
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202109081716.nc'
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202109081605.nc'
+outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
-outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202109081605.nc'
+outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_catch.nc'
 results_catch = read_results(outputfile_catch)
 
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
@@ -46,7 +46,8 @@ results_catch = read_results(outputfile_catch)
 kenttarova, _, _, _, _ = read_AsciiGrid(r'C:\PALLAS_RAW_DATA\Lompolonjanka\16b\sve_kenttarova_soilmoist.asc')
 kenttarova_loc = np.where(kenttarova == 0)
 k_loc = list([int(kenttarova_loc[1]), int(kenttarova_loc[0])])
-l_loc = [60, 60]
+k_loc = [118, 136]
+l_loc = [46, 54]
 
 dates_spa = []
 for d in range(len(results_stand['date'])):
@@ -54,7 +55,7 @@ for d in range(len(results_stand['date'])):
 
 # forcing file
 folder = r'C:\SpaFHy_v1_Pallas_2D\testcase_input\forcing'
-ffile = 'Kenttarova_forcing.csv'
+ffile = 'Kenttarova_forcing_new.csv'
 fp = os.path.join(folder, ffile)
 forc = pd.read_csv(fp, sep=';', date_parser=['time'])
 forc['time'] = pd.to_datetime(forc['time'])
@@ -349,21 +350,14 @@ td_av_ix = np.where(td_av == np.median(td_av))[0][0]
 # point examples from mineral and openmire
 # soilscouts at Kenttarova
 folder = r'C:\SpaFHy_v1_Pallas\data\obs'
-soil_file = 'soilscouts_s3_s5_s18.csv'
+soil_file = 'soilm_kenttarova.csv'
 fp = os.path.join(folder, soil_file)
-soilscout = pd.read_csv(fp, sep=';', date_parser=['time'])
-soilscout['time'] = pd.to_datetime(soilscout['time'])
+soilm = pd.read_csv(fp, sep=';', date_parser=['time'])
+soilm['time'] = pd.to_datetime(soilm['time'])
+soilm['mean_20'] = soilm[['SH-20A', 'SH-20B', 's18']].mean(numeric_only=True, axis=1)
+soilm['sd_20'] = soilm[['SH-20A', 'SH-20B', 's18']].std(numeric_only=True, axis=1)
 
-# ec observation data
-ec_fp = r'C:\SpaFHy_v1_Pallas\data\obs\ec_soilmoist.csv'
-ecmoist = pd.read_csv(ec_fp, sep=';', date_parser=['time'])
-ecmoist['time'] = pd.to_datetime(ecmoist['time'])
-
-#soilm = soilscout.merge(ecmoist)
-
-soilm = pd.concat([ecmoist, soilscout]).sort_values('time').reset_index(drop=True)
-
-l_loc = [60, 60]
+#l_loc = [60, 60]
 spa_wliq_2d_root = results_2d['bucket_moisture_root']
 spa_wliq_2d_top = results_2d['bucket_moisture_top']
 
@@ -414,6 +408,7 @@ soilm.index = soilm['time']
 #soilm = soilm.loc[(soilm.index > '2018-04-01') & (soilm.index < '2019-12-01')]
 
 poi = 1085
+#poi = np.where(results_stand['bucket_moisture_root'][:,k_loc[0], k_loc[1]] + 0.09 < results_2d['bucket_moisture_root'][:,k_loc[0], k_loc[1]])[0][0]
 
 #%%
 # Plotting soil moisture comparison
@@ -425,20 +420,24 @@ ax2 = axs[1]
 
 im1 = ax1.plot(soilm['spa_k_2d_root'], alpha=0.8)
 ax1.plot(soilm['spa_k_st_root'], alpha=0.8)
-ax1.plot(soilm['spa_k_ca_root'], alpha=0.8)
+#ax1.plot(soilm['spa_k_ca_root'], alpha=0.8)
 #ax1.plot(soilm.index[poi], 0.05, marker='o', mec='k', mfc='r', alpha=0.5, ms=8.0)
 #ax1.axvline(soilm.index[poi], 0, 0.6, label='pyplot vertical line')
 #ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
 
 #ax1.plot(soilm['s3'], 'r', alpha=0.4)
 #ax1.plot(soilm['s5'], alpha=0.4)
-#ax1.plot(soilm['s18'], 'r', alpha=0.9)
-#ax1.plot(soilm['SH-5A'], 'b', alpha=0.6)
-#ax1.plot(soilm['SH-5B'], 'b', alpha=0.2)
-ax1.plot(soilm['SH-20A'], 'b', alpha=0.8)
-ax1.plot(soilm['SH-20B'], 'b', alpha=0.95)
+#ax1.plot(soilm['s18'], 'k', alpha=0.8)
+#ax1.plot(soilm['SH-5A'], 'k', alpha=0.8)
+#ax1.plot(soilm['SH-5B'], 'k', alpha=0.8)
+#ax1.plot(soilm['SH-20A'], 'k', alpha=0.8)
+#ax1.plot(soilm['mean'],  'k', alpha=0.8)
+ax1.plot(soilm['mean_20'],  'k', alpha=0.6)
+#ax1.plot(soilm['mean_20'] + soilm['sd_20'],  'k', alpha=0.4)
+#ax1.plot(soilm['mean_20'] - soilm['sd_20'],  'k', alpha=0.4)
+
 ax1.text(dates_spa[1], 0.53, 'Mineral')
-#ax1.legend(['2D root', 'stand root', 'catch root', 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
+ax1.legend(['2D root', 'stand/catch root', 'mean -20cm', 'SH-20B'], ncol = 4)
 #ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], bbox_to_anchor=(0.7,1.3), ncol=3)
 y = ax1.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
 #y.set_rotation(0)
@@ -487,7 +486,7 @@ ax3 = axs[2]
 # 2D root moist
 im1 = ax1.imshow(results_2d['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im1, ax=ax1)
-ax1.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
+ax1.scatter(k_loc[1],k_loc[0],color='r', alpha=0.4)
 ax1.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
 ax1.title.set_text(f'2D root {dates_spa[poi]}')
 
@@ -495,14 +494,14 @@ ax1.title.set_text(f'2D root {dates_spa[poi]}')
 im2 = ax2.imshow(results_stand['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im2, ax=ax2)
 ax2.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
-ax2.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
+ax2.scatter(k_loc[1],k_loc[0],color='r', alpha=0.4)
 ax2.title.set_text(f'stand root {dates_spa[poi]}')
 
 # catchment moist
 im3 = ax3.imshow(results_catch['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 fig.colorbar(im3, ax=ax3)
 ax3.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
-ax3.scatter(k_loc[0],k_loc[1],color='r', alpha=0.4)
+ax3.scatter(k_loc[1],k_loc[0],color='r', alpha=0.4)
 ax3.title.set_text(f'catch root {dates_spa[poi]}')
 
 
@@ -529,11 +528,11 @@ ec['ET-1-KR'].loc[ec['ET-1-KR'] < 0] = np.nan
 ec['ET-1-LV'].loc[ec['ET-1-LV'] < 0] = np.nan
 
 #dry et
-results_2d['dry_et'] = results_2d['canopy_evaporation'] + results_2d['bucket_evaporation'] + results_2d['canopy_transpiration']
+results_2d['dry_et'] = results_2d['bucket_evaporation'] + results_2d['canopy_transpiration'] #+ results_2d['canopy_evaporation']
 #results_2d['dry_et'][ix_p,:,:] = np.nan
-results_stand['dry_et'] = results_stand['canopy_evaporation'] + results_stand['bucket_evaporation'] + results_stand['canopy_transpiration']
+results_stand['dry_et'] = results_stand['bucket_evaporation'] + results_stand['canopy_transpiration'] #+ results_stand['canopy_evaporation'] 
 #results_stand['dry_et'][ix_p,:,:] = np.nan
-results_catch['dry_et'] = results_catch['canopy_evaporation'] + results_catch['bucket_evaporation'] + results_catch['canopy_transpiration']
+results_catch['dry_et'] = results_catch['bucket_evaporation'] + results_catch['canopy_transpiration'] #+ results_catch['canopy_evaporation']
 #catch_dry_et[ix_p,:,:] = np.nan
 
 # scatter et sim vs. obs

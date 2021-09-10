@@ -11,7 +11,7 @@ def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
             'start_date': '2012-01-01',
-            'end_date': '2019-10-01',
+            'end_date': '2021-09-05',
             'spinup_end': '2012-12-31',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
@@ -22,7 +22,7 @@ def parameters(folder=''):
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(folder+r'/parameters')),
-            'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing.csv')),
+            'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing_new.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
             'results_folder': r'results/',
@@ -70,10 +70,10 @@ def parameters(folder=''):
                     ['canopy_throughfall', 'throughfall to moss or snow [mm d-1]'],
                     ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
                     ['canopy_water_closure', 'canopy water balance error [mm d-1]'],
-                    ['canopy_phenostate', 'canopy phenological state [-]'],
+                    #['canopy_phenostate', 'canopy phenological state [-]'],
                     ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     ['canopy_degree_day_sum', 'sum of degree days [degC]'],
-                    ['canopy_fLAI', 'state of LAI'],    
+                    #['canopy_fLAI', 'state of LAI'],    
                     ['canopy_water_storage', 'canopy intercepted water storage'],
                     ['top_baseflow', 'topmodel baseflow [mm d-1]'],
                     ['top_water_closure', 'topmodel water balance error [mm d-1]'],
