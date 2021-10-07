@@ -29,7 +29,7 @@ outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
+outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_2d.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
@@ -62,8 +62,10 @@ forc['time'] = pd.to_datetime(forc['time'])
 forc.index = forc['time']
 forc = forc[forc['time'].isin(dates_spa)]
 forc = forc[0:-105]
-ix_no_p = np.where(forc['rainfall'] == 0)[0]
-ix_p = np.where(forc['rainfall'] > 0)[0]
+ix_no_p = np.where(results_stand['forcing_precipitation'] == 0)[0]
+#ix_no_p = np.where(forc['rainfall'] == 0)[0]
+ix_p = np.where(results_stand['forcing_precipitation'] > 0)[0]
+#ix_p = np.where(forc['rainfall'] > 0)[0]
 ix_pp = ix_p - 1
 ix_pp = ix_pp[ix_pp >= 0]
 #ix_no_p_d = forc.index[np.where(forc['rainfall'] == 0)[0]]
@@ -87,7 +89,8 @@ today = date.today()
 
 cmask = results_stand['parameters_cmask']
 sitetype = results_stand['parameters_sitetype']
-soilclass = results_stand['parameters_soilclass']
+soilclass = np.array(results_stand['parameters_soilclass'])
+soilclass_copy = np.array(results_stand['parameters_soilclass'])
 
 # indexes for tighet plots
 zx = np.arange(20, 171, 1)
@@ -266,6 +269,9 @@ plt.plot(dates_spa, results_2d['WB_RO'], label='2D')
 plt.legend()
 
 
+
+
+
 #%%
 
 # soil moist plots without topsoil
@@ -331,6 +337,188 @@ if saveplots == True:
 
 #%%
 
+# COMPARISON BETWEEN MODELS
+# SUBSTRACTED IN JUNE AND SEPT
+
+# spafhy
+#wet_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmax()
+#dry_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmin()
+june = np.where(pd.to_datetime(dates_spa) == '2021-06-17')[0][0]
+sept = np.where(pd.to_datetime(dates_spa) == '2021-09-01')[0][0]
+
+#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
+#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2.nc'
+#sar = Dataset(sar_path, 'r')
+
+# Plotting
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(14,12));
+ax1 = axs[0][2]
+ax2 = axs[1][2]
+
+ax3 = axs[0][0]
+ax4 = axs[1][0]
+
+ax5 = axs[0][1]
+ax6 = axs[1][1]
+
+# 2D root moist
+im1 = ax1.imshow(results_stand['bucket_moisture_root'][june,zy,zx]
+                 - results_catch['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
+#fig.colorbar(im3, ax=ax3)
+ax1.title.set_text('stand - catch (june)')
+
+im2 = ax2.imshow(results_stand['bucket_moisture_root'][sept,zy,zx]
+                 - results_catch['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
+fig.colorbar(im2, cax=cbar_ax, label=r'$\theta$ m$^3$m$^{-3}$')
+
+#fig.colorbar(im2, ax=ax2, orientation='horizontal')
+ax2.title.set_text('stand - catch (sept)')
+
+# stand root moist
+im3 = ax3.imshow(results_2d['bucket_moisture_root'][june,zy,zx] 
+                 - results_stand['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
+#fig.colorbar(im7, ax=ax7)
+ax3.title.set_text('2d - stand (june)')
+
+im4 = ax4.imshow(results_2d['bucket_moisture_root'][sept,zy,zx] 
+                 - results_stand['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
+#fig.colorbar(im4, ax=ax4)
+ax4.title.set_text('2d - stand (sept)')
+
+im5 = ax5.imshow(results_2d['bucket_moisture_root'][june,zy,zx] 
+                 - results_catch['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
+ax5.title.set_text('2d - catch (june)')
+
+im6 = ax6.imshow(results_2d['bucket_moisture_root'][sept,zy,zx] 
+                 - results_catch['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
+ax6.title.set_text('2d - catch (sept)')
+
+ax1.axis('off')
+ax2.axis('off')
+ax3.axis('off')
+ax4.axis('off')
+ax5.axis('off')
+ax6.axis('off')
+
+
+if saveplots == True:
+        plt.savefig(f'theta_diff_june_sept_{today}.pdf')
+        plt.savefig(f'theta_diff_june_sept_{today}.png')
+#%%
+
+soilclass_2 = np.ravel(soilclass)
+soilclass_4 = np.ravel(soilclass_copy)
+r, c = np.shape(soilclass)
+soilclass_2[soilclass_2 != 2] = np.nan
+soilclass_2[soilclass_2 == 2] = 1
+soilclass_4[soilclass_4 != 4] = np.nan
+soilclass_4[soilclass_4 == 4] = 1
+
+soilclass_2 = soilclass_2.reshape(r, c)
+soilclass_4 = soilclass_4.reshape(r, c)
+
+td_sum2 = np.nanmean(results_2d['bucket_moisture_root'] * soilclass_2, axis=(1,2))
+stand_sum2 = np.nanmean(results_stand['bucket_moisture_root'] * soilclass_2, axis=(1,2))
+catch_sum2 = np.nanmean(results_catch['bucket_moisture_root'] * soilclass_2, axis=(1,2))
+td_sum4 = np.nanmean(results_2d['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+stand_sum4 = np.nanmean(results_stand['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+catch_sum4 = np.nanmean(results_catch['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+
+# Plotting
+fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(12,8));
+ax1 = axs[0]
+ax2 = axs[1]
+sns.set_style('whitegrid')
+
+ax1.set_title('Mineral soil')
+ax1.plot(dates_spa, td_sum2, label='2D')
+ax1.plot(dates_spa, stand_sum2, label='stand')
+ax1.plot(dates_spa, catch_sum2, label='catch')
+ax1.legend(ncol=3)
+ax1.set_ylabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
+
+ax2.set_title('Peat soil')
+ax2.plot(dates_spa, td_sum4, label='2D')
+ax2.plot(dates_spa, stand_sum4, label='stand')
+ax2.plot(dates_spa, catch_sum4, label='catch')
+ax2.legend(ncol=3)
+ax2.set_ylabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
+
+if saveplots == True:
+        plt.savefig(f'theta_mod_mean_ts_{today}.pdf')
+        plt.savefig(f'theta_mod_mean_ts_{today}.png')
+
+
+#%%
+
+plt.hist(np.array(results_2d['bucket_moisture_root'][:,zy,zx]).flatten(), bins=np.arange(0.1,1,0.01)); plt.ylim(0, 1e7)
+plt.hist(np.array(results_stand['bucket_moisture_root'][:,zy,zx]).flatten(), bins=np.arange(0.1,1,0.01)); plt.ylim(0, 1e7)
+plt.hist(np.array(results_catch['bucket_moisture_root'][:,zy,zx]).flatten(), bins=np.arange(0.1,1,0.01)); plt.ylim(0, 1e7)
+
+
+#%%
+'''
+# Fixing random state for reproducibility
+np.random.seed(19680801)
+
+# some random data
+#x = np.random.randn(1000)
+#y = np.random.randn(1000)
+
+def scatter_hist(x, y, ax, ax_histx, ax_histy):
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
+
+    # the scatter plot:
+    ax.scatter(x, y)
+
+    # now determine nice limits by hand:
+    binwidth = 0.01
+    xymax = max(np.nanmax(x), np.nanmax(y))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+
+    bins = np.arange(0.1, lim + binwidth, binwidth)
+    ax_histx.hist(x, bins=bins)
+    ax_histy.hist(y, bins=bins, orientation='horizontal')
+    
+
+x = list(soilm['spa_k_st_root'][np.isfinite(soilm['spa_k_st_root'])]); y = list(soilm['mean'][np.isfinite(soilm['spa_k_st_root'])])
+m, b = np.polyfit(x[0:500], y[0:500], 1)
+
+# start with a square Figure
+fig = plt.figure(figsize=(8, 8))
+
+# Add a gridspec with two rows and two columns and a ratio of 2 to 7 between
+# the size of the marginal axes and the main axes in both directions.
+# Also adjust the subplot parameters for a square plot.
+gs = fig.add_gridspec(2, 2,  width_ratios=(7, 2), height_ratios=(2, 7),
+                      left=0.1, right=0.9, bottom=0.1, top=0.9,
+                      wspace=0.05, hspace=0.05)
+
+ax = fig.add_subplot(gs[1, 0])
+ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+
+# use the previously defined function
+scatter_hist(x, y, ax, ax_histx, ax_histy)
+ax.plot(x, m*x[0:500]+b)
+
+plt.show()
+
+#f3_ax2 = fig3.add_subplot(gs[0, 3])
+#ax_histx = fig.add_subplot(gs[0, 3], sharex=ax)
+#ax_histy = fig.add_subplot(gs[0, 3], sharey=ax)
+#obtain m (slope) and b(intercept) of linear regression line
+
+#add linear regression line to scatterplot 
+#scatter_hist(x, y, ax, ax_histx, ax_histy)
+'''
+
+#%%
+
 # day with average bucket water storage as reference
 
 stand_av = np.nansum(results_stand['bucket_water_storage'], axis=(1,2))
@@ -354,8 +542,16 @@ soil_file = 'soilm_kenttarova.csv'
 fp = os.path.join(folder, soil_file)
 soilm = pd.read_csv(fp, sep=';', date_parser=['time'])
 soilm['time'] = pd.to_datetime(soilm['time'])
-soilm['mean_20'] = soilm[['SH-20A', 'SH-20B', 's18']].mean(numeric_only=True, axis=1)
-soilm['sd_20'] = soilm[['SH-20A', 'SH-20B', 's18']].std(numeric_only=True, axis=1)
+soilm['mean'] = soilm[['SH-20A', 'SH-20B', 's18', 'SH-5A']].mean(numeric_only=True, axis=1)
+#soilm['sd_20'] = soilm[['SH-20A', 'SH-20B', 's18']].std(skipna=True, numeric_only=True, axis=1)
+soilm['min'] = soilm[['SH-20A', 'SH-20B', 's18', 's3', 'SH-5A', 'SH-5B']].min(skipna=True, numeric_only=True, axis=1)
+soilm['max'] = soilm[['SH-20A', 'SH-20B', 's18', 's3', 'SH-5A', 'SH-5B']].max(skipna=True, numeric_only=True, axis=1)
+soilm['iq25'] = soilm[['SH-20A', 'SH-20B', 's18', 'SH-5A']].quantile(q=0.25, numeric_only=True, axis=1)
+soilm['iq75'] = soilm[['SH-20A', 'SH-20B', 's18', 'SH-5A']].quantile(q=0.75, numeric_only=True, axis=1)
+
+# when freezing temp
+tneg = np.where(results_stand['forcing_air_temperature'] < 0)[0]
+tpos =  np.where(results_stand['forcing_air_temperature'] >= 0)[0]
 
 #l_loc = [60, 60]
 spa_wliq_2d_root = results_2d['bucket_moisture_root']
@@ -403,59 +599,68 @@ spa_wliq_df['time'] = dates_spa
 #soilm = pd.concat([soilm, spa_wliq_df]).sort_values('time').reset_index(drop=True)
 soilm = spa_wliq_df.merge(soilm)
 soilm.index = soilm['time']
+soilm['month'] = pd.DatetimeIndex(soilm.index).month
+winter_ix = np.where((soilm['month'] <= 4) | (soilm['month'] >= 11))[0]
+soilm.iloc[winter_ix] = np.nan
 #soilm = soilm[['s3', 's5', 's18', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B', 'spa_k', 'spa_l', 'spatop_k', 'spatop_l']]
 
 #soilm = soilm.loc[(soilm.index > '2018-04-01') & (soilm.index < '2019-12-01')]
 
 poi = 1085
-#poi = np.where(results_stand['bucket_moisture_root'][:,k_loc[0], k_loc[1]] + 0.09 < results_2d['bucket_moisture_root'][:,k_loc[0], k_loc[1]])[0][0]
+poi = np.where(results_stand['bucket_moisture_root'][:,k_loc[0], k_loc[1]] + 0.09 < results_2d['bucket_moisture_root'][:,k_loc[0], k_loc[1]])[0][0]
+
+#%%
+
+# preparing gw data
+
+
+
 
 #%%
 # Plotting soil moisture comparison
-fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(12,4));
-ax1 = axs[0]
-ax2 = axs[1]
 
-#fig.suptitle('Volumetric water content', fontsize=15)
+###
+fig3 = plt.figure(constrained_layout=True, figsize=(14,7))
+gs = fig3.add_gridspec(2, 4)
+sns.set_style('whitegrid')
 
-im1 = ax1.plot(soilm['spa_k_2d_root'], alpha=0.8)
-ax1.plot(soilm['spa_k_st_root'], alpha=0.8)
-#ax1.plot(soilm['spa_k_ca_root'], alpha=0.8)
-#ax1.plot(soilm.index[poi], 0.05, marker='o', mec='k', mfc='r', alpha=0.5, ms=8.0)
-#ax1.axvline(soilm.index[poi], 0, 0.6, label='pyplot vertical line')
-#ax1.axvline(soilm.index[poi], ymin=0, ymax=1, color='r', alpha=0.4)
+f3_ax1 = fig3.add_subplot(gs[0, :3])
+f3_ax1.set_title('Kenttärova')
+im1 = f3_ax1.plot(soilm['spa_k_2d_root'], 'g', alpha=0.7, label='2D')
+#f3_ax1.plot(soilm['spa_k_st_root'], 'blue', alpha=0.7, label='stand')
+f3_ax1.plot(soilm['spa_k_ca_root'], 'red', alpha=0.6, label='stand/catch')
+f3_ax1.plot(soilm['mean'],  'k', alpha=0.5, label=r'mean$_{obs}$')
+f3_ax1.fill_between(soilm.index, soilm['iq25'], soilm['iq75'], color='blue', alpha=0.2, label=r'IQR$_{obs}$')
 
-#ax1.plot(soilm['s3'], 'r', alpha=0.4)
-#ax1.plot(soilm['s5'], alpha=0.4)
-#ax1.plot(soilm['s18'], 'k', alpha=0.8)
-#ax1.plot(soilm['SH-5A'], 'k', alpha=0.8)
-#ax1.plot(soilm['SH-5B'], 'k', alpha=0.8)
-#ax1.plot(soilm['SH-20A'], 'k', alpha=0.8)
-#ax1.plot(soilm['mean'],  'k', alpha=0.8)
-ax1.plot(soilm['mean_20'],  'k', alpha=0.6)
-#ax1.plot(soilm['mean_20'] + soilm['sd_20'],  'k', alpha=0.4)
-#ax1.plot(soilm['mean_20'] - soilm['sd_20'],  'k', alpha=0.4)
-
-ax1.text(dates_spa[1], 0.53, 'Mineral')
-ax1.legend(['2D root', 'stand/catch root', 'mean -20cm', 'SH-20B'], ncol = 4)
-#ax1.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], bbox_to_anchor=(0.7,1.3), ncol=3)
-y = ax1.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
+f3_ax1.legend(ncol=5,bbox_to_anchor=(0.8, 1.3))
+y = f3_ax1.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
 #y.set_rotation(0)
-ax1.set_ylim(0.1,0.5)
-ax1.axes.get_xaxis().set_visible(False)
+f3_ax1.set_ylim(0.1,0.5)
+#f3_ax1.axes.get_xaxis().set_visible(False)
+
+f3_ax2 = fig3.add_subplot(gs[0, 3])
+x4 = sns.regplot(ax=f3_ax2, x=soilm['spa_k_st_root'], y=soilm['mean'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+f3_ax2.set(ylim=(0.1, 0.45))
+f3_ax2.set(xlim=(0.1, 0.45))
+f3_ax2.yaxis.tick_right()
+f3_ax2.set_ylabel(r'$\theta_{obs}$ (m$^3$m$^{-3}$)')
+f3_ax2.set_xlabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
 
 
-im2 = ax2.plot(soilm['spa_l_2d_root'], alpha=0.8)
-ax2.plot(soilm['spa_l_st_root'], alpha=0.8)
-ax2.plot(soilm['spa_l_ca_root'], alpha=0.8)
+
+f3_ax3 = fig3.add_subplot(gs[1, :3])
+f3_ax3.set_title('Lompolonjänkkä')
+im2 = f3_ax3.plot(soilm['spa_l_2d_root'],  'g', alpha=0.7, label='2D')
+f3_ax3.plot(soilm['spa_l_st_root'], 'red', alpha=0.6, label='stand/catch')
+#f3_ax3.plot(soilm['spa_l_ca_root'],  'red', alpha=0.6, label='catch')
 #ax2.plot(soilm.index[poi], 0.45, marker='o', mec='k', mfc='g', alpha=0.5, ms=8.0)
 #ax2.axvline(soilm.index[poi], ymin=0, ymax=1, color='k', alpha=0.4)
-ax2.text(dates_spa[1], 1.03, 'Mire')
+f3_ax3.text(dates_spa[1], 1.03, 'Mire')
 #ax2.title.set_text('Mire')
-ax2.set_ylim(0.3,1.0)
-y = ax2.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
-#y.set_rotation(0)
-#ax2.legend(['2D root', 'stand root', 'catch root', 'spatial plot'], ncol=2)# 's3 = -0.05', 's18 = -0.3', 'SH-5A', 'SH-5B', 'SH-20A', 'SH-20B'], ncol = 8)
+f3_ax3.set_ylim(0.4,1.0)
+f3_ax3.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
+#f3_ax3.legend(ncol=5)
+
 
 if saveplots == True:
         plt.savefig(f'theta_model_ts_{today}.pdf')
@@ -504,6 +709,29 @@ ax3.scatter(l_loc[1],l_loc[0],color='k', alpha=0.4)
 ax3.scatter(k_loc[1],k_loc[0],color='r', alpha=0.4)
 ax3.title.set_text(f'catch root {dates_spa[poi]}')
 
+#%%
+# Plotting
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(16,16));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[0][2]
+ax4 = axs[1][0]
+ax5 = axs[1][1]
+ax6 = axs[1][2]
+
+sns.regplot(ax=ax3, x=np.array(results_2d['bucket_moisture_root'][900:1000,:,:]).flatten(), 
+            y=np.array(results_stand['bucket_moisture_root'][900:1000,:,:]).flatten(), 
+            scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+sns.regplot(ax=ax2, x=np.array(results_2d['bucket_moisture_root'][poi,:,:]).flatten(), 
+            y=np.array(results_catch['bucket_moisture_root'][poi,:,:]).flatten(), 
+            scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+sns.regplot(ax=ax1, x=np.array(results_stand['bucket_moisture_root'][poi,:,:]).flatten(), 
+            y=np.array(results_catch['bucket_moisture_root'][poi,:,:]).flatten(), 
+            scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+
+ax4.imshow(results_stand['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+ax5.imshow(results_catch['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+ax6.imshow(results_2d['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
 
 
 #%%
@@ -676,7 +904,6 @@ f3_ax1.plot(dates_spa, results_stand['dry_et'][:,k_loc[0],k_loc[1]], alpha=0.9)
 #f3_ax1.plot(dates_spa, results_stand['forcing_vapor_pressure_deficit'])
 f3_ax1.plot(ec['ET-1-KR'], 'k.',  alpha=0.4,markersize=10)
 f3_ax1.legend(['stand', 'ec'], loc='upper right')
-f3_ax1.axes.get_xaxis().set_visible(False)
 f3_ax1.set(ylim=(-0.5, 9))
 f3_ax1.set_ylabel(r'ET mm d$^{-1}$')
 
@@ -718,9 +945,8 @@ if saveplots == True:
 fn = r'C:\SpaFHy_v1_Pallas\data\obs\SWE_survey_2018-02-22_2021-05-16.txt'
 SWE_m = pd.read_csv(fn, skiprows=5, sep=';', parse_dates = ['date'], encoding='iso-8859-1')
 SWE_m.index = SWE_m['date']
-SWE_m['SWE'].loc[SWE_m['date'] < '2018-07-07'] = np.nan
+#SWE_m['SWE'].loc[SWE_m['date'] < '2018-07-07'] = np.nan
 SWE_m = SWE_m[['SWE', 'SWE_sd', 'quality']]
-#SWE_m
 
 SWE = pd.DataFrame()
 SWE['mod_mean'] = np.nanmean(results_stand['canopy_snow_water_equivalent'], axis=(1,2))
@@ -732,18 +958,20 @@ SWE_all = SWE_all.dropna()
 
 #%%
 
-fig3 = plt.figure(constrained_layout=True, figsize=(12,4))
-gs = fig3.add_gridspec(1, 3)
+fig3 = plt.figure(constrained_layout=True, figsize=(14,3.5))
+gs = fig3.add_gridspec(1, 4)
 
-f3_ax1 = fig3.add_subplot(gs[0, :2])
+f3_ax1 = fig3.add_subplot(gs[0, :3])
+f3_ax1.plot(SWE_m['SWE'], 'k.', markersize=6)
+#f3_ax1.plot(SWE_m['SWE'] + SWE_m['SWE_sd'], 'k', alpha=0.5)
+#f3_ax1.plot(SWE_m['SWE'] - SWE_m['SWE_sd'], 'k', alpha=0.5)
 f3_ax1.plot(dates_spa, np.nanmean(results_stand['canopy_snow_water_equivalent'], axis=(1,2)))
-f3_ax1.plot(SWE_m['SWE'], 'k.')
-f3_ax1.plot(forc['snowdepth'], 'r.', markersize=2, alpha=0.4)
-f3_ax1.legend(['mod SWE', 'obs SWE', 'obs HS'], loc='upper left')
+f3_ax1.plot(forc['snowdepth'], 'r.', markersize=2, alpha=0.2)
+f3_ax1.legend(['obs SWE', 'mod SWE', 'obs HS'],ncol=3,  loc='upper left')
 f3_ax1.set_ylabel('SWE (mm)')
 
 
-f3_ax2 = fig3.add_subplot(gs[0, 2])
+f3_ax2 = fig3.add_subplot(gs[0, 3])
 line1 = sns.regplot(ax=f3_ax2, x=SWE_all['SWE'], y=SWE_all['mod_mean'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
 f3_ax2.set_ylabel('mod SWE (mm)')
 f3_ax2.set_xlabel('obs SWE (mm)')
@@ -775,13 +1003,14 @@ ax2 = axs[1]
 #ax1.plot(q)
 #ax1.legend(['stand SD', 'obs SD'], loc='upper right')
 #ax1.set(ylim=(0, 10))
+sns.set_style('whitegrid')
 
 ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2)))
 ax1.plot(q)
 ax1.legend(['catch', 'obs'], loc='upper right')
 ax1.set(ylim=(-1, 25))
 ax1.set_ylabel(r'Qf mm d$^{-1}$')
-ax1.axes.get_xaxis().set_visible(False)
+#ax1.axes.get_xaxis().set_visible(False)
 
 ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2)))
 ax2.plot(q)
@@ -792,3 +1021,182 @@ ax2.set_ylabel(r'Qf mm d$^{-1}$')
 if saveplots == True:
         plt.savefig(f'QF_MOD_OBS_{today}.pdf')
         plt.savefig(f'QF_MOD_OBS_{today}.png')
+        
+#%%
+# area
+area = len(np.where(np.isfinite(np.array(results_stand['parameters_cmask']).flatten()))[0]) * 16 * 16
+# yearly water balance in meters for whole area
+wbdf = pd.DataFrame()
+wbdf['P'] = results_stand['forcing_precipitation']
+wbdf.index = dates_spa
+wbdf['Qmod'] = results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2))
+wbdf['ETmod'] = np.nanmean(results_catch['canopy_evaporation'] + results_catch['canopy_transpiration'] + results_catch['bucket_evaporation'], axis=(1,2))
+wbdf['ETdrymod'] = np.nanmean(results_catch['dry_et'], axis=(1,2))
+wbdf['S'] = np.nanmean(results_catch['bucket_water_storage'], axis=(1,2)) + np.nanmean(results_catch['canopy_snow_water_equivalent'], axis=(1,2)) + np.nanmean(results_catch['canopy_water_storage'], axis=(1,2))
+#wbdf['S'] = np.nanmean((results_catch['bucket_water_storage'] + results_catch['canopy_snow_water_equivalent'] + results_catch['canopy_water_storage'] + results_catch['bucket_pond_storage']), axis=(1,2))
+
+wbdfy = pd.DataFrame()
+wbdfy['P'] = wbdf['P'].resample('AS-SEP').sum()
+wbdfy['Qmod'] = wbdf['Qmod'].resample('AS-SEP').sum()
+wbdfy['ETdrymod'] = wbdf['ETdrymod'].resample('AS-SEP').sum()
+wbdfy['ETmod'] = wbdf['ETmod'].resample('AS-SEP').sum()
+wbdfy['S'] = np.nan
+wbdfy['Qobs'] = q.resample('AS-SEP').sum()
+
+wbdf2d = pd.DataFrame()
+wbdf2d['P'] = results_2d['forcing_precipitation']
+wbdf2d.index = dates_spa
+wbdf2d['Qmod'] = np.nanmean(results_2d['soil_netflow_to_ditch'] + results_2d['bucket_surface_runoff'], axis=(1,2))
+wbdf2d['ETdrymod'] = wbdf['ETdrymod'].resample('Y').sum()
+wbdf2d['ETmod'] = np.nanmean(results_2d['canopy_evaporation'] + results_2d['canopy_transpiration'] + results_2d['bucket_evaporation'], axis=(1,2))
+wbdf2d['S'] = np.nanmean(results_2d['bucket_water_storage'] + results_2d['canopy_snow_water_equivalent'] + results_2d['canopy_water_storage'] + results_2d['soil_water_storage'], axis=(1,2))
+
+wbdf2dy = pd.DataFrame()
+wbdf2dy['P'] = wbdf2d['P'].resample('AS-SEP').sum()
+wbdf2dy['Qmod'] = wbdf2d['Qmod'].resample('AS-SEP').sum()
+wbdf2dy['ETmod'] = wbdf2d['ETmod'].resample('AS-SEP').sum()
+wbdf2dy['ETdrymod'] = wbdf2d['ETdrymod'].resample('AS-SEP').sum()
+wbdf2dy['S'] = np.nan
+wbdf2dy['Qobs'] = q.resample('AS-SEP').sum()
+
+sday=1
+eday=31
+smonth=1
+emonth=12
+for i in range(len(wbdfy)):
+    year = wbdfy.index[i].year
+    #start = np.where((wbdf.index.year == year) & (wbdf.index.month == smonth) & (wbdf.index.day == sday))[0]
+    #end = np.where((wbdf.index.year == year) & (wbdf.index.month == emonth) & (wbdf.index.day == eday))[0]
+    start = np.where((wbdf.index.year == year) & (wbdf.index.month == 9) & (wbdf.index.day == 1))[0]
+    end = np.where((wbdf.index.year == year + 1) & (wbdf.index.month == 9) & (wbdf.index.day == 1))[0]
+    if len(start) + len(end) > 1:
+        wbdfy['S'][i] = float(wbdf['S'][start]) - float(wbdf['S'][end])
+        wbdf2dy['S'][i] = float(wbdf2d['S'][start]) - float(wbdf2d['S'][end])
+
+wbdfy['closure'] = wbdfy['P'] - wbdfy['Qmod'] - wbdfy['ETmod'] + wbdfy['S']
+wbdf2dy['closure'] = wbdf2dy['P'] - wbdf2dy['Qmod'] - wbdf2dy['ETmod'] + wbdf2dy['S']
+wbdfy = wbdfy[1:-1] 
+wbdf2dy = wbdf2dy[1:-1] 
+
+wbplot = wbdfy.mean()
+
+# Plotting
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12,10));
+ax1 = axs[0]
+ax2 = axs[1]
+
+ax1.bar('2013', wbdfy['P'][0], alpha=0.7, color='tab:blue', label=r'P$_{obs}$')
+ax1.set_ylim(-850, 1000)
+ax1.bar('2013', - wbdfy['ETmod'][0] - wbdfy['Qmod'][0], color='tab:green', alpha=0.7, label=r'ET$_{mod}$')
+ax1.bar('2013', - wbdfy['Qmod'][0], alpha=0.7, color='tab:brown', label=r'Q$_{mod}$')
+ax1.scatter('2013', - wbdfy['Qobs'][0], s=200, marker='x', color='k', linewidth=4, zorder=2, label=r'$Q_{obs}$')
+#ax1.scatter('2013', - wbdfy['ETmod'][0] - wbdfy['Qmod'][0] + wbdfy['S'][0] , s=200, marker='_', color='blue', linewidth=1, zorder=2, label=r'$+\Delta$S')
+#ax1.legend(ncol=3)
+ax1.legend(ncol=5,bbox_to_anchor=(1.6, 1.10))
+
+ax1.bar('2014', wbdfy['P'][1], alpha=0.7, color='tab:blue', label=r'P$_{obs}$')
+ax1.set_ylim(-850, 850)
+ax1.bar('2014', - wbdfy['ETmod'][1] - wbdfy['Qmod'][1], color='tab:green', alpha=0.7, label=r'ET$_{mod}$')
+ax1.bar('2014', - wbdfy['Qmod'][1], alpha=0.7, color='tab:brown', label=r'Q$_{mod}$')
+ax1.scatter('2014', - wbdfy['Qobs'][1], s=200, marker='x', color='k', linewidth=4, zorder=2, label=r'$Q_{obs}$')
+#ax1.scatter('2014', - wbdfy['ETmod'][1] - wbdfy['Qmod'][1] + wbdfy['S'][1] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax1.bar('2015', wbdfy['P'][2], alpha=0.7, color='tab:blue', label='P')
+ax1.bar('2015', - wbdfy['ETmod'][2] - wbdfy['Qmod'][2], color='tab:green', alpha=0.7, label='ET')
+ax1.bar('2015', - wbdfy['Qmod'][2], alpha=0.7, color='tab:brown', label='Q')
+ax1.scatter('2015', - wbdfy['Qobs'][2], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax1.scatter('2015', - wbdfy['ETmod'][2] - wbdfy['Qmod'][2] + wbdfy['S'][2] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax1.bar('2016', wbdfy['P'][3], alpha=0.7, color='tab:blue', label='P')
+ax1.bar('2016', - wbdfy['ETmod'][3] - wbdfy['Qmod'][3], color='tab:green', alpha=0.7, label='ET')
+ax1.bar('2016', - wbdfy['Qmod'][3], alpha=0.7, color='tab:brown', label='Q')
+ax1.scatter('2016', - wbdfy['Qobs'][3], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax1.scatter('2016', - wbdfy['ETmod'][3] - wbdfy['Qmod'][3] + wbdfy['S'][3] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax1.bar('2017', wbdfy['P'][4], alpha=0.7, color='tab:blue', label='P')
+ax1.bar('2017', - wbdfy['ETmod'][4] - wbdfy['Qmod'][4], color='tab:green', alpha=0.7, label='ET')
+ax1.bar('2017', - wbdfy['Qmod'][4], alpha=0.7, color='tab:brown', label='Q')
+#ax1.scatter('2017', - wbdfy['Qobs'][4], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax1.scatter('2017', - wbdfy['ETmod'][4] - wbdfy['Qmod'][4] + wbdfy['S'][4] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax1.bar('2018', wbdfy['P'][5], alpha=0.7, color='tab:blue', label='P')
+ax1.bar('2018', - wbdfy['ETmod'][5] - wbdfy['Qmod'][5], color='tab:green', alpha=0.7, label='ET')
+ax1.bar('2018', - wbdfy['Qmod'][5], alpha=0.7, color='tab:brown', label='Q')
+ax1.scatter('2018', - wbdfy['Qobs'][5], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax1.scatter('2018', - wbdfy['ETmod'][5] - wbdfy['Qmod'][5] + wbdfy['S'][5] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax1.bar('2019', wbdfy['P'][6], alpha=0.7, color='tab:blue', label='P')
+ax1.bar('2019', - wbdfy['ETmod'][6] - wbdfy['Qmod'][6], color='tab:green', alpha=0.7, label='ET')
+ax1.bar('2019', - wbdfy['Qmod'][6], alpha=0.7, color='tab:brown', label='Q')
+ax1.scatter('2019', - wbdfy['Qobs'][6], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax1.scatter('2019', - wbdfy['ETmod'][6] - wbdfy['Qmod'][6] + wbdfy['S'][6] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax1.bar('2020', wbdfy['P'][7], alpha=0.7, color='tab:blue', label='P')
+ax1.bar('2020', - wbdfy['ETmod'][7] - wbdfy['Qmod'][7], color='tab:green', alpha=0.7, label='ET')
+ax1.bar('2020', - wbdfy['Qmod'][7], alpha=0.7, color='tab:brown', label='Q')
+#ax1.scatter('2020', - wbdfy['Qobs'][7], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax1.scatter('2020', - wbdfy['ETmod'][7] - wbdfy['Qmod'][7] + wbdfy['S'][7] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+#
+ax2.bar('2013', wbdf2dy['P'][0], alpha=0.7, color='tab:blue', label=r'P$_{obs}$')
+ax2.set_ylim(-850, 1000)
+#ax.bar('2014', - wbdfy['ETmod'][0] - wbplot['Qmod'], color='tab:brown', alpha=0.7, label='Q')
+#ax.bar('2014', - wbdfy['ETmod'][0], alpha=0.7, color='tab:green', label='ET')
+ax2.bar('2013', - wbdf2dy['ETmod'][0] - wbdf2dy['Qmod'][0], color='tab:green', alpha=0.7,label=r'ET$_{mod}$')
+ax2.bar('2013', - wbdf2dy['Qmod'][0], alpha=0.7, color='tab:brown', label=r'Q$_{mod}$')
+ax2.scatter('2013', - wbdf2dy['Qobs'][0], s=200, marker='x', color='k', linewidth=4, zorder=2, label=r'$Q_{obs}$')
+#ax2.scatter('2013', - wbdf2dy['ETmod'][0] - wbdf2dy['Qmod'][0] + wbdf2dy['S'][0] , s=200, marker='_', color='blue', linewidth=1, zorder=2, label=r'$+\Delta$S')
+#ax2.legend(ncol=2)
+
+ax2.bar('2014', wbdf2dy['P'][1], alpha=0.7, color='tab:blue', label=r'P$_{obs}$')
+ax2.set_ylim(-850, 850)
+#ax.bar('2014', - wbdfy['ETmod'][0] - wbplot['Qmod'], color='tab:brown', alpha=0.7, label='Q')
+#ax.bar('2014', - wbdfy['ETmod'][0], alpha=0.7, color='tab:green', label='ET')
+ax2.bar('2014', - wbdf2dy['ETmod'][1] - wbdf2dy['Qmod'][0], color='tab:green', alpha=0.7,label=r'ET$_{mod}$')
+ax2.bar('2014', - wbdf2dy['Qmod'][1], alpha=0.7, color='tab:brown', label=r'Q$_{mod}$')
+ax2.scatter('2014', - wbdfy['Qobs'][1], s=200, marker='x', color='k', linewidth=4, zorder=2, label=r'$Q_{obs}$')
+#ax2.scatter('2014', - wbdf2dy['ETmod'][1] - wbdf2dy['Qmod'][1] + wbdf2dy['S'][1] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax2.bar('2015', wbdf2dy['P'][2], alpha=0.7, color='tab:blue', label='P')
+ax2.bar('2015', - wbdf2dy['ETmod'][2] - wbdf2dy['Qmod'][1], color='tab:green', alpha=0.7, label='ET')
+ax2.bar('2015', - wbdf2dy['Qmod'][2], alpha=0.7, color='tab:brown', label='Q')
+ax2.scatter('2015', - wbdf2dy['Qobs'][2], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax2.scatter('2015', - wbdf2dy['ETmod'][2] - wbdf2dy['Qmod'][2] + wbdf2dy['S'][2] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax2.bar('2016', wbdf2dy['P'][3], alpha=0.7, color='tab:blue', label='P')
+ax2.bar('2016', - wbdf2dy['ETmod'][3] - wbdf2dy['Qmod'][2], color='tab:green', alpha=0.7, label='ET')
+ax2.bar('2016', - wbdf2dy['Qmod'][3], alpha=0.7, color='tab:brown', label='Q')
+ax2.scatter('2016', - wbdf2dy['Qobs'][3], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax2.scatter('2016', - wbdf2dy['ETmod'][3] - wbdf2dy['Qmod'][3] + wbdf2dy['S'][3] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax2.bar('2017', wbdf2dy['P'][4], alpha=0.7, color='tab:blue', label='P')
+ax2.bar('2017', - wbdf2dy['ETmod'][4] - wbdf2dy['Qmod'][3], color='tab:green', alpha=0.7, label='ET')
+ax2.bar('2017', - wbdf2dy['Qmod'][4], alpha=0.7, color='tab:brown', label='Q')
+#ax2.scatter('2017', - wbdf2dy['Qobs'][4], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax2.scatter('2017', - wbdf2dy['ETmod'][4] - wbdf2dy['Qmod'][4] + wbdf2dy['S'][4] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax2.bar('2018', wbdf2dy['P'][5], alpha=0.7, color='tab:blue', label='P')
+ax2.bar('2018', - wbdf2dy['ETmod'][5] - wbdf2dy['Qmod'][4], color='tab:green', alpha=0.7, label='ET')
+ax2.bar('2018', - wbdf2dy['Qmod'][5], alpha=0.7, color='tab:brown', label='Q')
+ax2.scatter('2018', - wbdf2dy['Qobs'][5], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax2.scatter('2018', - wbdf2dy['ETmod'][5] - wbdf2dy['Qmod'][5] + wbdf2dy['S'][5] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax2.bar('2019', wbdf2dy['P'][6], alpha=0.7, color='tab:blue', label='P')
+ax2.bar('2019', - wbdf2dy['ETmod'][6] - wbdf2dy['Qmod'][5], color='tab:green', alpha=0.7, label='ET')
+ax2.bar('2019', - wbdf2dy['Qmod'][6], alpha=0.7, color='tab:brown', label='Q')
+ax2.scatter('2019', - wbdf2dy['Qobs'][6], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax2.scatter('2019', - wbdf2dy['ETmod'][6] - wbdf2dy['Qmod'][6] + wbdf2dy['S'][6] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+
+ax2.bar('2020', wbdf2dy['P'][7], alpha=0.7, color='tab:blue', label='P')
+ax2.bar('2020', - wbdf2dy['ETmod'][7] - wbdf2dy['Qmod'][6], color='tab:green', alpha=0.7, label='ET')
+ax2.bar('2020', - wbdf2dy['Qmod'][7], alpha=0.7, color='tab:brown', label='Q')
+#ax2.scatter('2020', - wbdf2dy['Qobs'][7], s=200, marker='x', color='k', linewidth=4, zorder=2)
+#ax2.scatter('2020', - wbdf2dy['ETmod'][7] - wbdf2dy['Qmod'][7] + wbdf2dy['S'][7] , s=200, marker='_', color='blue', linewidth=1, zorder=2)
+ax1.grid(axis='y'); ax2.grid(axis='y')
+ax1.set_ylabel('mm / year')
+ax1.set_title('SpaFHy-catch')
+ax2.set_title('SpaFHy-2D')
+
+if saveplots == True:
+        plt.savefig(f'WB_BARPLOT_{today}.pdf')
+        plt.savefig(f'WB_BARPLOT_{today}.png')
