@@ -36,8 +36,8 @@ results_2d = read_results(outputfile_2d)
 outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_catch.nc'
 results_catch = read_results(outputfile_catch)
 
-#sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\16m_nc_spafhy_pallas\SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
-#sar = Dataset(sar_path, 'r')
+sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
+sar = Dataset(sar_file, 'r')
 
 # water table at lompolonjänkä
 
@@ -52,6 +52,8 @@ l_loc = [46, 54]
 dates_spa = []
 for d in range(len(results_stand['date'])):
     dates_spa.append(pd.to_datetime(str(results_stand['date'][d])[36:46]))
+    
+dates_sar = pd.to_datetime(sar['time'][:], format='%Y%m%d') 
 
 # forcing file
 folder = r'C:\SpaFHy_v1_Pallas_2D\testcase_input\forcing'
@@ -72,7 +74,7 @@ ix_pp = ix_pp[ix_pp >= 0]
 
 # specific discharge
 folder = r'C:\SpaFHy_v1_Pallas\data\obs'
-ffile = 'Runoffs1d_SVEcatchments_mmd.csv'
+ffile = 'Runoffs1d_SVEcatchments_mmd_new.csv'
 fp = os.path.join(folder, ffile)
 q = pd.read_csv(fp, sep=';', date_parser=['pvm'])
 q = q.rename(columns={'pvm': 'time'})
@@ -260,17 +262,6 @@ if saveplots == True:
         plt.savefig(f'WB_part_{today}.png')
 
 
-#%%
-
-plt.plot(dates_spa, np.cumsum(q), label='obs')
-plt.plot(dates_spa, results_catch['WB_RO'], label='catch')
-plt.plot(dates_spa, results_stand['WB_RO'], label='stand')
-plt.plot(dates_spa, results_2d['WB_RO'], label='2D')
-plt.legend()
-
-
-
-
 
 #%%
 
@@ -351,15 +342,15 @@ sept = np.where(pd.to_datetime(dates_spa) == '2021-09-01')[0][0]
 #sar = Dataset(sar_path, 'r')
 
 # Plotting
-fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(14,12));
-ax1 = axs[0][2]
-ax2 = axs[1][2]
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(8,12));
+ax1 = axs[0][0]
+ax2 = axs[1][0]
 
-ax3 = axs[0][0]
-ax4 = axs[1][0]
+ax3 = axs[0][1]
+ax4 = axs[1][1]
 
-ax5 = axs[0][1]
-ax6 = axs[1][1]
+#ax5 = axs[0][1]
+#ax6 = axs[1][1]
 
 # 2D root moist
 im1 = ax1.imshow(results_stand['bucket_moisture_root'][june,zy,zx]
@@ -380,13 +371,13 @@ ax2.title.set_text('stand - catch (sept)')
 im3 = ax3.imshow(results_2d['bucket_moisture_root'][june,zy,zx] 
                  - results_stand['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 #fig.colorbar(im7, ax=ax7)
-ax3.title.set_text('2d - stand (june)')
+ax3.title.set_text('2D - stand (june)')
 
 im4 = ax4.imshow(results_2d['bucket_moisture_root'][sept,zy,zx] 
                  - results_stand['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 #fig.colorbar(im4, ax=ax4)
-ax4.title.set_text('2d - stand (sept)')
-
+ax4.title.set_text('2D - stand (sept)')
+'''
 im5 = ax5.imshow(results_2d['bucket_moisture_root'][june,zy,zx] 
                  - results_catch['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 ax5.title.set_text('2d - catch (june)')
@@ -394,18 +385,19 @@ ax5.title.set_text('2d - catch (june)')
 im6 = ax6.imshow(results_2d['bucket_moisture_root'][sept,zy,zx] 
                  - results_catch['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 ax6.title.set_text('2d - catch (sept)')
-
+'''
 ax1.axis('off')
 ax2.axis('off')
 ax3.axis('off')
 ax4.axis('off')
-ax5.axis('off')
-ax6.axis('off')
+#ax5.axis('off')
+#ax6.axis('off')
 
 
 if saveplots == True:
         plt.savefig(f'theta_diff_june_sept_{today}.pdf')
         plt.savefig(f'theta_diff_june_sept_{today}.png')
+        
 #%%
 
 soilclass_2 = np.ravel(soilclass)
@@ -419,37 +411,114 @@ soilclass_4[soilclass_4 == 4] = 1
 soilclass_2 = soilclass_2.reshape(r, c)
 soilclass_4 = soilclass_4.reshape(r, c)
 
-td_sum2 = np.nanmean(results_2d['bucket_moisture_root'] * soilclass_2, axis=(1,2))
-stand_sum2 = np.nanmean(results_stand['bucket_moisture_root'] * soilclass_2, axis=(1,2))
-catch_sum2 = np.nanmean(results_catch['bucket_moisture_root'] * soilclass_2, axis=(1,2))
-td_sum4 = np.nanmean(results_2d['bucket_moisture_root'] * soilclass_4, axis=(1,2))
-stand_sum4 = np.nanmean(results_stand['bucket_moisture_root'] * soilclass_4, axis=(1,2))
-catch_sum4 = np.nanmean(results_catch['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+td_sum2 = np.nanmedian(results_2d['bucket_moisture_root'] * soilclass_2, axis=(1,2))
+td_2iq25 = np.nanquantile(results_2d['bucket_moisture_root'] * soilclass_2, 0.25, axis=(1,2))
+td_2iq75 = np.nanquantile(results_2d['bucket_moisture_root'] * soilclass_2, 0.75, axis=(1,2))
+
+stand_sum2 = np.nanmedian(results_stand['bucket_moisture_root'] * soilclass_2, axis=(1,2))
+stand_2iq25 = np.nanquantile(results_stand['bucket_moisture_root'] * soilclass_2, 0.25, axis=(1,2))
+stand_2iq75 = np.nanquantile(results_stand['bucket_moisture_root'] * soilclass_2, 0.75, axis=(1,2))
+
+catch_sum2 = np.nanmedian(results_catch['bucket_moisture_root'] * soilclass_2, axis=(1,2))
+catch_2iq25 = np.nanquantile(results_catch['bucket_moisture_root'] * soilclass_2, 0.25, axis=(1,2))
+catch_2iq75 = np.nanquantile(results_catch['bucket_moisture_root'] * soilclass_2, 0.75, axis=(1,2))
+
+sar_sum2 = np.nanmedian(np.array(sar['soilmoisture']) * soilclass_2, axis=(1,2))/100
+sar_2iq25 = np.nanquantile(np.array(sar['soilmoisture']) * soilclass_2, 0.25, axis=(1,2))/100
+sar_2iq75 = np.nanquantile(np.array(sar['soilmoisture']) * soilclass_2, 0.75, axis=(1,2))/100
+
+td_sum4 = np.nanmedian(results_2d['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+td_4iq25 = np.nanquantile(results_2d['bucket_moisture_root'] * soilclass_4, 0.25, axis=(1,2))
+td_4iq75 = np.nanquantile(results_2d['bucket_moisture_root'] * soilclass_4, 0.75, axis=(1,2))
+
+stand_sum4 = np.nanmedian(results_stand['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+stand_4iq25 = np.nanquantile(results_stand['bucket_moisture_root'] * soilclass_4, 0.25, axis=(1,2))
+stand_4iq75 = np.nanquantile(results_stand['bucket_moisture_root'] * soilclass_4, 0.75, axis=(1,2))
+
+catch_sum4 = np.nanmedian(results_catch['bucket_moisture_root'] * soilclass_4, axis=(1,2))
+catch_4iq25 = np.nanquantile(results_catch['bucket_moisture_root'] * soilclass_4, 0.25, axis=(1,2))
+catch_4iq75 = np.nanquantile(results_catch['bucket_moisture_root'] * soilclass_4, 0.75, axis=(1,2))
+
+sar_sum4 = np.nanmedian(np.array(sar['soilmoisture']) * soilclass_4, axis=(1,2))/100
+sar_4iq25 = np.nanquantile(np.array(sar['soilmoisture']) * soilclass_4, 0.25, axis=(1,2))/100
+sar_4iq75 = np.nanquantile(np.array(sar['soilmoisture']) * soilclass_4, 0.75, axis=(1,2))/100
 
 # Plotting
 fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(12,8));
 ax1 = axs[0]
 ax2 = axs[1]
-sns.set_style('whitegrid')
 
 ax1.set_title('Mineral soil')
-ax1.plot(dates_spa, td_sum2, label='2D')
-ax1.plot(dates_spa, stand_sum2, label='stand')
-ax1.plot(dates_spa, catch_sum2, label='catch')
-ax1.legend(ncol=3)
+ax1.plot(dates_spa, td_sum2, color='tab:blue', label='2D')
+ax1.fill_between(dates_spa, td_2iq25, td_2iq75, color='tab:blue', alpha=0.2, label=r'2D$_{IQR25-75}$')
+
+ax1.plot(dates_spa, stand_sum2, color='tab:orange', label='stand')
+ax1.fill_between(dates_spa, stand_2iq25, stand_2iq75, color='tab:orange', alpha=0.2, label=r'stand$_{IQR25-75}$')
+
+ax1.plot(dates_spa, catch_sum2, color='tab:green', label='catch')
+ax1.fill_between(dates_spa, catch_2iq25, catch_2iq75, color='tab:green', alpha=0.2, label=r'catch$_{IQR25-75}$')
+
+ax1.legend(loc=(0,1.1),ncol=6)
 ax1.set_ylabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
 
 ax2.set_title('Peat soil')
 ax2.plot(dates_spa, td_sum4, label='2D')
+ax2.fill_between(dates_spa, td_4iq25, td_4iq75, color='tab:blue', alpha=0.2, label=r'2D$_{IQR25-75}$')
+
 ax2.plot(dates_spa, stand_sum4, label='stand')
+ax2.fill_between(dates_spa, stand_4iq25, stand_4iq75, color='tab:orange', alpha=0.2, label=r'stand$_{IQR25-75}$')
+
 ax2.plot(dates_spa, catch_sum4, label='catch')
-ax2.legend(ncol=3)
+ax2.fill_between(dates_spa, catch_4iq25, catch_4iq75, color='tab:green', alpha=0.2, label=r'catch$_{IQR25-75}$')
+
+#ax2.legend(ncol=6)
 ax2.set_ylabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
+
+ax1.grid(); ax2.grid()
 
 if saveplots == True:
         plt.savefig(f'theta_mod_mean_ts_{today}.pdf')
         plt.savefig(f'theta_mod_mean_ts_{today}.png')
 
+#%%
+# SAR vs. 2D
+    
+date_in_spa = []
+for i in range(len(dates_sar)):
+    ix = np.where(pd.to_datetime(dates_spa) == dates_sar[i])[0][0]
+    date_in_spa.append(ix)
+
+
+# Plotting
+fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(12,8));
+ax1 = axs[0]
+ax2 = axs[1]
+
+ax1.set_title('Mineral soil')
+ax1.plot(dates_sar, td_sum2[date_in_spa], color='tab:blue', label='2D')
+ax1.fill_between(dates_sar, td_2iq25[date_in_spa], td_2iq75[date_in_spa], color='tab:blue', alpha=0.2, label=r'2D$_{IQR25-75}$')
+
+ax1.plot(dates_sar, sar_sum2, color='tab:orange', label='SAR')
+ax1.fill_between(dates_sar, sar_2iq25, sar_2iq75, color='tab:orange', alpha=0.2, label=r'SAR$_{IQR25-75}$')
+
+ax1.legend(loc=(0,1.1),ncol=6)
+ax1.set_ylabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
+
+ax2.set_title('Peat soil')
+ax2.plot(dates_sar, td_sum4[date_in_spa], label='2D')
+ax2.fill_between(dates_sar, td_4iq25[date_in_spa], td_4iq75[date_in_spa], color='tab:blue', alpha=0.2, label=r'2D$_{IQR25-75}$')
+
+ax2.plot(dates_sar, sar_sum4, label='SAR')
+ax2.fill_between(dates_sar, sar_4iq25, sar_4iq75, color='tab:orange', alpha=0.2, label=r'SAR$_{IQR25-75}$')
+
+#ax2.legend(ncol=6)
+ax2.set_ylabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
+
+ax1.grid(); ax2.grid()
+
+if saveplots == True:
+        plt.savefig(f'theta_mod_sar_mean_ts_{today}.pdf')
+        plt.savefig(f'theta_mod_sar_mean_ts_{today}.png')
 
 #%%
 
@@ -609,6 +678,16 @@ soilm.iloc[winter_ix] = np.nan
 poi = 1085
 poi = np.where(results_stand['bucket_moisture_root'][:,k_loc[0], k_loc[1]] + 0.09 < results_2d['bucket_moisture_root'][:,k_loc[0], k_loc[1]])[0][0]
 
+# sampling for the scatterplot
+
+soilmsc = soilm[np.isfinite(soilm['mean'])]
+soilmsc['time'] = soilmsc.index
+soilmsc = soilmsc.reset_index(drop=True)
+
+sampl2 = np.random.randint(low=0, high=len(soilmsc), size=(1000,))
+soilmsc = soilmsc.iloc[sampl2]
+soilmsc.index = soilmsc['time'] 
+
 #%%
 
 # preparing gw data
@@ -639,13 +718,12 @@ f3_ax1.set_ylim(0.1,0.5)
 #f3_ax1.axes.get_xaxis().set_visible(False)
 
 f3_ax2 = fig3.add_subplot(gs[0, 3])
-x4 = sns.regplot(ax=f3_ax2, x=soilm['spa_k_st_root'], y=soilm['mean'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+x4 = sns.regplot(ax=f3_ax2, x=soilmsc['spa_k_st_root'], y=soilmsc['mean'], scatter_kws={'s':50, 'alpha':0.2}, line_kws={"color": "red"})
 f3_ax2.set(ylim=(0.1, 0.45))
 f3_ax2.set(xlim=(0.1, 0.45))
 f3_ax2.yaxis.tick_right()
 f3_ax2.set_ylabel(r'$\theta_{obs}$ (m$^3$m$^{-3}$)')
 f3_ax2.set_xlabel(r'$\theta_{mod}$ (m$^3$m$^{-3}$)')
-
 
 
 f3_ax3 = fig3.add_subplot(gs[1, :3])
@@ -665,6 +743,8 @@ f3_ax3.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
 if saveplots == True:
         plt.savefig(f'theta_model_ts_{today}.pdf')
         plt.savefig(f'theta_model_ts_{today}.png')
+        
+        
 
 #%% 
 
@@ -948,27 +1028,39 @@ SWE_m.index = SWE_m['date']
 #SWE_m['SWE'].loc[SWE_m['date'] < '2018-07-07'] = np.nan
 SWE_m = SWE_m[['SWE', 'SWE_sd', 'quality']]
 
+
 SWE = pd.DataFrame()
 SWE['mod_mean'] = np.nanmean(results_stand['canopy_snow_water_equivalent'], axis=(1,2))
+#SWE['mod_iq25'] = np.nanquantile(results_stand['canopy_snow_water_equivalent'], 0.1, axis=(1,2))
+#SWE['mod_iq75'] = np.nanquantile(results_stand['canopy_snow_water_equivalent'], 0.9, axis=(1,2))
+SWE['mod_iq25'] = np.nanmin(results_stand['canopy_snow_water_equivalent'], axis=(1,2))
+SWE['mod_iq75'] = np.nanmax(results_stand['canopy_snow_water_equivalent'], axis=(1,2))
 SWE.index = dates_spa
 SWE_all = SWE_m.join(SWE)
 SWE_all.loc[np.isnan(SWE_all['SWE'])] = np.nan
 SWE_all.loc[np.isnan(SWE_all['mod_mean'])] = np.nan
 SWE_all = SWE_all.dropna()
 
+SWE_all2 = SWE.join(SWE_m)
+SWE_all2 = SWE_all2.join(forc['snowdepth'])
+SWE_all2 = SWE_all2[np.where(np.isfinite(SWE_all2['SWE']))[0][0]:]
+
 #%%
 
-fig3 = plt.figure(constrained_layout=True, figsize=(14,3.5))
+fig3 = plt.figure(constrained_layout=False, figsize=(12,3))
 gs = fig3.add_gridspec(1, 4)
 
 f3_ax1 = fig3.add_subplot(gs[0, :3])
-f3_ax1.plot(SWE_m['SWE'], 'k.', markersize=6)
+#f3_ax1.plot(SWE_m['SWE'], 'k.', markersize=6)
+#f3_ax1.fill_between(SWE_all2.index, SWE_all2['mod_iq25'] , SWE_all2['mod_iq75'], color='blue', alpha=0.2, label=r'SWE$_{mod range}$')
+f3_ax1.errorbar(SWE_all2.index, SWE_all2['SWE'], SWE_all2['SWE_sd'], color = 'black', alpha=0.5, linestyle='None', markersize=3, marker='o', label=r'SWE$_{obs}$mean w/ std')
+
 #f3_ax1.plot(SWE_m['SWE'] + SWE_m['SWE_sd'], 'k', alpha=0.5)
 #f3_ax1.plot(SWE_m['SWE'] - SWE_m['SWE_sd'], 'k', alpha=0.5)
-f3_ax1.plot(dates_spa, np.nanmean(results_stand['canopy_snow_water_equivalent'], axis=(1,2)))
-f3_ax1.plot(forc['snowdepth'], 'r.', markersize=2, alpha=0.2)
-f3_ax1.legend(['obs SWE', 'mod SWE', 'obs HS'],ncol=3,  loc='upper left')
-f3_ax1.set_ylabel('SWE (mm)')
+f3_ax1.plot(SWE_all2.index, SWE_all2['mod_mean'], label=r'SWE$_{mod}$mean')
+#f3_ax1.plot(SWE_all2['snowdepth'], 'r.', markersize=2, alpha=0.2, label = r'HS$_{obs}$')
+f3_ax1.legend(ncol=5, loc='upper left')
+f3_ax1.set_ylabel('SWE (mm) & HS (cm)')
 
 
 f3_ax2 = fig3.add_subplot(gs[0, 3])
@@ -977,13 +1069,15 @@ f3_ax2.set_ylabel('mod SWE (mm)')
 f3_ax2.set_xlabel('obs SWE (mm)')
 f3_ax2.yaxis.tick_right()
 f3_ax2.yaxis.set_label_position("right")
-sns.set_style('whitegrid')
+#sns.set_style('whitegrid')
+f3_ax1.grid(); f3_ax2.grid()
 
 
 #f3_ax2 = sns.lmplot(x="SWE", y="mod_mean", data=SWE_all)
 #ax = lm.axes
 f3_ax2.set(ylim=(0, 350))
 f3_ax2.set(xlim=(0, 350))
+plt.tight_layout()
 
 if saveplots == True:
         plt.savefig(f'SWE_MOD_OBS_{today}.pdf')
@@ -992,36 +1086,110 @@ if saveplots == True:
         
 #%%
 
+q
+q_all = pd.DataFrame()
+q_all['2D'] = np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2))
+q_all.index = dates_spa
+q_all['catch'] = results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2))
+q_all['obs'] = q
+q_all['stand'] = np.nanmean(results_stand['bucket_drainage'], axis=(1,2)) + np.nanmean(results_stand['bucket_surface_runoff'], axis=(1,2))
+q_all = q_all.dropna()
+sampl2 = np.random.randint(low=0, high=len(q_all), size=(1000,))
+q_all['time'] = q_all.index
+q_all = q_all.reset_index(drop=True)
+q_all = q_all.iloc[sampl2]
+q_all.index = q_all['time']
+q_all = q_all.drop(columns='time')
+
+#%%
+
 # specific discharge
+Prec = list(np.array(results_catch['forcing_precipitation']))
 
-# Plotting
-fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(14,6));
-ax1 = axs[0]
-ax2 = axs[1]
 
+fig4 = plt.figure(constrained_layout=False, figsize=(12,6))
+gs = fig4.add_gridspec(2, 4)
+
+
+ax1 = fig4.add_subplot(gs[0, :3])
+ax2 = fig4.add_subplot(gs[1, :3])
+ax5 = fig4.add_subplot(gs[0, 3])
+ax6 = fig4.add_subplot(gs[1, 3])
+
+ax5.yaxis.tick_right()
+ax6.yaxis.tick_right()
+ax5.yaxis.set_label_position("right")
+ax6.yaxis.set_label_position("right")
+
+## Plotting
+#fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(12,6));
+#ax1 = axs[0]
+#ax2 = axs[1]
 #ax1.plot(dates_spa, np.nanmean(results_stand['bucket_drainage'], axis=(1,2)) + np.nanmean(results_stand['bucket_surface_runoff'], axis=(1,2)))
 #ax1.plot(q)
 #ax1.legend(['stand SD', 'obs SD'], loc='upper right')
 #ax1.set(ylim=(0, 10))
-sns.set_style('whitegrid')
-
-ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2)))
-ax1.plot(q)
-ax1.legend(['catch', 'obs'], loc='upper right')
-ax1.set(ylim=(-1, 25))
+#sns.set_style('whitegrid')
+l1 = ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2)), label = r'Q$_{catch}$')
+l2 = ax1.plot(q, alpha=0.7, label=r'Q$_{obs}$')
+#ax1.legend()
+ax1.set(ylim=(-1, 35))
 ax1.set_ylabel(r'Qf mm d$^{-1}$')
 #ax1.axes.get_xaxis().set_visible(False)
+#ax5.axes.get_xaxis().set_visible(False)
 
-ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2)))
-ax2.plot(q)
-ax2.legend(['2D', 'obs'], loc='upper right')
-ax2.set(ylim=(-1, 25))
+l3 = ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2)), color='tab:green', label=r'Q$_{2D}$')
+ax2.plot(q, color='tab:orange', alpha=0.7)
+#ax2.legend()
+ax2.set(ylim=(-1, 35))
 ax2.set_ylabel(r'Qf mm d$^{-1}$')
+
+ax3=ax1.twinx()   
+l4 = ax3.bar(dates_spa, Prec, color='black', alpha=0.8, width=2, label='P')
+l5 = ax3.plot(dates_spa, np.nanmean(results_catch['canopy_snow_water_equivalent'], axis=(1,2)) / 10.0, 'b-', linewidth=1.5, label='SWE$_{mod}$')
+#ax3.plot(SWE_m['date'], SWE_m['SWE']/10, 'g.', linewidth=1.0, markersize=4)
+# ax2.plot(tvec0, 20*swe, 'r--', linewidth=1)
+ax3.set_ylabel(r'    P (mm d$^{-1}$) & 0.1 x SWE (mm)'); plt.ylim([0, 100])
+ax3.invert_yaxis()
+    
+ax4=ax2.twinx()   
+ax4.bar(dates_spa, Prec, color='black', alpha=0.8, width=2, label='P')
+ax4.plot(dates_spa, np.nanmean(results_catch['canopy_snow_water_equivalent'], axis=(1,2)) / 10.0, 'b-', linewidth=1.5, label='SWE$_{mod}$')
+#ax3.plot(SWE_m['date'], SWE_m['SWE']/10, 'g.', linewidth=1.0, markersize=4)
+# ax2.plot(tvec0, 20*swe, 'r--', linewidth=1)
+ax4.set_ylabel(r'P (mm d$^{-1}$) & 0.1 x SWE (mm)'); plt.ylim([0, 100])
+ax4.invert_yaxis()
+
+ax1.legend(ncol=2,bbox_to_anchor=(0.3, 1.25))
+#ax2.legend(ncol=1,bbox_to_anchor=(0.8, 3.0))
+ax3.legend(ncol=2, bbox_to_anchor=(0.6, 1.25))
+
+#ax2.legend(loc='upper left', framealpha=1)
+ax2.legend(loc=(0,1))
+
+sns.regplot(ax=ax5, x=q_all['obs'], y=q_all['catch'], scatter_kws={'s':50, 'alpha':0.2}, line_kws={"color": "red"})
+sns.regplot(ax=ax6, x=q_all['obs'], y=q_all['2D'], scatter_kws={'s':50, 'alpha':0.2}, line_kws={"color": "red"})
+ax5.set_ylabel(r'Qf$_{mod}$ mm d$^{-1}$')
+ax5.set_xlabel(r'Qf$_{obs}$ mm d$^{-1}$')
+ax6.set_ylabel(r'Qf$_{mod}$ mm d$^{-1}$')
+ax6.set_xlabel(r'Qf$_{obs}$ mm d$^{-1}$')
+ax5.set(ylim=(0, 15))
+ax5.set(xlim=(0, 15))
+ax6.set(ylim=(0, 15))
+ax6.set(xlim=(0, 15))
+
+ax1.grid(); ax2.grid()
+ax5.grid(); ax6.grid()
+
+plt.tight_layout()
+#plt.subplots_adjust(wspace=0, hspace=0)
+
 
 if saveplots == True:
         plt.savefig(f'QF_MOD_OBS_{today}.pdf')
         plt.savefig(f'QF_MOD_OBS_{today}.png')
         
+
 #%%
 # area
 area = len(np.where(np.isfinite(np.array(results_stand['parameters_cmask']).flatten()))[0]) * 16 * 16

@@ -10,9 +10,9 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'start_date': '2012-01-01',
+            'start_date': '2019-01-01',
             'end_date': '2021-09-05',
-            'spinup_end': '2012-12-31',  # results after this are saved in result file
+            'spinup_end': '2020-12-31',  # results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)

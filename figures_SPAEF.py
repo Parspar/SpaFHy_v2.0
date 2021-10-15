@@ -25,6 +25,8 @@ from datetime import date
 import seaborn as sns
 from scipy.stats import variation,zscore
 import math
+from netCDF4 import Dataset #, date2num
+
 
 today = date.today()
 
@@ -58,6 +60,10 @@ results_2d = read_results(outputfile_2d)
 # reading the catch results
 outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_catch.nc'
 results_catch = read_results(outputfile_catch)
+
+# reading the sar
+sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
+sar = Dataset(sar_file, 'r')
 
 ditches = results_2d['parameters_ditches']
 ditch_mask = np.array(ditches)

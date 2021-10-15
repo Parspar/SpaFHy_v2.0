@@ -21,7 +21,7 @@ from iotools import read_AsciiGrid
 
 
 # reading the results
-outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202108170922.nc'
+outputfile = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_2d.nc'
 results = read_results(outputfile)
 
 
@@ -293,8 +293,8 @@ kenttarova_loc = list([int(kenttarova_loc[0]), int(kenttarova_loc[1])])
 #sar = Dataset(sar_path, 'r')
 
 sar_wliq = sar['soilmoisture']*np.array(results['parameters_cmask'])/100
-spa_wliq = results['soil_rootzone_moisture']
-spa_wliq_top = results['soil_moisture_top']
+spa_wliq = results['bucket_moisture_root']
+spa_wliq_top = results['bucket_moisture_top']
 
 dates_sar = sar['time'][:]
 dates_sar = pd.to_datetime(dates_sar, format='%Y%m%d') 
@@ -331,23 +331,23 @@ spa_wliq_top = spa_wliq_top[:,ycrop,:]
 spa_wliq_top = spa_wliq_top[:,:,xcrop]
 
 # Plotting
-fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(16,12));
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(10,12));
 ax1 = axs[0][0]
 ax2 = axs[0][1]
 ax3 = axs[1][0]
 ax4 = axs[1][1]
-ax5 = axs[0][2]
-ax6 = axs[1][2]
+
 
 #fig.suptitle('Volumetric water content', fontsize=15)
 
 im1 = ax1.imshow(sar_wliq[day_hi,:,:], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
 ax1.title.set_text('SAR')
 #ax1.plot(kenttarova_loc[0], kenttarova_loc[1], marker='o', mec='b', mfc='k', alpha=0.8, ms=6.0)
+ax1.set_ylabel('WET DAY')
 
 im2 = ax2.imshow(spa_wliq[day_hi, :,:], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
 ax2.title.set_text('SPAFHY rootzone')
-ax2.text(10, -15, f'Wet day : {hi_date}', fontsize=15)
+ax2.text(-20, -15, f'Wet day : {hi_date}', fontsize=15)
 #ax2.plot(kenttarova_loc[0], kenttarova_loc[1], marker='o', mec='b', mfc='k', alpha=0.8, ms=6.0)
 
 im3 = ax3.imshow(sar_wliq[day_low, :,:], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
@@ -355,21 +355,20 @@ ax3.title.set_text('SAR')
 
 im4 = ax4.imshow(spa_wliq[day_low, :,:], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
 ax4.title.set_text('SPAFHY rootzone')
-ax4.text(10, -15, f'Dry day : {low_date}', fontsize=15)
+ax4.text(-20, -15, f'Dry day : {low_date}', fontsize=15)
 
+#im5 = ax5.imshow(spa_wliq_top[day_hi, :, :], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
+#ax5.title.set_text('SPAFHY topsoil')
 
-im5 = ax5.imshow(spa_wliq_top[day_hi, :, :], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
-ax5.title.set_text('SPAFHY topsoil')
-
-im6 = ax6.imshow(spa_wliq_top[day_low, :,:], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
-ax6.title.set_text('SPAFHY topsoil')
+#im6 = ax6.imshow(spa_wliq_top[day_low, :,:], cmap='coolwarm_r', vmin=0.0, vmax=1.0, aspect='equal')
+#ax6.title.set_text('SPAFHY topsoil')
 
 ax1.axis("off")
 ax2.axis("off")
 ax3.axis("off")
 ax4.axis("off")
-ax5.axis("off")
-ax6.axis("off")
+#ax5.axis("off")
+#ax6.axis("off")
 
 plt.tight_layout()
 
@@ -377,7 +376,7 @@ fig.subplots_adjust(right=0.8)
 cbar_ax = fig.add_axes([0.83, 0.15, 0.015, 0.7])
 bar1 = fig.colorbar(im1, cax=cbar_ax)
 
-fig.suptitle('SpaFHy v2D')
+#fig.suptitle('SpaFHy v2D')
 
 #fig.subplots_adjust(right=0.8)
 #cbar_ax = fig.add_axes([0.8, 0.2, 0.02, 0.6])
