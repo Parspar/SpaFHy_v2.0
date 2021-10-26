@@ -12,7 +12,8 @@ import numpy as np
 
 # example of calling driver, reading results and plotting gwl
 
-outputfile = driver(create_ncf=True, folder='testcase_input')
+#outputfile = driver(create_ncf=True, folder='testcase_input')
+outputfile = r'results/testcase_input_202110222043.nc' #SL run 22.10
 
 results = read_results(outputfile)
 

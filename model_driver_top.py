@@ -73,10 +73,6 @@ def driver(create_ncf=False, output=True, folder=''):
             results = _append_results('top', top_results, results, k - Nsaved - 1)
             results = _append_results('canopy', canopy_results, results, k - Nsaved - 1)
             results = _append_results('bucket', bucket_results, results, k - Nsaved - 1)
-            #print(np.unique(results['bucket_moisture_top']))
-            #print(bucket_results.keys())
-            #print(np.unique(bucket_results['moisture_top']))
-
 
             if k in Nsaveresults and create_ncf:
                 interval += 1
@@ -102,7 +98,7 @@ def driver(create_ncf=False, output=True, folder=''):
     else:
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
         if output:
-            return results
+            return results, spa, pcpy, psoil, ptopmodel, cmask
 
 def preprocess_parameters(folder=''):
     """
@@ -134,7 +130,12 @@ def preprocess_parameters(folder=''):
 
     if pgen['topmodel']:
         gisdata.update(read_top_gisdata(pgen['gis_folder']))
-
+    
+#    # SL TESTING: mask ditch cells out!
+#    plt.imshow(gisdata['ditches'])
+#    ix = np.where(gisdata['ditches'] < 0)
+#    gisdata['cmask'][ix] = np.NaN
+    
     soildata = preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
