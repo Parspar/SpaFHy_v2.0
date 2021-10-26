@@ -263,11 +263,11 @@ def soilprofiles():
             'soil_id': 2.0,
             'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*2, # MEASURED AND OPTIMIZED PARAMETER
-                    'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
-                    'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
-                    'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-05, 1E-05],
+                    'ThetaS': [0.348]*2, #0.448 according to measured and optimized
+                    'ThetaR': [0.03]*2,
+                    'alpha': [0.054]*2,
+                    'n': [1.293]*2},
+            'saturated_conductivity': [1E-04, 1E-05],
                 },
         #'FineTextured':{
         #    'soil_id': 3.0,
@@ -283,11 +283,11 @@ def soilprofiles():
             'soil_id': 4.0,
             'z': [-0.3, -0.6, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.88]*3,  # MEASURED AND OPTIMIZED PARAMETER
-                    'ThetaR': [0.196]*3, # MEASURED AND OPTIMIZED PARAMETER
-                    'alpha': [0.072]*3,  # MEASURED AND OPTIMIZED PARAMETER
-                    'n': [1.255]*3}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [5E-04, 5E-05, 5E-07], # MEASURED
+                    'ThetaS': [0.93, 0.91, 0.91],  # Menbery et al. 2021 - 0.888 according to measured and optimized
+                    'ThetaR': [0.24, 0.33, 0.33], # Menbery et al. 2021
+                    'alpha': [0.05, 0.04, 0.04],  # Menbery et al. 2021
+                    'n': [1.5, 1.53, 1.53]}, # Menbery et al. 2021
+            'saturated_conductivity': [3E-05, 3.5E-06, 5E-07], # Menbery et al. 2021
                 },
         #'Humus': {
         #    'soil_id': 5.0,
@@ -352,9 +352,9 @@ def rootproperties():
                   'root_alpha': 0.08, # Menbery et al. 2021
                   'root_beta': 6.0,
                   'root_fc': 0.53, # Menbery et al. 2021
-                  'root_ksat': 5E-04, # MEASURED
+                  'root_ksat': 6e-05, # Menbery et al. 2021
                   'root_n': 1.75, # Menbery et al. 2021
-                  'root_poros': 0.888, # MEASURED 
+                  'root_poros': 0.93, # Menbery et al. 2021
                   'soil_id': 4.0,
                   'root_wp': 0.36, # Menbery et al. 2021
                   'root_wr': 0.0,

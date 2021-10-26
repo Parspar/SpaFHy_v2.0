@@ -238,6 +238,9 @@ fig.suptitle('SpaFHy v2D')
 wet_day = np.nansum(results['bucket_moisture_root'], axis=(1,2)).argmax()
 dry_day = np.nansum(results['bucket_moisture_root'], axis=(1,2)).argmin()
 
+wet_day = np.nansum(sar['soilmoisture'], axis=(1,2)).argmax()
+dry_day = np.nansum(sar['soilmoisture'], axis=(1,2)).argmin()
+
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2.nc'
 #sar = Dataset(sar_path, 'r')
@@ -309,16 +312,24 @@ spa_wliq = spa_wliq[date_in_spa,:,:]
 spa_wliq_top = spa_wliq_top[date_in_spa,:,:]
 
 # driest and wettest days
-spasum = np.nansum(spa_wliq, axis=(1,2))
+spasum = np.nanmean(spa_wliq, axis=(1,2))
+sarsum = np.nanmean(sar_wliq, axis=(1,2))
 
 # index in sar data
 day_low = int(np.where(spasum == np.nanmin(spasum))[0])
 day_hi = int(np.where(spasum == np.nanmax(spasum))[0])
+day_low_sar = int(np.where(sarsum == np.nanmin(sarsum))[0])
+day_hi_sar = int(np.where(sarsum == np.nanmax(sarsum))[0])
+
+
 #sar_low = 43
 #sar_hi = 20
 # day in sar data
 low_date = dates_sar[day_low].strftime("%Y-%m-%d")
 hi_date = dates_sar[day_hi].strftime("%Y-%m-%d")
+
+low_date_sar = dates_sar[day_low_sar].strftime("%Y-%m-%d")
+hi_date_sar = dates_sar[day_hi_sar].strftime("%Y-%m-%d")
 
 # cropping for plots
 xcrop = np.arange(20,170)
@@ -389,6 +400,111 @@ if saveplots == True:
     plt.savefig(f'SAR_vs.SPAFHY_soilmoist_{today}.pdf')
     plt.savefig(f'SAR_vs.SPAFHY_soilmoist_{today}.png')
     
+#%%
+
+# anomalies of previous
+med_spa = str(round(np.nanmedian(spa_wliq[day_hi,:,:] - spa_wliq[day_low,:,:]), 2))
+med_sar = str(round(np.nanmedian(sar_wliq[day_hi_sar,:,:] - sar_wliq[day_low_sar,:,:]), 2))
+
+spa_iq75 = str(round(np.nanquantile(spa_wliq[day_hi,:,:] - spa_wliq[day_low,:,:], 0.75), 2))
+sar_iq75 = str(round(np.nanquantile(sar_wliq[day_hi_sar,:,:] - sar_wliq[day_low_sar,:,:], 0.75), 2))
+
+spa_iq25 = str(round(np.nanquantile(spa_wliq[day_hi,:,:] - spa_wliq[day_low,:,:], 0.25), 2))
+sar_iq25 = str(round(np.nanquantile(sar_wliq[day_hi_sar,:,:] - sar_wliq[day_low_sar,:,:], 0.25), 2))
+
+# Plotting
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12,5));
+ax1 = axs[0]
+ax2 = axs[1]
+#fig.suptitle('Volumetric water content', fontsize=15)
+
+im1 = ax1.imshow(spa_wliq[day_hi,:,:] - spa_wliq[day_low,:,:], cmap='coolwarm_r', vmin=-0.2, vmax=0.2, aspect='equal')
+ax1.title.set_text('SpaFHy-2D wet - dry')
+#ax1.plot(kenttarova_loc[0], kenttarova_loc[1], marker='o', mec='b', mfc='k', alpha=0.8, ms=6.0)
+ax1.text(-20, -15, f'Wet day : {hi_date}, Dry day : {low_date}', fontsize=15)
+ax1.text(150, 20, f"median = {med_spa}")
+ax1.text(150, 30, f"iq25 = {spa_iq25}")
+ax1.text(150, 40, f"iq75 = {spa_iq75}")
+
+im2 = ax2.imshow(sar_wliq[day_hi_sar,:,:] - sar_wliq[day_low_sar,:,:], cmap='coolwarm_r', vmin=-0.2, vmax=0.2, aspect='equal')
+ax2.title.set_text('SAR wet - dry')
+ax2.text(-20, -15, f'Wet day : {hi_date_sar}, Dry day : {low_date_sar}', fontsize=15)
+#ax2.plot(kenttarova_loc[0], kenttarova_loc[1], marker='o', mec='b', mfc='k', alpha=0.8, ms=6.0)
+ax2.text(150, 20, f"median = {med_sar}")
+ax2.text(150, 30, f"iq25 = {sar_iq25}")
+ax2.text(150, 40, f"iq75 = {sar_iq75}")
+
+ax1.axis("off")
+ax2.axis("off")
+
+
+plt.tight_layout()
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.83, 0.15, 0.015, 0.7])
+bar1 = fig.colorbar(im1, cax=cbar_ax)
+
+#fig.suptitle('SpaFHy v2D')
+
+#fig.subplots_adjust(right=0.8)
+#cbar_ax = fig.add_axes([0.8, 0.2, 0.02, 0.6])
+#bar2 = fig.colorbar(im6, cax=cbar_ax)
+
+#ax5.plot([1.1, 1.1], [1.1, -1.2], color='black', lw=1, transform=ax2.transAxes, clip_on=False)
+
+
+if saveplots == True:
+    plt.savefig(f'SAR_SPAFHY_anom_soilmoist_{today}.pdf')
+    plt.savefig(f'SAR_SPAFHY_ano_msoilmoist_{today}.png')
+
+
+
+#%%
+# anomalies of previous
+
+# Plotting
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12,10));
+ax2 = axs[0]
+ax1 = axs[1]
+
+#fig.suptitle('Volumetric water content', fontsize=15)
+
+im1 = ax1.imshow(spa_wliq[day_hi,:,:] - sar_wliq[day_hi,:,:], cmap='coolwarm_r', vmin=-0.4, vmax=0.4, aspect='equal')
+ax1.title.set_text('SpaFHy-2D - SAR')
+#ax1.plot(kenttarova_loc[0], kenttarova_loc[1], marker='o', mec='b', mfc='k', alpha=0.8, ms=6.0)
+ax1.text(-20, -15, f'Dry day : {low_date}', fontsize=15)
+
+ax1.set_ylabel('WET DAY')
+
+im2 = ax2.imshow(spa_wliq[day_low,:,:] - sar_wliq[day_low,:,:], cmap='coolwarm_r', vmin=-0.4, vmax=0.4, aspect='equal')
+ax2.title.set_text('SpaFHy-2D - SAR')
+ax2.text(-20, -15, f'Wet day : {hi_date}', fontsize=15)
+#ax2.plot(kenttarova_loc[0], kenttarova_loc[1], marker='o', mec='b', mfc='k', alpha=0.8, ms=6.0)
+
+ax1.axis("off")
+ax2.axis("off")
+
+
+plt.tight_layout()
+
+fig.subplots_adjust(right=0.8)
+cbar_ax = fig.add_axes([0.83, 0.15, 0.015, 0.7])
+bar1 = fig.colorbar(im1, cax=cbar_ax)
+
+#fig.suptitle('SpaFHy v2D')
+
+#fig.subplots_adjust(right=0.8)
+#cbar_ax = fig.add_axes([0.8, 0.2, 0.02, 0.6])
+#bar2 = fig.colorbar(im6, cax=cbar_ax)
+
+#ax5.plot([1.1, 1.1], [1.1, -1.2], color='black', lw=1, transform=ax2.transAxes, clip_on=False)
+
+
+if saveplots == True:
+    plt.savefig(f'SAR_vs.SPAFHY_anomsoilmoist_{today}.pdf')
+    plt.savefig(f'SAR_vs.SPAFHY_anomsoilmoist_{today}.png')
+
+
 #%%
 
 # poikki ja pituusleikkaukset
