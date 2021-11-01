@@ -37,25 +37,6 @@ NEEDS 2D gis rasters in ascii-grid format
 
 CanopyGrid & BucketGrid can be initialized from gis-data or set to be spatially constant
 
-ToDo:
-    CanopyGrid:
-        -include topographic shading to radiation received at canopy top
-        -radiation-based snowmelt coefficient
-        -add simple GPP-model; 2-step Farquhar or LUE-based approach
-    BucketGrid:
-        -make soil hydrologic properties more realistic e.g. using pedotransfer functions
-        -kasvupaikkatyyppi (multi-NFI) --> soil properties
-        -add soil frost model, simplest would be Stefan equation with coefficients modified based on snow insulation
-          --> we need snow density algorithm: SWE <-----> depth
-    Topmodel:
-        -think of definging 'relative m & to grids' (soil-type & elevation-dependent?) and calibrate 'catchment averages'
-        -topmodel gives 'saturated zone storage deficit in [m]'. This can be converted to gwl proxy (?) if:
-        local water retention characteristics are known & hydrostatic equilibrium assumes.
-        Look which water retention model was analytically integrable (Campbell, brooks-corey?)
-
-    Graphics and analysis of results:
-        -make ready functions
-
 
 (C) Samuli Launiainen 10/2016-->
 

@@ -49,7 +49,7 @@ ToDo:
     Graphics and analysis of results:
         -make ready functions
 (C) Samuli Launiainen 10/2016-->
-VERSION 05.10.2018 / equations correspond to GMDD paper
+VERSION 26/10/2021 Jari-Pekka's Pallas -paper
 """
 
 
@@ -98,11 +98,13 @@ class SpaFHy():
         co2 = forc['CO2'].values
         u = forc['wind_speed'].values + eps
         
-        # run Soilprofile water balance
+        # run Topmodel water balance
         RR = self.bu._drainage_to_gw * self.top.CellArea / self.top.CatchmentArea
         #bu_airv = self.bu.Wair_root
+ 
         top_results = self.top.run_timestep(R=RR)
-
+        
+        
         # run CanopyGrid
         canopy_results = self.cpy.run_timestep(
                 doy, self.dt, ta, prec, rg, par, vpd, U=u, CO2=co2,

@@ -8,7 +8,8 @@ Topmodel() allows spatially varying soil depths and transmissivity
 Topmodel_Homogenous() assumes constant properties and hydrologic similarity \n
 retermined from TWI = log (a / tan(b))
 (C) Samuli Launiainen, 2016-
-Last edit: 7.2.2018 / Samuli Launiainen
+Last edit: 26.10.2021 SL:
+    - added outputs
 ******************************************************************************
 """
 
@@ -17,7 +18,7 @@ import numpy as np
 eps = np.finfo(float).eps  # machine epsilon
 
 class Topmodel_Homogenous():
-    def __init__(self, pp, S_initial=None, outputs=False):
+    def __init__(self, pp, S_initial=None):
         """
         sets up Topmodel for the catchment assuming homogenous
         effective soil depth 'm' and sat. hydr. conductivity 'ko'.
@@ -36,7 +37,6 @@ class Topmodel_Homogenous():
             flowacc - flow accumulation per unit contour length (m)
             slope - local slope (deg)
             S_initial - initial storage deficit, overrides that in 'pp'
-            outputs - True stores outputs after each timestep into dictionary
         """
         if not S_initial:
             S_initial = pp['so']
@@ -84,11 +84,6 @@ class Topmodel_Homogenous():
         s[s < 0] = 0.0
         self.S = np.nanmean(s)
 
-        # create dictionary of empty lists for saving results
-        if outputs:
-            self.results = {'S': [], 'Qb': [], 'Qr': [], 'Qt': [], 'qr': [],
-                            'fsat': [], 'Mbe': [], 'R': []
-                           }
 
     def local_s(self, Smean):
         """
@@ -143,7 +138,7 @@ class Topmodel_Homogenous():
 
         # saturated area fraction
         ix = np.where(s <= 0)
-        # fsat = np.max(np.shape(ix))*self.CellArea / self.CatchmentArea
+        
         fsat = len(ix[0])*self.CellArea / self.CatchmentArea
         del ix
         
@@ -155,21 +150,12 @@ class Topmodel_Homogenous():
         
         results = {
                 'baseflow': Qb * 1e3,  # [mm d-1]
+                'returnflow': Qr * 1e3, #[mm d-1]
+                'drainage_in': R * 1e3, #[mm d-1]
                 'water_closure': mbe * 1e3, #     
-                'saturated_area': self.S, # [mm]
+                'saturation_deficit': self.S, # [m]
+                'saturated_area': fsat, #[-],
+                'storage_change': dF *1e3 # [mm d-1]
                 }
 
         return results
-
-
-
-        # append results
-        '''if hasattr(self, 'results'):
-            self.results['R'].append(R)
-            self.results['S'].append(self.S)
-            self.results['Qb'].append(Qb)
-            self.results['Qr'].append(Qr)
-            self.results['qr'].append(qr)
-            self.results['fsat'].append(fsat)
-            self.results['Mbe'].append(mbe)
-        return Qb, Qr, qr, fsat'''

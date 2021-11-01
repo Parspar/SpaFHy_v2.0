@@ -133,7 +133,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     # ditches, no stand in ditch cells
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
-    ditch_mask = np.where(ditches < -eps, 0.0, 1)
+    #ditch_mask = np.where(ditches < -eps, 0.0, 1)
 
     # dict of all rasters
     gis = {'cmask': cmask,
@@ -142,7 +142,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if key != 'cmask':
-            gis[key] = gis[key] * cmask * ditch_mask
+            gis[key] = gis[key] * cmask #* ditch_mask
 
     if plotgrids is True:
 
@@ -312,17 +312,18 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['root_wp'][yx] = value['root_wp']        
             data['root_beta'][yx] = value['root_beta']        
 
-    # no organic layer in ditch nodes
-    ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
-    for key in ['org_depth','org_poros','org_fc', 'org_sat']:
-        data[key] *= ditch_mask
+#    # SL removed this 26.10.21!
+#    # no organic layer in ditch nodes
+#    ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
+#    for key in ['org_depth','org_poros','org_fc', 'org_sat']:
+#        data[key] *= ditch_mask
 
     data['wtso_to_gwl'] = {soiltype: soilp[soiltype]['to_gwl'] for soiltype in soilp.keys()}
     data['gwl_to_wsto'] = {soiltype: soilp[soiltype]['to_wsto'] for soiltype in soilp.keys()}
     data['gwl_to_C'] = {soiltype: soilp[soiltype]['to_C'] for soiltype in soilp.keys()}
     data['gwl_to_Tr'] = {soiltype: soilp[soiltype]['to_Tr'] for soiltype in soilp.keys()}
     data['gwl_to_rootmoist'] = {soiltype: soilp[soiltype]['to_rootmoist'] for soiltype in soilp.keys()}
-    print(data['wtso_to_gwl'])
+    #print(data['wtso_to_gwl'])
     data['dxy'] = gisdata['dxy']
     data['cmask'] = gisdata['cmask']
 
