@@ -190,7 +190,7 @@ class CanopyGrid():
                                                   zg=self.zground, zos=self.zo_ground)
         
         """ --- interception, evaporation and snowpack --- """
-        PotInf, Trfall, Evap, Interc, MBE, erate, unload, fact = self.canopy_water_snow(dt, Ta, Prec, Rn, VPD, Ra=Ra)
+        PotInf, Trfall, Evap, Interc, MBE, erate, unload, fact, Sfall, Rfall = self.canopy_water_snow(dt, Ta, Prec, Rn, VPD, Ra=Ra)
 
         """--- dry-canopy evapotranspiration [mm s-1] --- """
         Transpi, Efloor, Gc = self.dry_canopy_et(VPD, Par, Rn, Ta, Ra=Ra, Ras=Ras, CO2=CO2, Rew=Rew, beta=beta, fPheno=fPheno)
@@ -198,11 +198,6 @@ class CanopyGrid():
         Transpi = Transpi * dt
         Efloor = Efloor * dt
         #ET = Transpi + Efloor
-        
-        #print('LAI stand suo:', self.LAI[60,60])
-        #print('cf stand suo:', self.cf[60,60])
-        #print('hc stand suo:', self.hc[60,60])
-        
 
 
         results = {
@@ -219,7 +214,9 @@ class CanopyGrid():
                 'stomatal_conductance': Gc,  # [m s-1]
                 'degree_day_sum': self.DDsum,  # [degC]
                 'fLAI': self.LAI,
-                'water_storage': self.W
+                'water_storage': self.W,
+                'snowfall': Sfall, # [mm d-1]
+                'rainfall': Rfall  # [mm d-1]
                 }
 
         return results
@@ -493,6 +490,9 @@ class CanopyGrid():
         fW[ix] = (T[ix] - Tmin) / (Tmax - Tmin)
 
         fS = 1.0 - fW
+        
+        sf = fS * Prec
+        rf = fW * Prec
 
         """ --- initial conditions for calculating mass balance error --"""
         Wo = self.W  # canopy storage
@@ -541,7 +541,7 @@ class CanopyGrid():
         # mass-balance error mm
         MBE = (self.W + self.SWE) - (Wo + SWEo) - (Prec - Evap - PotInf)
 
-        return PotInf, Trfall, Evap, Interc, MBE, erate, Unload, fS + fW
+        return PotInf, Trfall, Evap, Interc, MBE, erate, Unload, fS + fW, sf, rf
 
 
 """ *********** utility functions ******** """

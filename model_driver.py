@@ -31,7 +31,7 @@ def driver(create_ncf=False, output=True, folder=''):
 
     # read forcing data
     forcing = preprocess_forcing(pgen)
-
+    
     Nsteps = len(forcing['date'])
     Nspin = (pd.to_datetime(pgen['spinup_end']) - pd.to_datetime(pgen['start_date'])).days + 1
 

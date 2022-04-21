@@ -50,6 +50,7 @@ def driver(create_ncf=False, output=True, folder=''):
     results = _append_results('parameters', pcpy['state'], results)
     results = _append_results('parameters', pcpy['loc'], results)
     results = _append_results('parameters', psoil, results)
+    results = _append_results('parameters', ptopmodel, results)
 
     if create_ncf:
         ncf, outputfile = initialize_netcdf(

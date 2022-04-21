@@ -25,15 +25,15 @@ from matplotlib.patches import Polygon
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_stand.nc'
+outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202111121438.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_2d.nc'
+outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202111121438.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
-outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_catch.nc'
+outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202111121438.nc'
 results_catch = read_results(outputfile_catch)
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
@@ -118,6 +118,88 @@ Evap = cpy_catch['Evap'][ix:,:,:]
 
 #%%
 
+# GIS data plot
+# Plotting
+fig, axs = plt.subplots(nrows=3, ncols=4, figsize=(12,9));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[0][2]
+ax4 = axs[0][3]
+
+ax5 = axs[1][0]
+ax6 = axs[1][1]
+ax7 = axs[1][2]
+ax8 = axs[1][3]
+
+ax9 = axs[2][0]
+ax10 = axs[2][1]
+ax11 = axs[2][2]
+ax12 = axs[2][3]
+
+im1 = ax1.imshow(results_2d['parameters_lai_conif'][20:250,20:165])
+ax1.set_title('LAI conif')
+fig.colorbar(im1, ax=ax1)
+
+im2 = ax2.imshow(results_2d['parameters_lai_decid_max'][20:250,20:165])
+ax2.set_title('LAI decid max')
+fig.colorbar(im2, ax=ax2)
+
+im3 = ax3.imshow(results_2d['parameters_lai_shrub'][20:250,20:165])
+ax3.set_title('LAI shrub')
+fig.colorbar(im3, ax=ax3)
+
+im4 = ax4.imshow(results_2d['parameters_lai_grass'][20:250,20:165])
+ax4.set_title('LAI grass')
+fig.colorbar(im4, ax=ax4)
+
+im5 = ax5.imshow(results_2d['parameters_hc'][20:250,20:165])
+ax5.set_title('canopy height')
+fig.colorbar(im5, ax=ax5)
+
+im6 = ax6.imshow(results_2d['parameters_cf'][20:250,20:165], label='canopy fraction')
+ax6.set_title('canopy fraction')
+fig.colorbar(im6, ax=ax6)
+
+cmapsoil = plt.get_cmap('viridis', 4)
+im7 = ax7.imshow(results_2d['parameters_soilclass'][20:250,20:165], cmap=cmapsoil)
+ax7.set_title('soilclass')
+fig.colorbar(im7, ax=ax7)
+
+cmapsite = plt.get_cmap('viridis', 4)
+im8 = ax8.imshow(results_2d['parameters_sitetype'][20:250,20:165], cmap=cmapsite)
+ax8.set_title('sitetype')
+fig.colorbar(im8, ax=ax8)
+
+cmapditch = plt.get_cmap('viridis', 2)
+im9 = ax9.imshow(results_2d['parameters_ditches'][20:250,20:165], cmap=cmapditch)
+ax9.set_title('streams/ditches')
+cbar = fig.colorbar(im9, ax=ax9)
+cbar.ax.locator_params(nbins=1)
+
+im10 = ax10.imshow(results_2d['parameters_elevation'][20:250,20:165])
+ax10.set_title('elevation')
+fig.colorbar(im10, ax=ax10)
+
+im11 = ax11.imshow(results_catch['parameters_twi'][20:250,20:165])
+ax11.set_title('TWI')
+fig.colorbar(im11, ax=ax11)
+
+#im12 = ax12.imshow(results_catch['parameters_twi'][20:250,20:165])
+#ax12.set_title('shading coefficient')
+#fig.colorbar(im12, ax=ax12)
+
+ax1.axis('off'); ax2.axis('off'); ax3.axis('off'); ax4.axis('off')
+ax5.axis('off'); ax6.axis('off'); ax7.axis('off'); ax8.axis('off')
+ax9.axis('off'); ax10.axis('off'); ax11.axis('off'); ax12.axis('off')
+
+#plt.tight_layout()
+#ax10.imshow(results_2d['parameters_twi'][20:250,20:165])
+
+if saveplots == True:
+        plt.savefig(f'GIS_rasters_{today}.pdf',bbox_inches='tight')
+        plt.savefig(f'GIS_rasters_{today}.png',bbox_inches='tight')
+
+#%%
 # defining first of july when there is no snowpack to be a starting date
 dates_spa_str = []
 for i in range(len(dates_spa)):
@@ -675,8 +757,8 @@ soilm.iloc[winter_ix] = np.nan
 
 #soilm = soilm.loc[(soilm.index > '2018-04-01') & (soilm.index < '2019-12-01')]
 
-poi = 1085
-poi = np.where(results_stand['bucket_moisture_root'][:,k_loc[0], k_loc[1]] + 0.09 < results_2d['bucket_moisture_root'][:,k_loc[0], k_loc[1]])[0][0]
+#poi = 1085
+#poi = np.where(results_stand['bucket_moisture_root'][:,k_loc[0], k_loc[1]] + 0.09 < results_2d['bucket_moisture_root'][:,k_loc[0], k_loc[1]])[0][0]
 
 # sampling for the scatterplot
 
@@ -750,7 +832,8 @@ if saveplots == True:
 
 # where 2D is interesting? 
 # kenttärovalla esim 2018 kesäkuussa
-
+poi = 533
+poi = 609
 # soil moist plots
 
 # spafhy
@@ -816,7 +899,6 @@ ax6.imshow(results_2d['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap
 
 #%%
 # DRY ET DATA PREPARING
-
 # et sim. obs
 # ET obs
 folder = r'C:\SpaFHy_v1_Pallas\data\obs'
@@ -1086,7 +1168,7 @@ if saveplots == True:
         
 #%%
 
-q
+
 q_all = pd.DataFrame()
 q_all['2D'] = np.nanmean(results_2d['soil_netflow_to_ditch'], axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], axis=(1,2))
 q_all.index = dates_spa
@@ -1100,6 +1182,90 @@ q_all = q_all.reset_index(drop=True)
 q_all = q_all.iloc[sampl2]
 q_all.index = q_all['time']
 q_all = q_all.drop(columns='time')
+
+#%%
+
+# SWE and runoff
+
+fig4 = plt.figure(constrained_layout=False, figsize=(12,10))
+gs = fig4.add_gridspec(3, 4)
+
+ax1 = fig4.add_subplot(gs[0, :3])
+ax2 = fig4.add_subplot(gs[1, :3])
+ax5 = fig4.add_subplot(gs[0, 3])
+ax6 = fig4.add_subplot(gs[1, 3])
+ax7 = fig4.add_subplot(gs[2, :3])
+ax8 = fig4.add_subplot(gs[2, 3])
+
+ax5.yaxis.tick_right()
+ax6.yaxis.tick_right()
+ax5.yaxis.set_label_position("right")
+ax6.yaxis.set_label_position("right")
+
+l1 = ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], 
+                                                                    axis=(1,2)), label = r'Q$_{catch}$')
+l2 = ax1.plot(q, alpha=0.7, label=r'Q$_{obs}$')
+#ax1.legend()
+ax1.set(ylim=(-1, 30))
+ax1.set_ylabel(r'Qf (mm d$^{-1}$)')
+#ax1.axes.get_xaxis().set_visible(False)
+#ax5.axes.get_xaxis().set_visible(False)
+
+l3 = ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], 
+                                    axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], 
+                                                             axis=(1,2)), color='tab:green', label=r'Q$_{2D}$')
+ax2.plot(q, color='tab:orange', alpha=0.7)
+#ax2.legend()
+ax2.set(ylim=(-1, 30))
+ax2.set_ylabel(r'Qf (mm d$^{-1}$)')
+
+
+#f3_ax1.plot(SWE_m['SWE'], 'k.', markersize=6)
+#f3_ax1.fill_between(SWE_all2.index, SWE_all2['mod_iq25'] , SWE_all2['mod_iq75'], color='blue', alpha=0.2, label=r'SWE$_{mod range}$')
+l4 = ax7.errorbar(SWE_all2.index, SWE_all2['SWE'], SWE_all2['SWE_sd'], 
+                  color = 'black', alpha=0.5, linestyle='None', markersize=3, marker='o', 
+                  label=r'SWE$_{obs}$mean w/ std')
+ax7.plot(SWE_all2.index, SWE_all2['mod_mean'], label=r'SWE$_{mod}$mean')
+ax7.legend(ncol=5, loc='upper left')
+ax7.set_ylabel('SWE (mm)')
+
+l5 = sns.regplot(ax=ax8, x=SWE_all['SWE'], y=SWE_all['mod_mean'], scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
+ax8.set_ylabel('mod SWE (mm)')
+ax8.set_xlabel('obs SWE (mm)')
+ax8.yaxis.tick_right()
+ax8.yaxis.set_label_position("right")
+
+
+ax1.legend(ncol=2,loc='upper left')
+ax3.legend(ncol=2,loc='upper left')
+
+#ax2.legend(loc='upper left', framealpha=1)
+ax2.legend(loc='upper left')
+
+sns.regplot(ax=ax5, x=q_all['obs'], y=q_all['catch'], scatter_kws={'s':50, 'alpha':0.2}, line_kws={"color": "red"})
+sns.regplot(ax=ax6, x=q_all['obs'], y=q_all['2D'], scatter_kws={'s':50, 'alpha':0.2}, line_kws={"color": "red"})
+ax5.set_ylabel(r'Qf$_{mod}$ mm d$^{-1}$')
+ax5.set_xlabel(r'Qf$_{obs}$ mm d$^{-1}$')
+ax6.set_ylabel(r'Qf$_{mod}$ mm d$^{-1}$')
+ax6.set_xlabel(r'Qf$_{obs}$ mm d$^{-1}$')
+ax5.set(ylim=(0, 15))
+ax5.set(xlim=(0, 15))
+ax6.set(ylim=(0, 15))
+ax6.set(xlim=(0, 15))
+
+ax1.grid(); ax2.grid()
+ax5.grid(); ax6.grid()
+ax7.grid(); ax8.grid()
+
+
+plt.tight_layout()
+#plt.subplots_adjust(wspace=0, hspace=0)
+
+
+if saveplots == True:
+        plt.savefig(f'QF_MOD_OBS_{today}.pdf')
+        plt.savefig(f'QF_MOD_OBS_{today}.png')
+
 
 #%%
 
@@ -1131,6 +1297,7 @@ ax6.yaxis.set_label_position("right")
 #ax1.set(ylim=(0, 10))
 #sns.set_style('whitegrid')
 l1 = ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2)), label = r'Q$_{catch}$')
+
 l2 = ax1.plot(q, alpha=0.7, label=r'Q$_{obs}$')
 #ax1.legend()
 ax1.set(ylim=(-1, 35))
@@ -1191,22 +1358,20 @@ if saveplots == True:
         
 
 #%%
-# area
-area = len(np.where(np.isfinite(np.array(results_stand['parameters_cmask']).flatten()))[0]) * 16 * 16
 # yearly water balance in meters for whole area
 wbdf = pd.DataFrame()
 wbdf['P'] = results_stand['forcing_precipitation']
 wbdf.index = dates_spa
 wbdf['Qmod'] = results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], axis=(1,2))
 wbdf['ETmod'] = np.nanmean(results_catch['canopy_evaporation'] + results_catch['canopy_transpiration'] + results_catch['bucket_evaporation'], axis=(1,2))
-wbdf['ETdrymod'] = np.nanmean(results_catch['dry_et'], axis=(1,2))
+#wbdf['ETdrymod'] = np.nanmean(results_catch['dry_et'], axis=(1,2))
 wbdf['S'] = np.nanmean(results_catch['bucket_water_storage'], axis=(1,2)) + np.nanmean(results_catch['canopy_snow_water_equivalent'], axis=(1,2)) + np.nanmean(results_catch['canopy_water_storage'], axis=(1,2))
 #wbdf['S'] = np.nanmean((results_catch['bucket_water_storage'] + results_catch['canopy_snow_water_equivalent'] + results_catch['canopy_water_storage'] + results_catch['bucket_pond_storage']), axis=(1,2))
 
 wbdfy = pd.DataFrame()
 wbdfy['P'] = wbdf['P'].resample('AS-SEP').sum()
 wbdfy['Qmod'] = wbdf['Qmod'].resample('AS-SEP').sum()
-wbdfy['ETdrymod'] = wbdf['ETdrymod'].resample('AS-SEP').sum()
+#wbdfy['ETdrymod'] = wbdf['ETdrymod'].resample('AS-SEP').sum()
 wbdfy['ETmod'] = wbdf['ETmod'].resample('AS-SEP').sum()
 wbdfy['S'] = np.nan
 wbdfy['Qobs'] = q.resample('AS-SEP').sum()
@@ -1215,7 +1380,7 @@ wbdf2d = pd.DataFrame()
 wbdf2d['P'] = results_2d['forcing_precipitation']
 wbdf2d.index = dates_spa
 wbdf2d['Qmod'] = np.nanmean(results_2d['soil_netflow_to_ditch'] + results_2d['bucket_surface_runoff'], axis=(1,2))
-wbdf2d['ETdrymod'] = wbdf['ETdrymod'].resample('Y').sum()
+#wbdf2d['ETdrymod'] = wbdf['ETdrymod'].resample('Y').sum()
 wbdf2d['ETmod'] = np.nanmean(results_2d['canopy_evaporation'] + results_2d['canopy_transpiration'] + results_2d['bucket_evaporation'], axis=(1,2))
 wbdf2d['S'] = np.nanmean(results_2d['bucket_water_storage'] + results_2d['canopy_snow_water_equivalent'] + results_2d['canopy_water_storage'] + results_2d['soil_water_storage'], axis=(1,2))
 
@@ -1223,7 +1388,7 @@ wbdf2dy = pd.DataFrame()
 wbdf2dy['P'] = wbdf2d['P'].resample('AS-SEP').sum()
 wbdf2dy['Qmod'] = wbdf2d['Qmod'].resample('AS-SEP').sum()
 wbdf2dy['ETmod'] = wbdf2d['ETmod'].resample('AS-SEP').sum()
-wbdf2dy['ETdrymod'] = wbdf2d['ETdrymod'].resample('AS-SEP').sum()
+#wbdf2dy['ETdrymod'] = wbdf2d['ETdrymod'].resample('AS-SEP').sum()
 wbdf2dy['S'] = np.nan
 wbdf2dy['Qobs'] = q.resample('AS-SEP').sum()
 

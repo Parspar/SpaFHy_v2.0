@@ -10,9 +10,15 @@ from iotools import read_results
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle as pk
+import os
 # example of calling driver, reading results and plotting gwl
 
-results, spa, pcpy, psoil, ptopmodel, cmask = driver(create_ncf=False, folder='testcase_input')
+#results, spa, pcpy, psoil, ptopmodel, cmask = driver(create_ncf=False, folder='testcase_input')
+
+outputfile = driver(create_ncf=True, folder='testcase_input')
+
+results = read_results(outputfile)
+
 
 #with open(r'run1.pk', 'wb') as f:
 #    run = (results1,spa)

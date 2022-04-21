@@ -12,8 +12,8 @@ import numpy as np
 
 # example of calling driver, reading results and plotting gwl
 
-#outputfile = driver(create_ncf=True, folder='testcase_input')
-outputfile = r'results/testcase_input_202110222043.nc' #SL run 22.10
+outputfile = driver(create_ncf=True, folder='testcase_input')
+#outputfile = r'results/testcase_input_202110222043.nc' #SL run 22.10
 
 results = read_results(outputfile)
 
@@ -24,15 +24,15 @@ results['soil_water_storage'] = results['soil_water_storage'] - results['soil_wa
 results['bucket_water_storage'] = results['bucket_water_storage'] - results['bucket_water_storage'][0,:,:]
 results['soil_water_storage'] = results['soil_water_storage'] + results['bucket_water_storage']
 
-plt.figure(figsize=(25,15))
+plt.figure(figsize=(25,12))
 ax=plt.subplot(2,4,1)
-results['soil_ground_water_level'][-1,:,:].plot()
+results['soil_ground_water_level'][-1,:,:].plot(cmap='coolwarm_r', vmin=-4, vmax=4)
 plt.subplot(2,4,2, sharex=ax, sharey=ax)
 results['parameters_elevation'][:,:].plot()
 plt.subplot(2,4,3, sharex=ax, sharey=ax)
-results['soil_moisture_deep'][-1,:,:].plot()
+results['soil_moisture_deep'][-1,:,:].plot(cmap='coolwarm_r', vmin=0, vmax=1)
 plt.subplot(2,4,4, sharex=ax, sharey=ax)
-results['bucket_moisture_root'][-1,:,:].plot()
+results['bucket_moisture_root'][-1,:,:].plot(cmap='coolwarm_r', vmin=0, vmax=1)
 plt.subplot(2,4,5, sharex=ax, sharey=ax)
 results['soil_netflow_to_ditch'][-1,:,:].plot()
 plt.subplot(2,4,6, sharex=ax, sharey=ax)
@@ -41,6 +41,7 @@ plt.subplot(2,4,7, sharex=ax, sharey=ax)
 results['bucket_surface_runoff'][-1,:,:].plot()
 plt.subplot(2,4,8, sharex=ax, sharey=ax)
 results['soil_water_closure'][-1,:,:].plot()
+plt.savefig('TESTplots_part3.png')
 
 # plt.figure(figsize=(20,15))
 # ax=plt.subplot(2,3,1)

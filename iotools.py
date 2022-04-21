@@ -310,7 +310,11 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['root_ksat'][yx] = value['root_ksat']
             data['root_poros'][yx] = value['root_poros']
             data['root_wp'][yx] = value['root_wp']        
-            data['root_beta'][yx] = value['root_beta']        
+            data['root_beta'][yx] = value['root_beta']    
+    
+    # ditch depth corresponding to assigned parameter
+    data['ditches'] = np.where(data['ditches'] < -eps, psp['ditch_depth'], 0)
+    data['ditches'] = data['ditches'] * gisdata['cmask']
 
 #    # SL removed this 26.10.21!
 #    # no organic layer in ditch nodes
@@ -594,6 +598,8 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
 
     # add CO2 concentration to dataframe
     fmi['CO2'] = float(CO2)
+            
+    
     '''
     dates = pd.date_range(start_date, end_date).tolist()
     if len(dates) != len(fmi):
