@@ -24,7 +24,7 @@ class Topmodel_Homogenous():
         effective soil depth 'm' and sat. hydr. conductivity 'ko'.
         This is the 'classic' version of Topmodel where hydrologic similarity\
         index is TWI = log(a / tan(b)).
-        
+
         Args:
             pp - parameter dict with keys:
                 dt - timestep [s]
@@ -59,8 +59,8 @@ class Topmodel_Homogenous():
         # lat. hydr. conductivity at surface [m2/timestep]
         # self.To = pp['ko']*pp['m']*self.dt
         self.To = pp['ko']*self.dt
-        
-        """ 
+
+        """
         local and catchment average hydrologic similarity indices (xi, X).
         Set xi > twi_cutoff equal to cutoff value to remove tail of twi-distribution.
         This concerns mainly the stream network cells. 'Outliers' in twi-distribution are
@@ -69,11 +69,15 @@ class Topmodel_Homogenous():
         slope_rad = np.radians(self.slope)  # deg to rad
 
         xi = np.log(self.a / dx / (np.tan(slope_rad) + eps))
-        # apply cutoff
         clim = np.percentile(xi[xi > 0], pp['twi_cutoff'])
+
+        # cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
         xi[xi > clim] = clim
+        # second way to cut the tail and assign the exceeded values into distribution median
+        #xi[xi > clim] = np.nanmedian(xi)
+
         self.xi = xi
-  
+
         self.X = 1.0 / self.CatchmentArea*np.nansum(self.xi*self.CellArea)
 
         # baseflow rate when catchment Smean=0.0
@@ -107,7 +111,7 @@ class Topmodel_Homogenous():
             Qr - returnflow [m per unit area]
             qr - distributed returnflow [m]
             fsat - saturated area fraction [-]
-        Note: 
+        Note:
             R is the mean drainage [m] from bucketgrid.
         """
         #print(R)
@@ -120,40 +124,43 @@ class Topmodel_Homogenous():
         #print(np.unique(Qb))
         #print(Qb)
 
-        # update storage deficit and check where we have returnflow 
+        # update storage deficit and check where we have returnflow
         S = So + Qb - R
         s = self.local_s(S)
 
         # returnflow grid
         self.qr = -s
         self.qr[self.qr < 0] = 0.0  # returnflow grid, m
-        
+
         # average returnflow per unit area
         Qr = np.nansum(self.qr)*self.CellArea / self.CatchmentArea
 
-        # now all saturation excess is in Qr so update s and S. 
-        # Deficit increases when Qr is removed 
+        # now all saturation excess is in Qr so update s and S.
+        # Deficit increases when Qr is removed
         S = S + Qr
         self.S = S
+        s = s + self.qr
 
         # saturated area fraction
         ix = np.where(s <= 0)
-        
+
         fsat = len(ix[0])*self.CellArea / self.CatchmentArea
         del ix
-        
+
         # check mass balance
         dS = (So - self.S)
         dF = R - Qb - Qr
         mbe = dS - dF
-        
-        
+
+
         results = {
                 'baseflow': Qb * 1e3,  # [mm d-1]
                 'returnflow': Qr * 1e3, #[mm d-1]
+                'local_returnflow': self.qr * 1e3, # [mm]
                 'drainage_in': R * 1e3, #[mm d-1]
-                'water_closure': mbe * 1e3, #     
+                'water_closure': mbe * 1e3, #
                 'saturation_deficit': self.S, # [m]
+                'local_saturation_decifit': s * 1e3, # [mm]
                 'saturated_area': fsat, #[-],
                 'storage_change': dF *1e3 # [mm d-1]
                 }

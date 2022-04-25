@@ -29,7 +29,7 @@ class BucketGrid(object):
                 org_poros [m3m-3]
                 org_fw [m3m-3]
                 org_rw [m3m-3]
-            
+
                 pond_sto - initial pond storage [m]
                 org_sat - initial saturation or organic layer [-]
                 rootzone_sat - initial saturation of root zone [-]
@@ -40,48 +40,48 @@ class BucketGrid(object):
                 -removed outcommented optional outputs & function call
                 -handling of self.Wliq_top & self.Ree for self.D_top == 0
         """
-        
+
         """ set object properties. All will be 1d or 2d arrays of same shape """
         # above-ground pond storage [m]
         self.MaxPond = spara['maxpond']
-        
+
         # top layer is interception storage, which capacity depends on its depth [m]
         # and field capacity
         self.D_top = spara['org_depth']     # depth, m3 m-3
         self.poros_top = spara['org_poros'] # porosity, m3 m-3
         self.Fc_top = spara['org_fc']       # field capacity m3 m-3
         self.rw_top = spara['org_rw']       # ree parameter m3 m-3
-        self.MaxStoTop = self.Fc_top * self.D_top # maximum storage m 
+        self.MaxStoTop = self.Fc_top * self.D_top # maximum storage m
 
-        # root-zone layer is a bucket, receives infiltration and returnflow, outflows 
+        # root-zone layer is a bucket, receives infiltration and returnflow, outflows
         # are transpiration and drainage
         self.D_root = spara['root_depth']             # depth, m
-        self.poros_root = spara['root_poros']         # porosity, m3 m-3     
-        self.Fc_root = spara['root_fc']               # field capacity, m3 m-3 
+        self.poros_root = spara['root_poros']         # porosity, m3 m-3
+        self.Fc_root = spara['root_fc']               # field capacity, m3 m-3
         self.Wp_root = spara['root_wp']               # wilting point, m3 m-3
         self.Ksat_root = spara['root_ksat']           # sat. hydr. cond., m s-1
-        self.beta_root = spara['root_beta']           # hyd. cond. exponent, -      
+        self.beta_root = spara['root_beta']           # hyd. cond. exponent, -
         self.MaxStoRoot = self.D_root*self.poros_root  # maximum soil water storage, m
 
         """
         set buckets initial state
         """
         self.PondSto = np.minimum(spara['pond_storage'], self.MaxPond)
-        
+
         # toplayer storage and relative conductance for evaporation
         self.WatStoTop = self.MaxStoTop * spara['org_sat']
         self.Wliq_top = self.poros_top *self.WatStoTop / (self.MaxStoTop + eps)
         self.Ree = np.maximum(0.0, np.minimum(
                 0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
-        
+
         # root zone storage and relative extractable water
         self.WatStoRoot = np.minimum(spara['root_sat']*self.D_root*self.poros_root, self.D_root*self.poros_root)
-        
+
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
         self.Wair_root = self.poros_root - self.Wliq_root
         self.Sat_root = self.Wliq_root/self.poros_root
         self.Rew = np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0)
-        
+
         # grid total drainage to ground water [m]
         self._drainage_to_gw = 0.0
         self.drain = np.full_like(self.Wliq_root, 0.0)
@@ -95,14 +95,14 @@ class BucketGrid(object):
         Lower layer is rootzone: DW/dt = Infiltration - Transpiration - Drainae + Recharge from returnflow
         Capillary interaction between layers is neglected and connection from bottom up is only in case of excess returnflow.
         Pond storage can exist above top layer.
-        
+
         IN:
             dt [s]
             rr = potential infiltration [m]
             tr = transpiration from root zone [m]
             evap = evaporation from top layer [m]
             retflow = return flow from ground water [m]
-        OUT: dict with 
+        OUT: dict with
             inflow [m] - total inflow to root zone
             roff [m] - surface runoff
             drain [m] - drainage from root zone
@@ -111,97 +111,98 @@ class BucketGrid(object):
 
         """
         gridshape = np.shape(self.Wliq_root)  # rows, cols
-    
+
         self.retflow = retflow
         if np.shape(self.retflow) != gridshape:
             self.retflow = self.retflow * np.ones(gridshape)
-            
+
         if np.shape(rr) != gridshape:
             rr = rr * np.ones(gridshape)
-        
+
         rr0 = rr.copy()
-       
+
         # add current Pond storage to rr & update storage, save intial conditions
         PondSto0 = self.PondSto.copy()
         rr += self.PondSto
         self.PondSto = np.zeros(gridshape)
-        
+
         WatStoRoot0 = self.WatStoRoot.copy()
         WatStoTop0 = self.WatStoTop.copy()
-        
-        
+
+
         #top layer interception & water balance
         interc = np.maximum(0.0, (self.MaxStoTop - self.WatStoTop))\
                     * (1.0 - np.exp(-(rr / (self.MaxStoTop + eps))))
-        
-        self.WatStoTop = np.maximum(0.0, self.WatStoTop + interc)  
+
+        self.WatStoTop = np.maximum(0.0, self.WatStoTop + interc)
         evap = np.minimum(evap, self.WatStoTop)
         self.WatStoTop -= evap
-      
+
         # infiltration to rootzone
         rr = rr - interc
-                
+
         # ********* compute bottom layer (root zone) water balance ***********
 
         # transpiration removes water from rootzone
         tr = np.minimum(tr, self.WatStoRoot - eps)
         self.WatStoRoot -= tr
-        
+
         # drainage: at gridcells where retflow > 0, set drain to zero.
         # This delays drying of cells which receive water from returnflow
         # ... and removes oscillation of water content at those cells.
         self.drain = np.minimum(self.hydrCond() * dt, np.maximum(0.0, (self.Wliq_root - self.Fc_root))*self.D_root)
         self.drain[self.retflow > 0.0] = 0.0
         self.drain = np.minimum(self.drain, airv_deep)
-        
+
         # inflow to root zone: restricted by potential inflow or available pore space
         Qin = self.retflow + rr  # m, pot. inflow
-        
+
         inflow = np.minimum(Qin, self.MaxStoRoot - self.WatStoRoot + self.drain)
-        
+
         dSto = (inflow - self.drain)
         self.WatStoRoot = np.minimum(self.MaxStoRoot, np.maximum(self.WatStoRoot + dSto, eps))
-                
+
         # if inflow excess after filling rootzone, update first top layer storage
         exfil = Qin - inflow
         to_top_layer = np.minimum(exfil, self.MaxStoTop - self.WatStoTop - eps)
         # self.WatStoTop = self.WatStoTop + to_top_layer
         self.WatStoTop += to_top_layer
-        
+
         # ... and then pond storage ...
         to_pond = np.minimum(exfil - to_top_layer, self.MaxPond - self.PondSto - eps)
         self.PondSto += to_pond
- 
+
         # ... and route remaining to surface runoff
         roff = exfil - to_top_layer - to_pond
-        
+
         # compute diagnostic state variables at root zone:
         self.setState()
-        
+
         # update grid total drainage to ground water [m]
         self._drainage_to_gw = np.nansum(self.drain)
-        
-        # update self.drain into mm
-        self.drain = self.drain * 1e3
-        self.retflow = self.retflow * 1e3
+
+
+        # storage change
+        dStorage = (self.WatStoRoot - WatStoRoot0)  + (self.WatStoTop - WatStoTop0) + (self.PondSto - PondSto0)
 
         # mass balance error [m]
         mbe = (self.WatStoRoot - WatStoRoot0)  + (self.WatStoTop - WatStoTop0) + (self.PondSto - PondSto0) \
             - (rr0 + self.retflow - tr - evap - self.drain - roff)
-            
-       
+
+
         results = {
-                'infiltration': inflow * 1e3,  # [mm d-1]
+                'potential_infiltration': rr0 * 1e3,  # [mm d-1]
                 'evaporation': evap * 1e3,  # [mm d-1]
                 'transpiration': tr * 1e3,  # [mm d-1]
-                'drainage': self.drain, #     !!!
+                'drainage': self.drain * 1e3, # [mm d-1]    !!!
                 'surface_runoff': roff * 1e3, #  !!!
                 'water_closure': mbe * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'moisture_root': self.Wliq_root,  # [m3 m-3]
                 'transpiration_limitation': self.Rew,  # [-] !!!
                 'water_storage': (self.WatStoTop + self.WatStoRoot) * 1e3, # [mm]
-                'return_flow': self.retflow # [mm d-1]
+                'storage_change': dStorage * 1e3, # [mm]
+                'return_flow': self.retflow * 1e3 # [mm d-1]
                 }
 
         return results
@@ -215,15 +216,15 @@ class BucketGrid(object):
         self.Sat_root = self.Wliq_root / self.poros_root
         self.Rew = np.maximum(0.0,
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
-        
+
         # organic top layer; maximum that can be hold is Fc
         self.Wliq_top = self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps)
         self.Ree = self.relative_evaporation()
-        
+
         # J-P! Jos ditch-soluissa ei ole juuristokerrosta niin lisää tämä jotta konsistentti canopyn kanssa:
-        self.Wliq_top[self.D_top == 0] = np.NaN 
-        self.Ree[self.D_top == 0] = eps # vie canopyn Efloor'in nollaan (mass-balance consistency) 
-        
+        self.Wliq_top[self.D_top == 0] = np.NaN
+        self.Ree[self.D_top == 0] = eps # vie canopyn Efloor'in nollaan (mass-balance consistency)
+
     def hydrCond(self):
         """
         returns hydraulic conductivity [ms-1] based on Campbell -formulation
@@ -236,7 +237,7 @@ class BucketGrid(object):
         returns relative evaporation rate from the organic top layer; loosely
         based on Launiainen et al. 2015 Ecol. Mod. Moss-module
         Returns:
-            f - [-], array or grid of 
+            f - [-], array or grid of
         """
         f = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
         return f

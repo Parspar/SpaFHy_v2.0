@@ -118,7 +118,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_decid = LAI_decid + LAI_grass + LAI_shrub
     except:
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
-    
+
 
     # for stability, lets replace zeros with eps
     #LAI_decid[LAI_decid == 0.0] = eps
@@ -208,10 +208,12 @@ def read_top_gisdata(fpath, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # flow accumulation
-    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc.dat'))
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat'))
+    flowacc = flowacc + eps
 
     # slope
     slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope.dat'))
+    slope = slope + eps
 
     # twi
     twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
@@ -300,7 +302,7 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
             data['org_rw'][yx] = value['org_rw']
-            
+
     if spatial == True:
         for key, value in rootp.items():
             t = value['soil_id']
@@ -309,9 +311,9 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['root_fc'][yx] = value['root_fc']
             data['root_ksat'][yx] = value['root_ksat']
             data['root_poros'][yx] = value['root_poros']
-            data['root_wp'][yx] = value['root_wp']        
-            data['root_beta'][yx] = value['root_beta']    
-    
+            data['root_wp'][yx] = value['root_wp']
+            data['root_beta'][yx] = value['root_beta']
+
     # ditch depth corresponding to assigned parameter
     data['ditches'] = np.where(data['ditches'] < -eps, psp['ditch_depth'], 0)
     data['ditches'] = data['ditches'] * gisdata['cmask']
@@ -598,8 +600,8 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
 
     # add CO2 concentration to dataframe
     fmi['CO2'] = float(CO2)
-            
-    
+
+
     '''
     dates = pd.date_range(start_date, end_date).tolist()
     if len(dates) != len(fmi):
@@ -659,8 +661,8 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
         if (var_name.split('_')[0] == 'forcing' and
             pgen['spatial_forcing'] == False):
             var_dim = ('date')
-        elif (var_name.split('_')[0] == 'top'):
-            var_dim = ('date')            
+        elif (var_name.split('_')[0] == 'top' and var_name.split('_')[1] != 'local'):
+            var_dim = ('date')
         elif var_name.split('_')[0] == 'parameters':
             var_dim = ('i', 'j')
         else:
@@ -697,7 +699,7 @@ def write_ncf(results, ncf, steps=None):
             elif len(ncf[key].shape) > 1:
                 ncf[key][:,:] = results[key]
             elif len(ncf[key].shape) == 1:
-                ncf[key][steps[0]:steps[1]] = results[key][0:steps[1]-steps[0]]                
+                ncf[key][steps[0]:steps[1]] = results[key][0:steps[1]-steps[0]]
             else:
                 if steps==None:
                     ncf[key][:] = results[key]
@@ -857,7 +859,7 @@ def create_input_GIS(fpath, plotgrids=False):
     LAI_pine = 1e-3*bmleaf_pine*SLA['pine']  # 1e-3 converts 10kg/ha to kg/m2
     LAI_spruce = 1e-3*bmleaf_spruce*SLA['spruce']
     LAI_decid = 1e-3*bmleaf_decid*SLA['decid']
-        
+
 
     # tree height
     hc, _, pos, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'keskipituus.asc'))

@@ -197,6 +197,9 @@ def _create_results(pgen, cmask, Nsteps):
             if (var_name.split('_')[0] != 'top'):
                 var_shape.append(i)
                 var_shape.append(j)
+            if (var_name.split('_')[0] == 'top' and var_name.split('_')[1] == 'local'):
+                var_shape.append(i)
+                var_shape.append(j)
 
         results[var_name] = np.full(var_shape, np.NAN)
 

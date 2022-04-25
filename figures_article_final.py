@@ -28,7 +28,7 @@ outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = r'D:\SpaFHy_2D_2021\testcase_input_2d_new_d02.nc'
+outputfile_2d = r'D:\SpaFHy_2D_2021\testcase_input_2d_new.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results

@@ -131,12 +131,12 @@ def preprocess_parameters(folder=''):
 
     if pgen['topmodel']:
         gisdata.update(read_top_gisdata(pgen['gis_folder']))
-    
+
 #    # SL TESTING: mask ditch cells out!
 #    plt.imshow(gisdata['ditches'])
 #    ix = np.where(gisdata['ditches'] < 0)
 #    gisdata['cmask'][ix] = np.NaN
-    
+
     soildata = preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
@@ -205,6 +205,9 @@ def _create_results(pgen, cmask, Nsteps):
             if (var_name.split('_')[0] != 'top'):
                 var_shape.append(i)
                 var_shape.append(j)
+            if (var_name.split('_')[0] == 'top' and var_name.split('_')[1] == 'local'):
+                var_shape.append(i)
+                var_shape.append(j)
 
         results[var_name] = np.full(var_shape, np.NAN)
 
@@ -243,4 +246,4 @@ if __name__ == '__main__':
 
     outputfile = driver(create_ncf=True, folder=args.folder)
 
-    print(outputfile) 
+    print(outputfile)

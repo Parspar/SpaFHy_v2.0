@@ -25,15 +25,15 @@ from matplotlib.patches import Polygon
 
 
 # reading the stand results
-outputfile_stand = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202111121438.nc'
+outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202111121438.nc'
+outputfile_2d = r'D:\SpaFHy_2D_2021\testcase_input_2d_new.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
-outputfile_catch = 'C:\SpaFHy_v1_Pallas_2D/results/testcase_input_202111121438.nc'
+outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new.nc'
 results_catch = read_results(outputfile_catch)
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
@@ -52,8 +52,8 @@ l_loc = [46, 54]
 dates_spa = []
 for d in range(len(results_stand['date'])):
     dates_spa.append(pd.to_datetime(str(results_stand['date'][d])[36:46]))
-    
-dates_sar = pd.to_datetime(sar['time'][:], format='%Y%m%d') 
+
+dates_sar = pd.to_datetime(sar['time'][:], format='%Y%m%d')
 
 # forcing file
 folder = r'C:\SpaFHy_v1_Pallas_2D\testcase_input\forcing'
@@ -204,22 +204,22 @@ if saveplots == True:
 dates_spa_str = []
 for i in range(len(dates_spa)):
     dates_spa_str.append(str(dates_spa[i]))
-    
-first_july = np.where(pd.Series(dates_spa_str).str.contains('07-01') == True)[0][0]
+
+first_july = np.where(pd.Series(dates_spa_str).str.contains('09-02') == True)[0][0]
 #first_july_c = ix + first_july
 
 
 # WB from first first of july
-results_2d['WB_WS'] = ((results_2d['soil_water_storage'][first_july:] - results_2d['soil_water_storage'][first_july] 
+results_2d['WB_WS'] = ((results_2d['soil_water_storage'][first_july:] - results_2d['soil_water_storage'][first_july]
                        + results_2d['bucket_water_storage'][first_july:] - results_2d['bucket_water_storage'][first_july]
                        + results_2d['canopy_snow_water_equivalent'][first_july:] - results_2d['canopy_snow_water_equivalent'][first_july]).mean(['i','j']))
 
 
-results_2d['WB_ET'] = (np.cumsum(results_2d['canopy_evaporation'][first_july:].mean(['i','j'])) 
-                       + np.cumsum(results_2d['canopy_transpiration'][first_july:].mean(['i','j'])) 
+results_2d['WB_ET'] = (np.cumsum(results_2d['canopy_evaporation'][first_july:].mean(['i','j']))
+                       + np.cumsum(results_2d['canopy_transpiration'][first_july:].mean(['i','j']))
                        + np.cumsum(results_2d['bucket_evaporation'][first_july:].mean(['i','j'])))
-                    
-results_2d['WB_RO'] = (np.cumsum(results_2d['bucket_surface_runoff'][first_july:].mean(['i','j'])) + 
+
+results_2d['WB_RO'] = (np.cumsum(results_2d['bucket_surface_runoff'][first_july:].mean(['i','j'])) +
                        np.cumsum((results_2d['soil_netflow_to_ditch'][first_july:]*results_2d['parameters_cmask']).mean(['i','j'])))
 results_2d['WB_P'] = np.cumsum(results_2d['forcing_precipitation'][first_july:])
 
@@ -229,10 +229,10 @@ results_2d['WB_date'] = results_2d['date'][first_july:]
 results_stand['WB_WS'] = ((results_stand['bucket_water_storage'][first_july:] - results_stand['bucket_water_storage'][first_july]).mean(['i','j'])
                         + (results_stand['canopy_snow_water_equivalent'][first_july:] - results_stand['canopy_snow_water_equivalent'][first_july]).mean(['i','j']))
 
-results_stand['WB_ET'] = (np.cumsum(results_stand['canopy_evaporation'][first_july:].mean(['i','j'])) 
-                       + np.cumsum(results_stand['canopy_transpiration'][first_july:].mean(['i','j'])) 
+results_stand['WB_ET'] = (np.cumsum(results_stand['canopy_evaporation'][first_july:].mean(['i','j']))
+                       + np.cumsum(results_stand['canopy_transpiration'][first_july:].mean(['i','j']))
                        + np.cumsum(results_stand['bucket_evaporation'][first_july:].mean(['i','j'])))
-results_stand['WB_RO'] = (np.cumsum(results_stand['bucket_surface_runoff'][first_july:].mean(['i','j'])) + 
+results_stand['WB_RO'] = (np.cumsum(results_stand['bucket_surface_runoff'][first_july:].mean(['i','j'])) +
                        np.cumsum((results_stand['bucket_drainage'][first_july:]*results_2d['parameters_cmask']).mean(['i','j'])))
 results_stand['WB_P'] = np.cumsum(results_stand['forcing_precipitation'][first_july:])
 
@@ -244,10 +244,10 @@ results_stand['WB_date'] = results_stand['date'][first_july:]
 results_catch['WB_WS'] = ((results_catch['bucket_water_storage'][first_july:] - results_catch['bucket_water_storage'][first_july]).mean(['i','j'])
                         + (results_catch['canopy_snow_water_equivalent'][first_july:] - results_catch['canopy_snow_water_equivalent'][first_july]).mean(['i','j']))
 
-results_catch['WB_ET'] = (np.cumsum(results_catch['canopy_evaporation'][first_july:].mean(['i','j'])) 
-                       + np.cumsum(results_catch['canopy_transpiration'][first_july:].mean(['i','j'])) 
+results_catch['WB_ET'] = (np.cumsum(results_catch['canopy_evaporation'][first_july:].mean(['i','j']))
+                       + np.cumsum(results_catch['canopy_transpiration'][first_july:].mean(['i','j']))
                        + np.cumsum(results_catch['bucket_evaporation'][first_july:].mean(['i','j'])))
-results_catch['WB_RO'] = (np.cumsum(results_catch['bucket_surface_runoff'][first_july:].mean(['i','j'])) + 
+results_catch['WB_RO'] = (np.cumsum(results_catch['bucket_surface_runoff'][first_july:].mean(['i','j'])) +
                        np.cumsum((results_catch['top_baseflow'][first_july:]*results_2d['parameters_cmask']).mean(['i','j'])))
 results_catch['WB_P'] = np.cumsum(results_catch['forcing_precipitation'][first_july:])
 
@@ -259,12 +259,12 @@ results_catch = pd.DataFrame()
 results_catch['WB_WS'] = np.nanmean((bu_catch['WatSto'][first_july_c:]*1e3 - bu_catch['WatSto'][first_july_c]*1e3)
                           + cpy_catch['SWE'][first_july_c:] - cpy_catch['SWE'][first_july_c], axis=(1,2))
 
-results_catch['WB_ET'] = (np.cumsum(np.nanmean(cpy_catch['Evap'][first_july_c:], axis=(1,2))) 
-                       + np.cumsum(np.nanmean(cpy_catch['Transpi'][first_july_c:], axis=(1,2))) 
+results_catch['WB_ET'] = (np.cumsum(np.nanmean(cpy_catch['Evap'][first_july_c:], axis=(1,2)))
+                       + np.cumsum(np.nanmean(cpy_catch['Transpi'][first_july_c:], axis=(1,2)))
                        + np.cumsum(np.nanmean(cpy_catch['Efloor'][first_july_c:], axis=(1,2))))
 
 results_catch['WB_RO'] = (np.cumsum(top_catch['Qt'][first_july_c:]*1e3))
-                       
+
 results_catch['WB_P'] = np.cumsum(results_stand['forcing_precipitation'][first_july:])
 
 results_catch['WB_date'] = results_stand['date'][first_july:]
@@ -283,59 +283,59 @@ ax2 = axs[0]
 ax3 = axs[1]
 
 ax1.text(dates_spa[int(len(dates_spa)/2)], 2100, '2D')
-ax1.plot(results_2d['WB_date'], 
+ax1.plot(results_2d['WB_date'],
          results_2d['WB_WS'], 'b', label='Water and snow storage')
 ax1.plot(results_2d['WB_date'],
-         results_2d['WB_WS']+ results_2d['WB_ET'], 
+         results_2d['WB_WS']+ results_2d['WB_ET'],
          'darkgreen', label='+ Evapotranspiration')
 ax1.plot(results_2d['WB_date'],
          results_2d['WB_WS'] + results_2d['WB_ET'] + results_2d['WB_RO'],
          'brown', alpha=0.3, label='+ Discharge')
 ax1.plot(results_2d['WB_date'],results_2d['WB_P'],'k.', alpha=0.5, markersize=3, label='Precipitation')
-ax1.fill_between(results_2d['WB_date'], nullref, results_2d['WB_WS'], color='blue', alpha=0.2)
-ax1.fill_between(results_2d['WB_date'], results_2d['WB_WS'], results_2d['WB_WS'] + results_2d['WB_ET'], color='green', alpha=0.2)
-ax1.fill_between(results_2d['WB_date'], results_2d['WB_WS'] + results_2d['WB_ET'], results_2d['WB_WS'] + results_2d['WB_ET']
-                 + results_2d['WB_RO'], color='brown', alpha=0.2)
-ax1.set(ylim=(0, 2200))
+#ax1.fill_between(results_2d['WB_date'], nullref, results_2d['WB_WS'], color='blue', alpha=0.2)
+#ax1.fill_between(results_2d['WB_date'], results_2d['WB_WS'], results_2d['WB_WS'] + results_2d['WB_ET'], color='green', alpha=0.2)
+#ax1.fill_between(results_2d['WB_date'], results_2d['WB_WS'] + results_2d['WB_ET'], results_2d['WB_WS'] + results_2d['WB_ET']
+#                 + results_2d['WB_RO'], color='brown', alpha=0.2)
+#ax1.set(ylim=(0, 2200))
 
 #ax1.legend()
 
 ax2.text(dates_spa[int(len(dates_spa)/2)], 2100, 'stand')
-ax2.plot(results_stand['WB_date'], 
+ax2.plot(results_stand['WB_date'],
          results_stand['WB_WS'], 'b', label='Water and snow storage')
 ax2.plot(results_stand['WB_date'],
-         results_stand['WB_WS']+ results_stand['WB_ET'], 
+         results_stand['WB_WS']+ results_stand['WB_ET'],
          'darkgreen', label='+ Evapotranspiration')
 ax2.plot(results_stand['WB_date'],
          results_stand['WB_WS'] + results_stand['WB_ET'] + results_stand['WB_RO'],
          'brown', alpha=0.3, label='+ Discharge')
 ax2.plot(results_stand['WB_date'],results_stand['WB_P'],'k.', alpha=0.5, markersize=3, label='Precipitation')
-ax2.fill_between(results_stand['WB_date'], nullref, results_stand['WB_WS'], color='blue', alpha=0.2)
-ax2.fill_between(results_stand['WB_date'], results_stand['WB_WS'], results_stand['WB_WS'] + results_stand['WB_ET'], color='green', alpha=0.2)
-ax2.fill_between(results_stand['WB_date'], results_stand['WB_WS'] + results_stand['WB_ET'], results_stand['WB_WS'] + results_stand['WB_ET']
-                 + results_stand['WB_RO'], color='brown', alpha=0.2)
+#ax2.fill_between(results_stand['WB_date'], nullref, results_stand['WB_WS'], color='blue', alpha=0.2)
+#ax2.fill_between(results_stand['WB_date'], results_stand['WB_WS'], results_stand['WB_WS'] + results_stand['WB_ET'], color='green', alpha=0.2)
+#ax2.fill_between(results_stand['WB_date'], results_stand['WB_WS'] + results_stand['WB_ET'], results_stand['WB_WS'] + results_stand['WB_ET']
+#                 + results_stand['WB_RO'], color='brown', alpha=0.2)
 ax2.axes.get_xaxis().set_visible(False)
 ax2.legend()
-ax2.set(ylim=(0, 2200))
+#ax2.set(ylim=(0, 2200))
 
 
 ax3.text(dates_spa[int(len(dates_spa)/2)], 2100, 'catch')
-ax3.plot(results_catch['WB_date'], 
+ax3.plot(results_catch['WB_date'],
          results_catch['WB_WS'], 'b', label='Water and snow storage')
 ax3.plot(results_catch['WB_date'],
-         results_catch['WB_WS']+ results_catch['WB_ET'], 
+         results_catch['WB_WS']+ results_catch['WB_ET'],
          'darkgreen', label='+ Evapotranspiration')
 ax3.plot(results_catch['WB_date'],
          results_catch['WB_WS'] + results_catch['WB_ET'] + results_catch['WB_RO'],
          'brown', alpha=0.3, label='+ Discharge')
 ax3.plot(results_catch['WB_date'],results_catch['WB_P'],'k.', alpha=0.5, markersize=3, label='Precipitation')
-ax3.fill_between(results_catch['WB_date'], nullrefc, results_catch['WB_WS'], color='blue', alpha=0.2)
-ax3.fill_between(results_catch['WB_date'], results_catch['WB_WS'], results_catch['WB_WS'] + results_catch['WB_ET'], color='green', alpha=0.2)
-ax3.fill_between(results_catch['WB_date'], results_catch['WB_WS'] + results_catch['WB_ET'], results_catch['WB_WS'] + results_catch['WB_ET']
-                 + results_catch['WB_RO'], color='brown', alpha=0.2)
+#ax3.fill_between(results_catch['WB_date'], nullrefc, results_catch['WB_WS'], color='blue', alpha=0.2)
+#ax3.fill_between(results_catch['WB_date'], results_catch['WB_WS'], results_catch['WB_WS'] + results_catch['WB_ET'], color='green', alpha=0.2)
+#ax3.fill_between(results_catch['WB_date'], results_catch['WB_WS'] + results_catch['WB_ET'], results_catch['WB_WS'] + results_catch['WB_ET']
+#                 + results_catch['WB_RO'], color='brown', alpha=0.2)
 #ax3.legend()
 ax3.axes.get_xaxis().set_visible(False)
-ax3.set(ylim=(0, 2200))
+#ax3.set(ylim=(0, 2200))
 
 plt.subplots_adjust(wspace=1, hspace=0)
 
@@ -450,21 +450,21 @@ fig.colorbar(im2, cax=cbar_ax, label=r'$\theta$ m$^3$m$^{-3}$')
 ax2.title.set_text('stand - catch (sept)')
 
 # stand root moist
-im3 = ax3.imshow(results_2d['bucket_moisture_root'][june,zy,zx] 
+im3 = ax3.imshow(results_2d['bucket_moisture_root'][june,zy,zx]
                  - results_stand['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 #fig.colorbar(im7, ax=ax7)
 ax3.title.set_text('2D - stand (june)')
 
-im4 = ax4.imshow(results_2d['bucket_moisture_root'][sept,zy,zx] 
+im4 = ax4.imshow(results_2d['bucket_moisture_root'][sept,zy,zx]
                  - results_stand['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 #fig.colorbar(im4, ax=ax4)
 ax4.title.set_text('2D - stand (sept)')
 '''
-im5 = ax5.imshow(results_2d['bucket_moisture_root'][june,zy,zx] 
+im5 = ax5.imshow(results_2d['bucket_moisture_root'][june,zy,zx]
                  - results_catch['bucket_moisture_root'][june,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 ax5.title.set_text('2d - catch (june)')
 
-im6 = ax6.imshow(results_2d['bucket_moisture_root'][sept,zy,zx] 
+im6 = ax6.imshow(results_2d['bucket_moisture_root'][sept,zy,zx]
                  - results_catch['bucket_moisture_root'][sept,zy,zx], vmin=-0.4, vmax=0.4, cmap='coolwarm_r')
 ax6.title.set_text('2d - catch (sept)')
 '''
@@ -479,7 +479,7 @@ ax4.axis('off')
 if saveplots == True:
         plt.savefig(f'theta_diff_june_sept_{today}.pdf')
         plt.savefig(f'theta_diff_june_sept_{today}.png')
-        
+
 #%%
 
 soilclass_2 = np.ravel(soilclass)
@@ -564,7 +564,7 @@ if saveplots == True:
 
 #%%
 # SAR vs. 2D
-    
+
 date_in_spa = []
 for i in range(len(dates_sar)):
     ix = np.where(pd.to_datetime(dates_spa) == dates_sar[i])[0][0]
@@ -634,7 +634,7 @@ def scatter_hist(x, y, ax, ax_histx, ax_histy):
     bins = np.arange(0.1, lim + binwidth, binwidth)
     ax_histx.hist(x, bins=bins)
     ax_histy.hist(y, bins=bins, orientation='horizontal')
-    
+
 
 x = list(soilm['spa_k_st_root'][np.isfinite(soilm['spa_k_st_root'])]); y = list(soilm['mean'][np.isfinite(soilm['spa_k_st_root'])])
 m, b = np.polyfit(x[0:500], y[0:500], 1)
@@ -664,7 +664,7 @@ plt.show()
 #ax_histy = fig.add_subplot(gs[0, 3], sharey=ax)
 #obtain m (slope) and b(intercept) of linear regression line
 
-#add linear regression line to scatterplot 
+#add linear regression line to scatterplot
 #scatter_hist(x, y, ax, ax_histx, ax_histy)
 '''
 
@@ -715,7 +715,7 @@ spa_wliq_ca_root = results_stand['bucket_moisture_root']
 spa_wliq_ca_top = results_stand['bucket_moisture_top']
 
 #dates_sar = sar['time'][:]
-#dates_sar = pd.to_datetime(dates_sar, format='%Y%m%d') 
+#dates_sar = pd.to_datetime(dates_sar, format='%Y%m%d')
 
 '''
 #spa dates to match sar dates
@@ -768,7 +768,7 @@ soilmsc = soilmsc.reset_index(drop=True)
 
 sampl2 = np.random.randint(low=0, high=len(soilmsc), size=(1000,))
 soilmsc = soilmsc.iloc[sampl2]
-soilmsc.index = soilmsc['time'] 
+soilmsc.index = soilmsc['time']
 
 #%%
 
@@ -825,12 +825,12 @@ f3_ax3.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
 if saveplots == True:
         plt.savefig(f'theta_model_ts_{today}.pdf')
         plt.savefig(f'theta_model_ts_{today}.png')
-        
-        
 
-#%% 
 
-# where 2D is interesting? 
+
+#%%
+
+# where 2D is interesting?
 # kenttärovalla esim 2018 kesäkuussa
 poi = 533
 poi = 609
@@ -882,14 +882,14 @@ ax4 = axs[1][0]
 ax5 = axs[1][1]
 ax6 = axs[1][2]
 
-sns.regplot(ax=ax3, x=np.array(results_2d['bucket_moisture_root'][900:1000,:,:]).flatten(), 
-            y=np.array(results_stand['bucket_moisture_root'][900:1000,:,:]).flatten(), 
+sns.regplot(ax=ax3, x=np.array(results_2d['bucket_moisture_root'][900:1000,:,:]).flatten(),
+            y=np.array(results_stand['bucket_moisture_root'][900:1000,:,:]).flatten(),
             scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
-sns.regplot(ax=ax2, x=np.array(results_2d['bucket_moisture_root'][poi,:,:]).flatten(), 
-            y=np.array(results_catch['bucket_moisture_root'][poi,:,:]).flatten(), 
+sns.regplot(ax=ax2, x=np.array(results_2d['bucket_moisture_root'][poi,:,:]).flatten(),
+            y=np.array(results_catch['bucket_moisture_root'][poi,:,:]).flatten(),
             scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
-sns.regplot(ax=ax1, x=np.array(results_stand['bucket_moisture_root'][poi,:,:]).flatten(), 
-            y=np.array(results_catch['bucket_moisture_root'][poi,:,:]).flatten(), 
+sns.regplot(ax=ax1, x=np.array(results_stand['bucket_moisture_root'][poi,:,:]).flatten(),
+            y=np.array(results_catch['bucket_moisture_root'][poi,:,:]).flatten(),
             scatter_kws={'s':50, 'alpha':0.4}, line_kws={"color": "red"})
 
 ax4.imshow(results_stand['bucket_moisture_root'][poi,:,:], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
@@ -920,7 +920,7 @@ ec['ET-1-LV'].loc[ec['ET-1-LV'] < 0] = np.nan
 #dry et
 results_2d['dry_et'] = results_2d['bucket_evaporation'] + results_2d['canopy_transpiration'] #+ results_2d['canopy_evaporation']
 #results_2d['dry_et'][ix_p,:,:] = np.nan
-results_stand['dry_et'] = results_stand['bucket_evaporation'] + results_stand['canopy_transpiration'] #+ results_stand['canopy_evaporation'] 
+results_stand['dry_et'] = results_stand['bucket_evaporation'] + results_stand['canopy_transpiration'] #+ results_stand['canopy_evaporation']
 #results_stand['dry_et'][ix_p,:,:] = np.nan
 results_catch['dry_et'] = results_catch['bucket_evaporation'] + results_catch['canopy_transpiration'] #+ results_catch['canopy_evaporation']
 #catch_dry_et[ix_p,:,:] = np.nan
@@ -930,8 +930,8 @@ ET_flat = pd.DataFrame()
 ET_flat['stand_kr_et'] = results_stand['dry_et'][:,k_loc[0],k_loc[0]]
 ET_flat['stand_lv_et'] = results_stand['dry_et'][:,l_loc[0],l_loc[0]]
 ET_flat['2D_kr_et'] = results_2d['dry_et'][:,k_loc[0],k_loc[0]]
-ET_flat['2D_lv_et'] = results_2d['dry_et'][:,l_loc[0],l_loc[0]] 
-ET_flat['catch_kr_et'] = results_catch['dry_et'][:,k_loc[0],k_loc[0]] 
+ET_flat['2D_lv_et'] = results_2d['dry_et'][:,l_loc[0],l_loc[0]]
+ET_flat['catch_kr_et'] = results_catch['dry_et'][:,k_loc[0],k_loc[0]]
 ET_flat['catch_lv_et'] = results_catch['dry_et'][:,l_loc[0],l_loc[0]]
 ET_flat['ET-1-KR'] = ec['ET-1-KR'].reset_index(drop=True)
 ET_flat['ET-1-LV'] = ec['ET-1-LV'].reset_index(drop=True)
@@ -1050,8 +1050,8 @@ f3_ax6.yaxis.tick_right()
 if saveplots == True:
         plt.savefig(f'ET_MOD_OBS_LV_{today}.pdf')
         plt.savefig(f'ET_MOD_OBS_LV_{today}.png')
-        
-        
+
+
 #%%
 
 # KENTTÄROVA AND LOMPOLO VS STAND
@@ -1164,8 +1164,8 @@ plt.tight_layout()
 if saveplots == True:
         plt.savefig(f'SWE_MOD_OBS_{today}.pdf')
         plt.savefig(f'SWE_MOD_OBS_{today}.png')
-        
-        
+
+
 #%%
 
 
@@ -1202,7 +1202,7 @@ ax6.yaxis.tick_right()
 ax5.yaxis.set_label_position("right")
 ax6.yaxis.set_label_position("right")
 
-l1 = ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'], 
+l1 = ax1.plot(dates_spa, results_catch['top_baseflow'] + np.nanmean(results_catch['bucket_surface_runoff'],
                                                                     axis=(1,2)), label = r'Q$_{catch}$')
 l2 = ax1.plot(q, alpha=0.7, label=r'Q$_{obs}$')
 #ax1.legend()
@@ -1211,8 +1211,8 @@ ax1.set_ylabel(r'Qf (mm d$^{-1}$)')
 #ax1.axes.get_xaxis().set_visible(False)
 #ax5.axes.get_xaxis().set_visible(False)
 
-l3 = ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'], 
-                                    axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'], 
+l3 = ax2.plot(dates_spa, np.nanmean(results_2d['soil_netflow_to_ditch'],
+                                    axis=(1,2)) + np.nanmean(results_2d['bucket_surface_runoff'],
                                                              axis=(1,2)), color='tab:green', label=r'Q$_{2D}$')
 ax2.plot(q, color='tab:orange', alpha=0.7)
 #ax2.legend()
@@ -1222,8 +1222,8 @@ ax2.set_ylabel(r'Qf (mm d$^{-1}$)')
 
 #f3_ax1.plot(SWE_m['SWE'], 'k.', markersize=6)
 #f3_ax1.fill_between(SWE_all2.index, SWE_all2['mod_iq25'] , SWE_all2['mod_iq75'], color='blue', alpha=0.2, label=r'SWE$_{mod range}$')
-l4 = ax7.errorbar(SWE_all2.index, SWE_all2['SWE'], SWE_all2['SWE_sd'], 
-                  color = 'black', alpha=0.5, linestyle='None', markersize=3, marker='o', 
+l4 = ax7.errorbar(SWE_all2.index, SWE_all2['SWE'], SWE_all2['SWE_sd'],
+                  color = 'black', alpha=0.5, linestyle='None', markersize=3, marker='o',
                   label=r'SWE$_{obs}$mean w/ std')
 ax7.plot(SWE_all2.index, SWE_all2['mod_mean'], label=r'SWE$_{mod}$mean')
 ax7.legend(ncol=5, loc='upper left')
@@ -1311,15 +1311,15 @@ ax2.plot(q, color='tab:orange', alpha=0.7)
 ax2.set(ylim=(-1, 35))
 ax2.set_ylabel(r'Qf mm d$^{-1}$')
 
-ax3=ax1.twinx()   
+ax3=ax1.twinx()
 l4 = ax3.bar(dates_spa, Prec, color='black', alpha=0.8, width=2, label='P')
 l5 = ax3.plot(dates_spa, np.nanmean(results_catch['canopy_snow_water_equivalent'], axis=(1,2)) / 10.0, 'b-', linewidth=1.5, label='SWE$_{mod}$')
 #ax3.plot(SWE_m['date'], SWE_m['SWE']/10, 'g.', linewidth=1.0, markersize=4)
 # ax2.plot(tvec0, 20*swe, 'r--', linewidth=1)
 ax3.set_ylabel(r'    P (mm d$^{-1}$) & 0.1 x SWE (mm)'); plt.ylim([0, 100])
 ax3.invert_yaxis()
-    
-ax4=ax2.twinx()   
+
+ax4=ax2.twinx()
 ax4.bar(dates_spa, Prec, color='black', alpha=0.8, width=2, label='P')
 ax4.plot(dates_spa, np.nanmean(results_catch['canopy_snow_water_equivalent'], axis=(1,2)) / 10.0, 'b-', linewidth=1.5, label='SWE$_{mod}$')
 #ax3.plot(SWE_m['date'], SWE_m['SWE']/10, 'g.', linewidth=1.0, markersize=4)
@@ -1355,7 +1355,7 @@ plt.tight_layout()
 if saveplots == True:
         plt.savefig(f'QF_MOD_OBS_{today}.pdf')
         plt.savefig(f'QF_MOD_OBS_{today}.png')
-        
+
 
 #%%
 # yearly water balance in meters for whole area
@@ -1408,8 +1408,8 @@ for i in range(len(wbdfy)):
 
 wbdfy['closure'] = wbdfy['P'] - wbdfy['Qmod'] - wbdfy['ETmod'] + wbdfy['S']
 wbdf2dy['closure'] = wbdf2dy['P'] - wbdf2dy['Qmod'] - wbdf2dy['ETmod'] + wbdf2dy['S']
-wbdfy = wbdfy[1:-1] 
-wbdf2dy = wbdf2dy[1:-1] 
+wbdfy = wbdfy[1:-1]
+wbdf2dy = wbdf2dy[1:-1]
 
 wbplot = wbdfy.mean()
 

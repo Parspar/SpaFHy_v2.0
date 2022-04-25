@@ -12,8 +12,8 @@ def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
             'start_date': '2007-08-01',  # '2007-08-01'
-            'end_date': '2021-09-09',
-            'spinup_end': '2008-12-31',  # '2008-12-31' results after this are saved in result file
+            'end_date': '2009-09-09', # 2021-09-09
+            'spinup_end': '2008-09-09',  # '2008-12-31' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -48,14 +48,15 @@ def parameters(folder=''):
                     ['forcing_vapor_pressure_deficit', 'vapor pressure deficit [kPa]'],
                     ['forcing_global_radiation', 'global radiation [Wm-2]'],
                     ['forcing_wind_speed','wind speed [m s-1]'],
-                    #['bucket_pond_storage', 'pond storage [m]'],
+                    ['bucket_pond_storage', 'pond storage [m]'],
                     ['bucket_moisture_top', 'volumetric water content of moss layer [m3 m-3]'],
                     ['bucket_moisture_root', 'volumetric water content of rootzone [m3 m-3]'],
-                    #['bucket_infiltration', 'infiltration [mm d-1]'],
+                    ['bucket_potential_infiltration', 'potential infiltration [mm d-1]'],
                     ['bucket_surface_runoff', 'surface runoff [mm d-1]'],
                     ['bucket_evaporation', 'evaporation from soil surface [mm d-1]'],
                     ['bucket_drainage', 'drainage from root layer [mm d-1]'],
                     ['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
+                    ['bucket_storage_change', 'bucket water storage change (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
                     ['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],
                     ['soil_water_storage', 'soil water storage (deeplayer) [m]'],
@@ -81,8 +82,10 @@ def parameters(folder=''):
                     ['top_baseflow', 'topmodel baseflow [mm d-1]'],
                     ['top_water_closure', 'topmodel water balance error [mm d-1]'],
                     ['top_returnflow', 'topmodel returnflow [mm d-1]'],
+                    ['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
                     ['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
                     ['top_saturation_deficit', 'topmodel saturation deficit [m]'],
+                    ['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
                     ['top_saturated_area', 'topmodel saturated area [-]'],
                     ['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
 
