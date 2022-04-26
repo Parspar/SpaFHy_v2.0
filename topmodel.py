@@ -45,7 +45,9 @@ class Topmodel_Homogenous():
         cmask = pp['cmask']
         flowacc = pp['flowacc']
         slope = pp['slope']
-        self.CellArea = len(~np.isnan(cmask)) * 16
+        dxy = pp['dxy']
+
+        self.CellArea = dxy**2
         dx = self.CellArea**0.5
         self.CatchmentArea = np.size(cmask[cmask == 1])*self.CellArea
         self.qr = np.full_like(cmask, 0.0)
@@ -121,8 +123,6 @@ class Topmodel_Homogenous():
 
         # subsurface flow, based on initial state
         Qb = self.subsurfaceflow()
-        #print(np.unique(Qb))
-        #print(Qb)
 
         # update storage deficit and check where we have returnflow
         S = So + Qb - R
@@ -140,7 +140,6 @@ class Topmodel_Homogenous():
         S = S + Qr
         self.S = S
         s = s + self.qr
-
         # saturated area fraction
         ix = np.where(s <= 0)
 
@@ -160,7 +159,7 @@ class Topmodel_Homogenous():
                 'drainage_in': R * 1e3, #[mm d-1]
                 'water_closure': mbe * 1e3, #
                 'saturation_deficit': self.S, # [m]
-                'local_saturation_decifit': s * 1e3, # [mm]
+                'local_saturation_deficit': s * 1e3, # [mm]
                 'saturated_area': fsat, #[-],
                 'storage_change': dF *1e3 # [mm d-1]
                 }

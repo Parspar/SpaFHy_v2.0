@@ -200,10 +200,11 @@ def read_top_gisdata(fpath, plotgrids=False):
         plotgrids - True plots
     Returns:
         gis - dict of gis-data rasters
-            cmask
-            soil_id
-            ditch_depth
-            ditch_spacing
+        flowacc - flow accumulation raster
+        slope - slope raster
+        twi - topographic wetness index
+        cmask - catchment mask
+
     """
     fpath = os.path.join(workdir, fpath)
 
@@ -379,12 +380,10 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
     Args:
         canopy parameters
         gisdata
-            cmask
-            LAI_pine, LAI_spruce - pine and spruce LAI (m2m-2)
-            LAI_conif - conifer total annual max LAI (m2m-2)
-            LAI_dedid - deciduous annual max LAI (m2m-2)
-            cf - canopy closure (-)
-            hc - mean stand height (m)
+        flowacc - flow accumulation raster
+        slope - slope raster
+        twi - topographic wetness index
+        cmask - catchment mask
             (lat, lon)
         spatial
     """
@@ -395,6 +394,7 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
         ptopmodel['flowacc'] = gisdata['flowacc']
         ptopmodel['twi'] = gisdata['twi']
         ptopmodel['cmask'] = gisdata['cmask']
+        ptopmodel['dxy'] = gisdata['dxy']
         if {'lat','lon'}.issubset(gisdata.keys()):
             ptopmodel['loc']['lat'] = gisdata['lat']
             ptopmodel['loc']['lon'] = gisdata['lon']
