@@ -213,7 +213,7 @@ def read_top_gisdata(fpath, plotgrids=False):
     flowacc = flowacc + eps
 
     # slope
-    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope.dat'))
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat'))
     slope = slope + eps
 
     # twi

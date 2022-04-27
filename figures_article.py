@@ -23,7 +23,6 @@ import matplotlib.gridspec as gridspec
 from matplotlib.patches import Polygon
 
 
-
 # reading the stand results
 outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
 results_stand = read_results(outputfile_stand)
@@ -35,6 +34,9 @@ results_2d = read_results(outputfile_2d)
 # reading the catch results
 outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new.nc'
 results_catch = read_results(outputfile_catch)
+
+sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma3.nc'
+sar = Dataset(sar_file, 'r')
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma5_mean8_scd.nc'
 sar = Dataset(sar_file, 'r')
@@ -352,6 +354,10 @@ if saveplots == True:
 # spafhy
 wet_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmax()
 dry_day = np.nansum(results_2d['bucket_moisture_root'], axis=(1,2)).argmin()
+vminwet=0.25
+vmindry=0.05
+vmaxwet=0.9
+vmaxdry=0.9
 
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2_direct10_16.nc'
 #sar_path = r'C:\PALLAS_RAW_DATA\SAR_maankosteus\processed\SAR_PALLAS_2019_mask2.nc'
@@ -369,31 +375,33 @@ ax5 = axs[0][1]
 ax6 = axs[1][1]
 
 # 2D root moist
-im1 = ax1.imshow(results_2d['bucket_moisture_root'][wet_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im1 = ax1.imshow(results_2d['bucket_moisture_root'][wet_day,zy,zx], vmin=vminwet, vmax=vmaxwet, cmap='coolwarm_r')
 #fig.colorbar(im3, ax=ax3)
 ax1.title.set_text('2D root wet')
+fig.colorbar(im1, ax=ax1)
 
-im2 = ax2.imshow(results_2d['bucket_moisture_root'][dry_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im2 = ax2.imshow(results_2d['bucket_moisture_root'][dry_day,zy,zx], vmin=vmindry, vmax=vmaxdry, cmap='coolwarm_r')
 fig.subplots_adjust(right=0.8)
 cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-fig.colorbar(im2, cax=cbar_ax, label=r'$\theta$ m$^3$m$^{-3}$')
+#fig.colorbar(im2, cax=cbar_ax, label=r'$\theta$ m$^3$m$^{-3}$')
+fig.colorbar(im2, ax=ax2)
 
 #fig.colorbar(im2, ax=ax2, orientation='horizontal')
 ax2.title.set_text('2D root dry')
 
 # stand root moist
-im3 = ax3.imshow(results_stand['bucket_moisture_root'][wet_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im3 = ax3.imshow(results_stand['bucket_moisture_root'][wet_day,zy,zx], vmin=vminwet, vmax=vmaxwet, cmap='coolwarm_r')
 #fig.colorbar(im7, ax=ax7)
 ax3.title.set_text('stand root wet')
 
-im4 = ax4.imshow(results_stand['bucket_moisture_root'][dry_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im4 = ax4.imshow(results_stand['bucket_moisture_root'][dry_day,zy,zx], vmin=vmindry, vmax=vmaxdry, cmap='coolwarm_r')
 #fig.colorbar(im4, ax=ax4)
 ax4.title.set_text('stand root dry')
 
-im5 = ax5.imshow(results_catch['bucket_moisture_root'][wet_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im5 = ax5.imshow(results_catch['bucket_moisture_root'][wet_day,zy,zx], vmin=vminwet, vmax=vmaxwet, cmap='coolwarm_r')
 ax5.title.set_text('catch root wet')
 
-im6 = ax6.imshow(results_catch['bucket_moisture_root'][dry_day,zy,zx], vmin=0.0, vmax=1.0, cmap='coolwarm_r')
+im6 = ax6.imshow(results_catch['bucket_moisture_root'][dry_day,zy,zx], vmin=vmindry, vmax=vmaxdry, cmap='coolwarm_r')
 ax6.title.set_text('catch root dry')
 
 ax1.axis('off')

@@ -17,11 +17,15 @@ from netCDF4 import Dataset #, date2num
 import pandas as pd
 #import pickle
 #import seaborn as sns
-from iotools import read_AsciiGrid
+from iotools import read_AsciiGrid, write_AsciiGrid
 import seaborn as sns
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Polygon
 from sklearn.metrics import mean_absolute_error as mae
+from rasterio.plot import show
+import rasterio
+from rasterio.transform import from_origin
+from raster_utils import read_pkrasteri_for_extent
 
 # reading the stand results
 outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
@@ -32,7 +36,7 @@ outputfile_2d = r'D:\SpaFHy_2D_2021\testcase_input_2d_new.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
-outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new.nc'
+outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new_fixed.nc'
 results_catch = read_results(outputfile_catch)
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma3.nc'
@@ -49,6 +53,21 @@ kenttarova_loc = np.where(kenttarova == 0)
 k_loc = list([int(kenttarova_loc[1]), int(kenttarova_loc[0])])
 k_loc = [118, 136]
 l_loc = [46, 54]
+
+
+# READING CMASK FROM INPUT FILES
+cmaskfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\cmask.dat'
+cmaskascii = read_AsciiGrid(cmaskfp)
+
+cmask = rasterio.open(cmaskfp, 'r')
+bbox = cmask.bounds
+transform = from_origin(bbox[0], bbox[1], cmask.transform[0],  cmask.transform[0])
+del cmask, cmaskfp
+
+# reading basic map
+pkfp = 'C:\SpaFHy_v1_Pallas_2D/testcase_input/parameters/pkmosaic_clipped.tif'
+pk, meta = read_pkrasteri_for_extent(pkfp, bbox=bbox,showfig=True)
+
 
 dates_spa = []
 for d in range(len(results_stand['date'])):
@@ -109,6 +128,213 @@ zy = np.arange(20, 246, 1)
 
 #%%
 
+# GIS RASTERS INTO COORDINATES
+
+# READING CMASK FROM INPUT FILES
+laiconiffp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\LAI_conif.dat'
+LAI_conif = rasterio.open(laiconiffp, 'r')
+
+laidecidfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\LAI_decid.dat'
+LAI_decid = rasterio.open(laidecidfp, 'r')
+
+laishrubfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\LAI_shrub.dat'
+LAI_shrub = rasterio.open(laishrubfp, 'r')
+
+laigrassfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\LAI_grass.dat'
+LAI_grass = rasterio.open(laigrassfp, 'r')
+
+hcfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\hc.dat'
+hc = rasterio.open(hcfp, 'r')
+
+cffp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\cf.dat'
+cf = rasterio.open(cffp, 'r')
+
+soilclassfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\soil_id_peatsoils.dat'
+soilclass = rasterio.open(soilclassfp, 'r')
+
+ditchesfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\ditches.dat'
+ditches = rasterio.open(ditchesfp, 'r')
+
+demfp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\dem_raw.dat'
+dem = rasterio.open(demfp, 'r')
+
+twifp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testcase_input\parameters\twi.dat'
+twi = rasterio.open(twifp, 'r')
+
+#%%
+# change working dir
+os.chdir(r'C:\SpaFHy_v1_Pallas_2D\figures')
+alp=0.75
+shr=0.9
+# show raster overlays
+plt.close('all')
+
+# Plotting
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(11,8));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[0][2]
+ax4 = axs[1][0]
+ax5 = axs[1][1]
+ax6 = axs[1][2]
+
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax1)
+
+laiplot = rasterio.plot.show(LAI_conif, transform=LAI_conif.transform, ax=ax1, alpha=alp)
+# this creates colorbar
+im1 = laiplot.get_images()[1]
+#ax1[0].set_title('Site 1: Sat deficit doy 123-126')
+fig.colorbar(im1, ax=ax1, shrink=shr)
+ax1.axes.get_xaxis().set_ticks([])
+ax1.axes.get_yaxis().set_ticks([])
+
+ax1.set_title(r'Lehtialaindeksi [m$^2$/m$^2$]')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
+#show(twi * mask, transform=r.transform, ax=ax1, alpha=0.5, vmin=5., vmax=10.0)
+hcplot = rasterio.plot.show(hc, transform=hc.transform, ax=ax2, alpha=alp)
+im2 = hcplot.get_images()[1]
+#ax1[1].set_title('vol. moisture (m3m-3)')
+fig.colorbar(im2, ax=ax2, shrink=shr)
+ax2.axes.get_xaxis().set_ticks([])
+ax2.axes.get_yaxis().set_ticks([])
+ax2.set_title('Kasvuston korkeus [m]')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax3);
+#show(twi * mask, transform=r.transform, ax=ax1, alpha=0.5, vmin=5., vmax=10.0)
+cfplot = rasterio.plot.show(cf, transform=cf.transform, ax=ax3, alpha=alp)
+im3 = cfplot.get_images()[1]
+#ax1[1].set_title('vol. moisture (m3m-3)')
+fig.colorbar(im3, ax=ax3, shrink=shr)
+ax3.axes.get_xaxis().set_ticks([])
+ax3.axes.get_yaxis().set_ticks([])
+ax3.set_title('Kasvuston osuus [m$^2$/m$^2$]')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax4);
+#show(twi * mask, transform=r.transform, ax=ax1, alpha=0.5, vmin=5., vmax=10.0)
+scplot = rasterio.plot.show(soilclass, transform=soilclass.transform, ax=ax4, alpha=alp)
+im4 = scplot.get_images()[1]
+#ax1[1].set_title('vol. moisture (m3m-3)')
+cbs = fig.colorbar(im4, ax=ax4, shrink=shr, ticks=[1,2,3,4])
+ax4.set_title('Pintamaaluokka [-]')
+ax4.axes.get_xaxis().set_ticks([])
+ax4.axes.get_yaxis().set_ticks([])
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax5);
+#show(twi * mask, transform=r.transform, ax=ax1, alpha=0.5, vmin=5., vmax=10.0)
+demplot = rasterio.plot.show(dem, transform=dem.transform, ax=ax5, alpha=alp)
+im5 = demplot.get_images()[1]
+#ax1[1].set_title('vol. moisture (m3m-3)')
+fig.colorbar(im5, ax=ax5, shrink=shr)
+ax5.axes.get_yaxis().set_ticks([])
+ax5.axes.get_xaxis().set_ticks([])
+ax5.set_title('Korkeus [m]')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax6);
+#show(twi * mask, transform=r.transform, ax=ax1, alpha=0.5, vmin=5., vmax=10.0)
+twiplot = rasterio.plot.show(twi, transform=twi.transform, vmin=4, vmax=14, ax=ax6, alpha=alp)
+im6 = twiplot.get_images()[1]
+#ax1[1].set_title('vol. moisture (m3m-3)')
+fig.colorbar(im6, ax=ax6, shrink=shr)
+ax6.axes.get_yaxis().set_ticks([])
+ax6.axes.get_xaxis().set_ticks([])
+ax6.set_title('Kosteusindeksi [-]')
+
+plt.subplots_adjust(wspace=0.05, hspace=0.05)
+
+plt.savefig(f'vesitalous_gis_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'vesitalous_gis_{today}.png', bbox_inches='tight', dpi=300)
+
+#%%
+
+# vesitalous artikkeli tuloskuvat
+
+results_catch['canopy_total_et'] = (results_catch['canopy_evaporation']
+                                    + results_catch['canopy_transpiration']
+                                    + results_catch['bucket_evaporation'])
+
+start = np.where(pd.to_datetime(dates_spa) == '2020-05-01')[0][0]
+end = np.where(pd.to_datetime(dates_spa) == '2020-10-01')[0][0]
+maxd = np.where(np.nansum(results_catch['bucket_moisture_root'][start:end], axis=(1,2))
+                == np.nansum(results_catch['bucket_moisture_root'][start:end], axis=(1,2)).max())[0][0]
+mind = np.where(np.nansum(results_catch['bucket_moisture_root'][start:end], axis=(1,2))
+                == np.nansum(results_catch['bucket_moisture_root'][start:end], axis=(1,2)).min())[0][0]
+mind = np.where(pd.to_datetime(dates_spa[start:end]) == '2020-09-02')[0][0]
+
+# writing into ascii and reading in with rasterio
+snap1fp = r'C:\SpaFHy_v1_Pallas_2D\results\temp\snap1.dat'
+snap2fp = r'C:\SpaFHy_v1_Pallas_2D\results\temp\snap2.dat'
+
+snap1 = results_catch['bucket_moisture_root'][start:end][maxd]
+snap2 = results_catch['bucket_moisture_root'][start:end][mind]
+
+write_AsciiGrid(snap1fp, np.array(snap1), info=cmaskascii[1])
+write_AsciiGrid(snap2fp, np.array(snap2), info=cmaskascii[1])
+
+snap1 = rasterio.open(snap1fp, 'r')
+snap2 = rasterio.open(snap2fp, 'r')
+
+#%%
+
+# Plotting
+
+alp=0.8
+
+fig = plt.figure(figsize=(8,8))
+gs = fig.add_gridspec(5, 2)
+
+ax1 = fig.add_subplot(gs[0, :2])
+ax2 = fig.add_subplot(gs[1:4, 0])
+ax3 = fig.add_subplot(gs[1:4, 1])
+
+ax1.plot(dates_spa[start:end], np.nanmean(results_catch['bucket_moisture_root'][start:end], axis=(1,2)), linewidth=2, color='black', label='keskiarvo')
+ax1.fill_between(dates_spa[start:end], np.nanquantile(results_catch['bucket_moisture_root'][start:end], 0.8, axis=(1,2)),
+                      np.nanquantile(results_catch['bucket_moisture_root'][start:end], 0.2, axis=(1,2)), alpha=0.3, label='20-kvantiili')
+ax1.scatter(dates_spa[start:end][maxd], np.nanmean(results_catch['bucket_moisture_root'][start:end][maxd]), s=70, color='blue')
+ax1.scatter(dates_spa[start:end][mind], np.nanmean(results_catch['bucket_moisture_root'][start:end][mind]), s=70, color='red')
+ax1.legend()
+ax1.set_title('Maankosteuden aikasarja 2020')
+ax1.set_ylabel(r'$\theta$ [m$^3$/m$^3$]')
+#ax1.text(dates_spa[start:end][0], 0.2, 'a')
+ax1.grid()
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
+#im1 = ax2.imshow(results_catch['bucket_moisture_root'][start:end][maxd], cmap='coolwarm_r', vmin=0.1, vmax=0.88)
+im1 = rasterio.plot.show(snap1, transform=snap1.transform, ax=ax2, cmap='coolwarm_r', vmin=0.1, vmax=0.88, alpha=alp)
+im1b = im1.get_images()[1]
+ax2.text(384500, 7542000, f'{str(dates_spa[start:end][maxd])[0:10]}')
+ax2.scatter(384400, 7542100, color='blue')
+ax2.set_title('Esim. kostea päivä')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax3);
+#im2 = ax3.imshow(results_catch['bucket_moisture_root'][start:end][mind], cmap='coolwarm_r', vmin=0.1, vmax=0.88)
+im2 = rasterio.plot.show(snap2, transform=snap2.transform, ax=ax3, cmap='coolwarm_r', vmin=0.1, vmax=0.88, alpha=alp)
+im2b = im1.get_images()[1]
+#fig.colorbar(im2b, ax=ax3, shrink=0.5)
+ax3.text(384500, 7542000, f'{str(dates_spa[start:end][mind])[0:10]}')
+ax3.scatter(384400, 7542100, color='red')
+cbar_ax = fig.add_axes([0.92, 0.3, 0.02, 0.4])
+fig.colorbar(im2b, cax=cbar_ax, label=r'$\theta$ [m$^3$m$^{-3}]$')
+ax3.set_title('Esim. kuiva päivä')
+
+ax3.axes.get_yaxis().set_ticklabels([])
+
+plt.subplots_adjust(wspace=0.05, hspace=0.7)
+
+
+plt.savefig(f'vesitalous_kosteus_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'vesitalous_kosteus_{today}.png', bbox_inches='tight', dpi=300)
+
+#%%
+
+im3 = ax4.imshow(results_catch['canopy_transpiration'][maxd], vmin=0, vmax=2.5)
+fig.colorbar(im3, ax=ax3, shrink=0.5)
+
+im4 = ax4.imshow(results_catch['canopy_transpiration'][mind], vmin=0, vmax=2.5)
+fig.colorbar(im4, ax=ax4, shrink=0.5)
+
+#%%
 ####################################################
 # GIS PLOT
 ####################################################
