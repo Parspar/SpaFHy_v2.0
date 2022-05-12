@@ -124,4 +124,8 @@ sand*.ipynb
 *.sh
 *.out
 *.err
-/testcase_input/parameters*.xml
+
+# files
+.xml
+.tif
+.nc
