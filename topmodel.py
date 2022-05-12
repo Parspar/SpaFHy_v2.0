@@ -2,14 +2,16 @@
 """
 Created on Fri Jun 02 15:14:11 2017
 @author: slauniai
+
 ******************************************************************************
 TopModel (Beven & Kirkby) -implementation for SpatHy -integration
 Topmodel() allows spatially varying soil depths and transmissivity
 Topmodel_Homogenous() assumes constant properties and hydrologic similarity \n
 retermined from TWI = log (a / tan(b))
 (C) Samuli Launiainen, 2016-
-Last edit: 26.10.2021 SL:
-    - added outputs
+
+Modified by jpnousu
+
 ******************************************************************************
 """
 

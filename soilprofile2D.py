@@ -3,7 +3,7 @@
 Created on Fri May 17 09:59:54 2019
 @author: alauren
 
-Modified by khaahti
+Modified by khaahti & jpnousu
 """
 
 import numpy as np
@@ -44,44 +44,9 @@ class SoilGrid_2Dflow(object):
                 'ground_water_level': groundwater depth [m]
                 'org_sat': organic top layer saturation ratio (-)
         """
-        '''
-        """ moss/organic layer """
-        # top layer is interception storage, which capacity depends on its depth [m]
-        # and field capacity
-        self.dz_top = spara['org_depth']  # depth, m3 m-3
-        self.poros_top = spara['org_poros']  # porosity, m3 m-3
-        self.fc_top = spara['org_fc']  # field capacity m3 m-3
-        self.rw_top = spara['org_rw']  # ree parameter m3 m-3
-        self.Wsto_top_max = self.fc_top * self.dz_top  # maximum storage m
-        
-        """ rootzone layer """
-        # rootzone layer properties
-        self.fc_root = spara['root_fc']
-        self.wp_root = spara['root_wp']
-        self.poros_root = spara['root_poros']
-        self.beta_root = spara['root_beta']
-        self.ksat_root = spara['root_ksat']
-        self.dz_root = spara['root_depth']
-        self.Wsto_root_max = self.dz_root*self.poros_root  # maximum soil water storage, m
 
-        # initial state: toplayer storage and relative conductance for evaporation
-        self.Wsto_top = self.Wsto_top_max * spara['org_sat']
-        self.Wliq_top = self.poros_top * self.Wsto_top / (self.Wsto_top_max+eps)
-        self.Ree = np.maximum(0.0, np.minimum(
-                0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
-        
-        # root zone storage and relative extractable water
-        self.Wsto_root = np.minimum(spara['root_sat']*self.dz_root*self.poros_root, self.dz_root*self.poros_root)
-        
-        self.Wliq_root = self.poros_root*self.Wsto_root / self.Wsto_root_max
-        self.Wair_root = self.poros_root - self.Wliq_root
-        self.Sat_root = self.Wliq_root/self.poros_root
-        self.Rew_root = np.minimum((self.Wliq_root - self.wp_root) / (self.fc_root - self.wp_root + eps), 1.0)
-        '''
-        # grid total drainage to ground water [m]
-        #self._drainage_to_gw = 0.0
+        """ deep soil """
 
-        """ deep soil """       
         # soil/peat type
         self.soiltype = spara['soiltype']
 
@@ -109,7 +74,7 @@ class SoilGrid_2Dflow(object):
         self.Wsto_deep = np.full_like(self.h, 0.0)  # storage corresponding to h
         for key, value in self.gwl_to_wsto.items():
             self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
-        
+
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         self.retflow = np.full_like(self.h, 0.0) # retflow not in use
@@ -233,7 +198,7 @@ class SoilGrid_2Dflow(object):
         S[np.isnan(S)] = 0.0
 
         state0 = self.Wsto_deep + S # Wsto_deep ????
-        
+
         # ravel 2D arrays
         HW = np.ravel(self.HW); HE = np.ravel(self.HE)
         HN = np.ravel(self.HN); HS = np.ravel(self.HS)
@@ -448,7 +413,7 @@ class SoilGrid_2Dflow(object):
 
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
-        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow) 
+        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow)
         netflow_to_ditch = np.where(self.ditch_h < -eps, netflow_to_ditch, 0.0)
 
         # mass balance error [m]
@@ -491,8 +456,8 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
             'to_Tr'
     """
 
-    z = np.array(z) # profile depths 
-    dz = abs(z) 
+    z = np.array(z) # profile depths
+    dz = abs(z)
     dz[1:] = z[:-1] - z[1:] # profile depths into profile thicknesses
 
     # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
@@ -577,7 +542,7 @@ def h_to_cellmoist(pF, h, dz):
     else:
         ixx = ix
     # moisture of unsaturated part
-    x[ix] = -(dz[ix]/2 - h[ix]) / 2 
+    x[ix] = -(dz[ix]/2 - h[ix]) / 2
     theta[ix] = Tr[ixx] + (Ts[ixx] - Tr[ixx]) / (1 + abs(alfa[ixx] * 100 * x[ix])**n[ixx])**m[ixx]
     # total moisture as weighted average
     theta[ix] = (theta[ix] * (dz[ix]/2 - h[ix]) + Ts[ixx] * (dz[ix]/2 + h[ix])) / (dz[ix])

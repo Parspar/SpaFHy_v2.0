@@ -34,11 +34,6 @@ class BucketGrid(object):
                 org_sat - initial saturation or organic layer [-]
                 rootzone_sat - initial saturation of root zone [-]
 
-        CHANGES:
-            05.05.2020 removed typo in watbal mbe computation and added outputs
-            26.05.2021 SL:
-                -removed outcommented optional outputs & function call
-                -handling of self.Wliq_top & self.Ree for self.D_top == 0
         """
 
         """ set object properties. All will be 1d or 2d arrays of same shape """

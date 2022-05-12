@@ -12,10 +12,10 @@ Based on simple schemes for computing water flows and storages within vegetation
 canopy and snowpack at daily or sub-daily timesteps.
 
 (C) Samuli Launiainen, 2016-
-last edit: Oct 2018 / Samuli
+
 ******************************************************************************
 
-khaahti: modifications to allow for spatially varying forcing data
+Modified by khaahti, jpnousu
 
 """
 import numpy as np
@@ -59,7 +59,7 @@ class CanopyGrid():
         # canopy parameters and state
         self.hc = state['hc'] + eps
         self.cf = state['cf'] + eps
-        
+
         '''
         state['lai_decid'] = state['lai_decid_max']
 
@@ -68,10 +68,10 @@ class CanopyGrid():
 
         for pt in list(spec_para.keys()):
             ptypes[pt] = spec_para[pt]
-            ptypes[pt]['LAImax'] = state['lai_' + pt]            
+            ptypes[pt]['LAImax'] = state['lai_' + pt]
 
         self.ptypes = ptypes
-        
+
         # compute gridcell average LAI and photosynthesis-stomatal conductance parameters:
         LAI = 0.0
         Amax = 0.0
@@ -82,18 +82,18 @@ class CanopyGrid():
                 pt_lai = self.ptypes[pt]['LAImax'] * self.phenopara['lai_decid_min']
             else:
                 pt_lai = self.ptypes[pt]['LAImax']
-            
+
             LAI += pt_lai
             Amax += pt_lai * ptypes[pt]['amax']
             q50 += pt_lai * ptypes[pt]['q50']
             g1 += pt_lai * ptypes[pt]['g1']
-        
+
         self.LAI = LAI + eps
         self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
 
         del Amax, q50, g1, pt, LAI, pt_lai
         '''
-        
+
         self._LAIconif = np.maximum(state['lai_conif'], eps)  # m2m-2
         self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
         self._LAIgrass_max = state['lai_grass']
@@ -176,7 +176,7 @@ class CanopyGrid():
         #if VPD < 0.1:
         #    VPD = 0.1
 
-        
+
         """ --- update phenology: self.ddsum & self.X ---"""
         #self.update_daily(Ta, doy)
         self._degreeDays(Ta, doy)
@@ -188,7 +188,7 @@ class CanopyGrid():
         """ --- aerodynamic conductances --- """
         Ra, _, Ras, _, _, _ = aerodynamics(self.LAI, self.hc, U, w=0.01, zm=self.zmeas,
                                                   zg=self.zground, zos=self.zo_ground)
-        
+
         """ --- interception, evaporation and snowpack --- """
         PotInf, Trfall, Evap, Interc, MBE, erate, unload, fact, Sfall, Rfall = self.canopy_water_snow(dt, Ta, Prec, Rn, VPD, Ra=Ra)
 
@@ -231,15 +231,15 @@ class CanopyGrid():
         Returns:
             None
         """
-        
+
         self._degreeDays(T, doy)
         self._photoacclim(T)
-        
+
         # deciduous relative leaf-area index
         self._lai_dynamics(doy)
-        
+
         # canopy effective photosynthesis-stomatal conductance parameters:
-        LAI = 0.0 
+        LAI = 0.0
         Amax = 0.0
         q50 = 0.0
         g1 = 0.0
@@ -248,16 +248,16 @@ class CanopyGrid():
                 pt_lai = self.ptypes[pt]['LAImax'] * self._relative_lai
             else:
                 pt_lai = self.ptypes[pt]['LAImax']
-            LAI += pt_lai    
+            LAI += pt_lai
             Amax += pt_lai * self.ptypes[pt]['amax']
             q50 += pt_lai * self.ptypes[pt]['q50']
             g1 += pt_lai * self.ptypes[pt]['g1']
-        
+
         self.LAI = LAI + eps
-        
+
         #print(doy, LAI, Amax / self.LAI, g1 / self.LAI)
-        
-        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI}) 
+
+        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
         '''
 
     def _degreeDays(self, T, doy):
@@ -490,7 +490,7 @@ class CanopyGrid():
         fW[ix] = (T[ix] - Tmin) / (Tmax - Tmin)
 
         fS = 1.0 - fW
-        
+
         sf = fS * Prec
         rf = fW * Prec
 

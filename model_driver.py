@@ -8,7 +8,7 @@ Created on Mon Jan 21 13:52:46 2019
 import time
 import numpy as np
 import pandas as pd
-from spafhy_peat import SpaFHy
+from spafhy import SpaFHy
 from iotools import read_FMI_weather, initialize_netcdf, write_ncf
 import matplotlib.pyplot as plt
 
@@ -24,10 +24,10 @@ def driver(create_ncf=False, output=True, folder=''):
     running_time = time.time()
 
     # load and process parameters parameter
-    pgen, pcpy, psoil, cmask, gisinfo = preprocess_parameters(folder)
+    pgen, pcpy, psoil, cmask, ptopmodel, gisinfo = preprocess_parameters(folder)
 
     # initialize SpaFHy
-    spa = SpaFHy(pgen, pcpy, psoil)
+    spa = SpaFHy(pgen, pcpy, psoil, ptopmodel)
 
     # read forcing data
     forcing = preprocess_forcing(pgen)
@@ -49,7 +49,11 @@ def driver(create_ncf=False, output=True, folder=''):
     # save parameters to results
     results = _append_results('parameters', pcpy['state'], results)
     results = _append_results('parameters', pcpy['loc'], results)
-    results = _append_results('parameters', psoil, results)
+    if pgen['simtype'] == '2D':
+        results = _append_results('parameters', psoil, results)
+    elif pgen['simtype'] == 'TOP':
+        results = _append_results('parameters', ptopmodel, results)
+
 
     if create_ncf:
         ncf, outputfile = initialize_netcdf(
@@ -68,15 +72,21 @@ def driver(create_ncf=False, output=True, folder=''):
     for k in range(0, Nsteps):
 #        print(k)
 
-        soil_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
+        if pgen['simtype'] == '2D':
+            soil_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
+        elif pgen['simtype'] == 'TOP':
+            top_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
+        elif pgen['simtype'] == '1D':
+            canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
+
 
         if k >= Nspin:  # save results after spinup done
-            results = _append_results('soil', soil_results, results, k - Nsaved - 1)
+            if pgen['simtype'] == '2D':
+                results = _append_results('soil', soil_results, results, k - Nsaved - 1)
+            elif pgen['simtype'] == 'TOP':
+                results = _append_results('top', top_results, results, k - Nsaved - 1)
             results = _append_results('canopy', canopy_results, results, k - Nsaved - 1)
             results = _append_results('bucket', bucket_results, results, k - Nsaved - 1)
-            #print(np.unique(results['bucket_moisture_top']))
-            #print(bucket_results.keys())
-            #print(np.unique(bucket_results['moisture_top']))
 
 
             if k in Nsaveresults and create_ncf:
@@ -103,22 +113,23 @@ def driver(create_ncf=False, output=True, folder=''):
     else:
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
         if output:
-            return results
+            return results, spa, pcpy, psoil, ptopmodel, cmask
 
 def preprocess_parameters(folder=''):
     """
     Reading gisdata if applicable and preprocesses parameters
     """
 
-    from iotools import read_soil_gisdata, read_cpy_gisdata, read_forcing_gisdata
-    from iotools import preprocess_soildata, preprocess_cpydata
-    from parameters import soilprofiles, topsoil, parameters, rootproperties
+    from iotools import read_soil_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata
+    from iotools import preprocess_soildata, preprocess_cpydata, preprocess_topdata
+    from parameters import soilprofiles, topsoil, parameters, rootproperties, ptopmodel
 
     pgen, pcpy, psp= parameters(folder)
     soilp = soilprofiles()
     rootp = rootproperties()
     topsoil = topsoil()
     gisdata = {}
+    ptopmodel = ptopmodel()
 
     if pgen['spatial_soil']:
         gisdata.update(read_soil_gisdata(pgen['gis_folder']))
@@ -136,12 +147,17 @@ def preprocess_parameters(folder=''):
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
+    if pgen['simtype'] == 'TOP':
+        gisdata.update(read_top_gisdata(pgen['gis_folder']))
+        ptopmodel = preprocess_topdata(ptopmodel, gisdata)
+
+
     gisinfo = {}
     gisinfo['xllcorner'] = gisdata['xllcorner']
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
-    return pgen, cpydata, soildata, gisdata['cmask'], gisinfo
+    return pgen, cpydata, soildata, gisdata['cmask'], ptopmodel, gisinfo
 
 def preprocess_forcing(pgen):
     """

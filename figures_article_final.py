@@ -27,9 +27,6 @@ import rasterio
 from rasterio.transform import from_origin
 from raster_utils import read_pkrasteri_for_extent
 
-#example input raster
-example_inputraster = r'C:\SpaFHy_v1_Pallas_2D\testcase_input\parameters\cmask.dat'
-
 # reading the stand results
 outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
 results_stand = read_results(outputfile_stand)
@@ -41,7 +38,6 @@ results_2d = read_results(outputfile_2d)
 # reading the catch results
 outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new_fixed.nc'
 results_catch = read_results(outputfile_catch)
-results_catch = read_results_coord(outputfile_catch, example_inputraster)
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma3.nc'
 sar = Dataset(sar_file, 'r')
