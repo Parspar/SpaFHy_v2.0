@@ -124,3 +124,4 @@ sand*.ipynb
 *.sh
 *.out
 *.err
+*.aux
