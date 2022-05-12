@@ -121,11 +121,10 @@ rad_ds.npy
 sand*.py
 sand*.ipynb
 
+# files
 *.sh
 *.out
 *.err
-
-# files
-.xml
-.tif
-.nc
+*.xml
+*.tif
+*.nc
