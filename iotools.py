@@ -11,6 +11,7 @@ import os
 import matplotlib.pyplot as plt
 from soilprofile2D import gwl_Wsto, nan_function
 from koordinaattimuunnos import koordTG
+import re
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -54,7 +55,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
     else:
         cmask = np.ones(np.shape(soilclass))
 
@@ -66,6 +67,9 @@ def read_soil_gisdata(fpath, plotgrids=False):
            'sitetype': sitetype
            }
 
+    xllcorner = int(re.findall(r'\d+', info[2])[0])
+    yllcorner = int(re.findall(r'\d+', info[3])[0])
+
     for key in gis.keys():
         gis[key] *= cmask
 
@@ -76,7 +80,8 @@ def read_soil_gisdata(fpath, plotgrids=False):
         plt.subplot(313); plt.imshow(dem); plt.colorbar(); plt.title('ditches')
 
     gis.update({'dxy': cellsize})
-
+    gis.update({'xllcorner': xllcorner,
+                'yllcorner': yllcorner})
     return gis
 
 def read_cpy_gisdata(fpath, plotgrids=False):
@@ -614,7 +619,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
 
 
 
-def initialize_netcdf(pgen, cmask, filepath, filename, description):
+def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     """
     netCDF4 format output file initialization
 
@@ -631,6 +636,14 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
     # dimensions
     date_dimension = None
     i_dimension, j_dimension = np.shape(cmask)
+
+    xllcorner = gisinfo['xllcorner']
+    yllcorner = gisinfo['yllcorner']
+    cellsize = gisinfo['dxy']
+
+    xcoords = np.arange(xllcorner, (xllcorner + (j_dimension*cellsize)), cellsize)
+    ycoords = np.arange(yllcorner, (yllcorner + (i_dimension*cellsize)), cellsize)
+    ycoords = np.flip(ycoords)
 
     if not os.path.exists(filepath):
         os.makedirs(filepath)
@@ -653,6 +666,14 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
     tvec = pd.date_range(pgen['spinup_end'], pgen['end_date']).tolist()[1:]
     date[:] = date2num(tvec, units=date.units, calendar=date.calendar)
 
+    ivar = ncf.createVariable('i', 'f8', ('i',))
+    ivar.units = 'y coordinates'
+    ivar[:] = ycoords
+
+    jvar = ncf.createVariable('j', 'f8', ('j',))
+    jvar.units = 'x coordinates'
+    jvar[:] = xcoords
+
     for var in pgen['variables']:
 
         var_name = var[0]
@@ -674,6 +695,7 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
         variable.units = var_unit
 
     return ncf, ff
+
 
 def write_ncf(results, ncf, steps=None):
     """
@@ -752,6 +774,7 @@ def read_AsciiGrid(fname, setnans=True):
 
     return data, info, (xloc, yloc), cellsize, nodata
 
+
 def write_AsciiGrid(fname, data, info, fmt='%.18e'):
     """ writes AsciiGrid format txt file
     IN:
@@ -776,6 +799,7 @@ def write_AsciiGrid(fname, data, info, fmt='%.18e'):
     fid = open(fname, 'a')
     np.savetxt(fid, data, fmt=fmt, delimiter=' ')
     fid.close()
+
 
 def read_results(outputfile):
     """

@@ -7,7 +7,7 @@ Created on Mon Nov  8 12:26:01 2021
 
 # SpaFHy_v1_Pallas_2D figures
 
-from iotools import read_results
+from iotools import read_results, read_results_coord
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
@@ -27,6 +27,9 @@ import rasterio
 from rasterio.transform import from_origin
 from raster_utils import read_pkrasteri_for_extent
 
+#example input raster
+example_inputraster = r'C:\SpaFHy_v1_Pallas_2D\testcase_input\parameters\cmask.dat'
+
 # reading the stand results
 outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
 results_stand = read_results(outputfile_stand)
@@ -38,6 +41,7 @@ results_2d = read_results(outputfile_2d)
 # reading the catch results
 outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new_fixed.nc'
 results_catch = read_results(outputfile_catch)
+results_catch = read_results_coord(outputfile_catch, example_inputraster)
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma3.nc'
 sar = Dataset(sar_file, 'r')
@@ -162,6 +166,7 @@ twifp = r'C:\Users\janousu\OneDrive - Oulun yliopisto\SpaFHy_v1_Pallas_2D\testca
 twi = rasterio.open(twifp, 'r')
 
 #%%
+
 # change working dir
 os.chdir(r'C:\SpaFHy_v1_Pallas_2D\figures')
 alp=0.75

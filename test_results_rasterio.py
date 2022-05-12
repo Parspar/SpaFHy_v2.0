@@ -25,7 +25,7 @@ shape=cmask.shape
 
 # reading basic map
 fp2 = r'C:\PALLAS_RAW_DATA\MML\Peruskartta\pkmosaic.tif'
-pk, meta = read_pkrasteri_for_extent(fp2, bbox=bbox,showfig=True)
+pk, meta = read_pkrasteri_for_extent(fp2, bbox=bbox,showfig=False)
 
 # reading the stand results
 outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'

@@ -24,7 +24,7 @@ def driver(create_ncf=False, output=True, folder=''):
     running_time = time.time()
 
     # load and process parameters parameter
-    pgen, pcpy, psoil, cmask = preprocess_parameters(folder)
+    pgen, pcpy, psoil, cmask, gisinfo = preprocess_parameters(folder)
 
     # initialize SpaFHy
     spa = SpaFHy(pgen, pcpy, psoil)
@@ -57,7 +57,8 @@ def driver(create_ncf=False, output=True, folder=''):
                 cmask=cmask,
                 filepath=pgen['results_folder'],
                 filename=pgen['ncf_file'],
-                description=pgen['description'])
+                description=pgen['description'],
+                gisinfo=gisinfo)
 
     print('*** Running model ***')
 
@@ -135,7 +136,12 @@ def preprocess_parameters(folder=''):
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
-    return pgen, cpydata, soildata, gisdata['cmask']
+    gisinfo = {}
+    gisinfo['xllcorner'] = gisdata['xllcorner']
+    gisinfo['yllcorner'] = gisdata['yllcorner']
+    gisinfo['dxy'] = gisdata['dxy']
+
+    return pgen, cpydata, soildata, gisdata['cmask'], gisinfo
 
 def preprocess_forcing(pgen):
     """

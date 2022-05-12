@@ -24,7 +24,7 @@ def driver(create_ncf=False, output=True, folder=''):
     running_time = time.time()
 
     # load and process parameters parameter
-    pgen, pcpy, psoil, cmask, ptopmodel = preprocess_parameters(folder)
+    pgen, pcpy, psoil, cmask, ptopmodel, gisinfo = preprocess_parameters(folder)
 
     # initialize SpaFHy
     spa = SpaFHy(pgen, pcpy, psoil, ptopmodel)
@@ -58,7 +58,8 @@ def driver(create_ncf=False, output=True, folder=''):
                 cmask=cmask,
                 filepath=pgen['results_folder'],
                 filename=pgen['ncf_file'],
-                description=pgen['description'])
+                description=pgen['description'],
+                gisinfo=gisinfo)
 
     print('*** Running model ***')
 
@@ -132,6 +133,11 @@ def preprocess_parameters(folder=''):
     if pgen['topmodel']:
         gisdata.update(read_top_gisdata(pgen['gis_folder']))
 
+    gisinfo = {}
+    gisinfo['xllcorner'] = gisdata['xllcorner']
+    gisinfo['yllcorner'] = gisdata['yllcorner']
+    gisinfo['dxy'] = gisdata['dxy']
+
 #    # SL TESTING: mask ditch cells out!
 #    plt.imshow(gisdata['ditches'])
 #    ix = np.where(gisdata['ditches'] < 0)
@@ -143,7 +149,7 @@ def preprocess_parameters(folder=''):
 
     ptopmodel = preprocess_topdata(ptopmodel, gisdata)
 
-    return pgen, cpydata, soildata, gisdata['cmask'], ptopmodel
+    return pgen, cpydata, soildata, gisdata['cmask'], ptopmodel, gisinfo
 
 def preprocess_forcing(pgen):
     """
