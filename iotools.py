@@ -11,6 +11,7 @@ import os
 import matplotlib.pyplot as plt
 from soilprofile2D import gwl_Wsto, nan_function
 from koordinaattimuunnos import koordTG
+import re
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -54,7 +55,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
     else:
         cmask = np.ones(np.shape(soilclass))
 
@@ -66,6 +67,9 @@ def read_soil_gisdata(fpath, plotgrids=False):
            'sitetype': sitetype
            }
 
+    xllcorner = int(re.findall(r'\d+', info[2])[0])
+    yllcorner = int(re.findall(r'\d+', info[3])[0])
+
     for key in gis.keys():
         gis[key] *= cmask
 
@@ -76,7 +80,8 @@ def read_soil_gisdata(fpath, plotgrids=False):
         plt.subplot(313); plt.imshow(dem); plt.colorbar(); plt.title('ditches')
 
     gis.update({'dxy': cellsize})
-
+    gis.update({'xllcorner': xllcorner,
+                'yllcorner': yllcorner})
     return gis
 
 def read_cpy_gisdata(fpath, plotgrids=False):
@@ -115,15 +120,15 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.dat'))
         LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.dat'))
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
-        LAI_decid = LAI_decid + LAI_shrub + LAI_grass
+        LAI_decid = LAI_decid + LAI_grass + LAI_shrub
     except:
         LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
-    
+
 
     # for stability, lets replace zeros with eps
-    LAI_decid[LAI_decid == 0.0] = eps
-    LAI_conif[LAI_conif == 0.0] = eps
-    hc[hc == 0.0] = eps
+    #LAI_decid[LAI_decid == 0.0] = eps
+    #LAI_conif[LAI_conif == 0.0] = eps
+    #hc[hc == 0.0] = eps
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
@@ -133,16 +138,16 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     # ditches, no stand in ditch cells
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
-    ditch_mask = np.where(ditches < -eps, 0.0, 1)
+    #ditch_mask = np.where(ditches < -eps, 0.0, 1)
 
     # dict of all rasters
     gis = {'cmask': cmask,
-           'LAI_conif': LAI_conif,
-           'LAI_decid': LAI_decid, 'hc': hc, 'cf': cf}
+           'LAI_conif': LAI_conif, 'LAI_decid': LAI_decid, 'LAI_shrub': LAI_shrub, 'LAI_grass': LAI_grass,
+           'hc': hc, 'cf': cf}
 
     for key in gis.keys():
         if key != 'cmask':
-            gis[key] = gis[key] * cmask * ditch_mask
+            gis[key] = gis[key] * cmask #* ditch_mask
 
     if plotgrids is True:
 
@@ -191,6 +196,60 @@ def read_forcing_gisdata(fpath):
         gis[key] *= cmask
 
     return gis
+
+def read_top_gisdata(fpath, plotgrids=False):
+    """
+    reads gis-data grids and returns numpy 2d-arrays
+    Args:
+        fpath - relative path to data folder (str)
+        plotgrids - True plots
+    Returns:
+        gis - dict of gis-data rasters
+        flowacc - flow accumulation raster
+        slope - slope raster
+        twi - topographic wetness index
+        cmask - catchment mask
+
+    """
+    fpath = os.path.join(workdir, fpath)
+
+    # flow accumulation
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat'))
+    flowacc = flowacc + eps
+
+    # slope
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat'))
+    slope = slope + eps
+
+    # twi
+    twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
+
+    # catchment mask cmask[i,j] == 1, np.NaN outside
+    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+    else:
+        cmask = np.ones(np.shape(slope))
+
+    # dict of all rasters
+    gis = {'cmask': cmask,
+           'flowacc': flowacc,
+           'slope': slope,
+           'twi': twi,
+           }
+
+    for key in gis.keys():
+        gis[key] *= cmask
+
+    if plotgrids is True:
+        plt.figure()
+        plt.subplot(311); plt.imshow(slope); plt.colorbar(); plt.title('soiltype')
+        plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('dem')
+        plt.subplot(313); plt.imshow(flowacc); plt.colorbar(); plt.title('ditches')
+
+    gis.update({'dxy': cellsize})
+
+    return gis
+
 
 def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
     """
@@ -249,7 +308,7 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
             data['org_rw'][yx] = value['org_rw']
-            
+
     if spatial == True:
         for key, value in rootp.items():
             t = value['soil_id']
@@ -258,20 +317,25 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['root_fc'][yx] = value['root_fc']
             data['root_ksat'][yx] = value['root_ksat']
             data['root_poros'][yx] = value['root_poros']
-            data['root_wp'][yx] = value['root_wp']        
-            data['root_beta'][yx] = value['root_beta']        
+            data['root_wp'][yx] = value['root_wp']
+            data['root_beta'][yx] = value['root_beta']
 
-    # no organic layer in ditch nodes
-    ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
-    for key in ['org_depth','org_poros','org_fc', 'org_sat']:
-        data[key] *= ditch_mask
+    # ditch depth corresponding to assigned parameter
+    data['ditches'] = np.where(data['ditches'] < -eps, psp['ditch_depth'], 0)
+    data['ditches'] = data['ditches'] * gisdata['cmask']
+
+#    # SL removed this 26.10.21!
+#    # no organic layer in ditch nodes
+#    ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
+#    for key in ['org_depth','org_poros','org_fc', 'org_sat']:
+#        data[key] *= ditch_mask
 
     data['wtso_to_gwl'] = {soiltype: soilp[soiltype]['to_gwl'] for soiltype in soilp.keys()}
     data['gwl_to_wsto'] = {soiltype: soilp[soiltype]['to_wsto'] for soiltype in soilp.keys()}
     data['gwl_to_C'] = {soiltype: soilp[soiltype]['to_C'] for soiltype in soilp.keys()}
     data['gwl_to_Tr'] = {soiltype: soilp[soiltype]['to_Tr'] for soiltype in soilp.keys()}
     data['gwl_to_rootmoist'] = {soiltype: soilp[soiltype]['to_rootmoist'] for soiltype in soilp.keys()}
-    print(data['wtso_to_gwl'])
+    #print(data['wtso_to_gwl'])
     data['dxy'] = gisdata['dxy']
     data['cmask'] = gisdata['cmask']
 
@@ -298,6 +362,8 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
     if spatial:
         cstate['lai_conif'] = gisdata['LAI_conif']
         cstate['lai_decid_max'] = gisdata['LAI_decid']
+        cstate['lai_shrub'] = gisdata['LAI_shrub']
+        cstate['lai_grass'] = gisdata['LAI_grass']
         cstate['cf'] = gisdata['cf']
         cstate['hc'] = gisdata['hc']
         for key in ['w', 'swe']:
@@ -312,6 +378,37 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
     pcpy['state'] = cstate
 
     return pcpy
+
+def preprocess_topdata(ptopmodel, gisdata, spatial=True):
+    """
+    creates input dictionary for initializing CanopyGrid
+    Args:
+        canopy parameters
+        gisdata
+        flowacc - flow accumulation raster
+        slope - slope raster
+        twi - topographic wetness index
+        cmask - catchment mask
+            (lat, lon)
+        spatial
+    """
+    # inputs for CanopyGrid initialization: update pcpy using spatial data
+
+    if spatial:
+        ptopmodel['slope'] = gisdata['slope']
+        ptopmodel['flowacc'] = gisdata['flowacc']
+        ptopmodel['twi'] = gisdata['twi']
+        ptopmodel['cmask'] = gisdata['cmask']
+        ptopmodel['dxy'] = gisdata['dxy']
+        if {'lat','lon'}.issubset(gisdata.keys()):
+            ptopmodel['loc']['lat'] = gisdata['lat']
+            ptopmodel['loc']['lon'] = gisdata['lon']
+    else:
+        for key in ptopmodel.keys():
+            ptopmodel[key] *= gisdata['cmask']
+
+    return ptopmodel
+
 
 '''
 def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
@@ -508,6 +605,8 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
 
     # add CO2 concentration to dataframe
     fmi['CO2'] = float(CO2)
+
+
     '''
     dates = pd.date_range(start_date, end_date).tolist()
     if len(dates) != len(fmi):
@@ -520,7 +619,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
 
 
 
-def initialize_netcdf(pgen, cmask, filepath, filename, description):
+def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     """
     netCDF4 format output file initialization
 
@@ -537,6 +636,14 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
     # dimensions
     date_dimension = None
     i_dimension, j_dimension = np.shape(cmask)
+
+    xllcorner = gisinfo['xllcorner']
+    yllcorner = gisinfo['yllcorner']
+    cellsize = gisinfo['dxy']
+
+    xcoords = np.arange(xllcorner, (xllcorner + (j_dimension*cellsize)), cellsize)
+    ycoords = np.arange(yllcorner, (yllcorner + (i_dimension*cellsize)), cellsize)
+    ycoords = np.flip(ycoords)
 
     if not os.path.exists(filepath):
         os.makedirs(filepath)
@@ -559,6 +666,14 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
     tvec = pd.date_range(pgen['spinup_end'], pgen['end_date']).tolist()[1:]
     date[:] = date2num(tvec, units=date.units, calendar=date.calendar)
 
+    ivar = ncf.createVariable('i', 'f8', ('i',))
+    ivar.units = 'y coordinates'
+    ivar[:] = ycoords
+
+    jvar = ncf.createVariable('j', 'f8', ('j',))
+    jvar.units = 'x coordinates'
+    jvar[:] = xcoords
+
     for var in pgen['variables']:
 
         var_name = var[0]
@@ -566,6 +681,8 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
 
         if (var_name.split('_')[0] == 'forcing' and
             pgen['spatial_forcing'] == False):
+            var_dim = ('date')
+        elif (var_name.split('_')[0] == 'top' and var_name.split('_')[1] != 'local'):
             var_dim = ('date')
         elif var_name.split('_')[0] == 'parameters':
             var_dim = ('i', 'j')
@@ -578,6 +695,7 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description):
         variable.units = var_unit
 
     return ncf, ff
+
 
 def write_ncf(results, ncf, steps=None):
     """
@@ -602,6 +720,8 @@ def write_ncf(results, ncf, steps=None):
                     ncf[key][steps[0]:steps[1],:,:] = results[key][0:steps[1]-steps[0],:,:]
             elif len(ncf[key].shape) > 1:
                 ncf[key][:,:] = results[key]
+            elif len(ncf[key].shape) == 1:
+                ncf[key][steps[0]:steps[1]] = results[key][0:steps[1]-steps[0]]
             else:
                 if steps==None:
                     ncf[key][:] = results[key]
@@ -654,6 +774,7 @@ def read_AsciiGrid(fname, setnans=True):
 
     return data, info, (xloc, yloc), cellsize, nodata
 
+
 def write_AsciiGrid(fname, data, info, fmt='%.18e'):
     """ writes AsciiGrid format txt file
     IN:
@@ -678,6 +799,7 @@ def write_AsciiGrid(fname, data, info, fmt='%.18e'):
     fid = open(fname, 'a')
     np.savetxt(fid, data, fmt=fmt, delimiter=' ')
     fid.close()
+
 
 def read_results(outputfile):
     """
@@ -761,6 +883,7 @@ def create_input_GIS(fpath, plotgrids=False):
     LAI_pine = 1e-3*bmleaf_pine*SLA['pine']  # 1e-3 converts 10kg/ha to kg/m2
     LAI_spruce = 1e-3*bmleaf_spruce*SLA['spruce']
     LAI_decid = 1e-3*bmleaf_decid*SLA['decid']
+
 
     # tree height
     hc, _, pos, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'keskipituus.asc'))

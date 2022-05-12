@@ -3,7 +3,7 @@
 Created on Fri May 17 09:59:54 2019
 @author: alauren
 
-Modified by khaahti
+Modified by khaahti & jpnousu
 """
 
 import numpy as np
@@ -45,44 +45,8 @@ class SoilGrid_2Dflow(object):
                 'org_sat': organic top layer saturation ratio (-)
         """
 
-        """ moss/organic layer """
-        # top layer is interception storage, which capacity depends on its depth [m]
-        # and field capacity
-        self.dz_top = spara['org_depth']  # depth, m3 m-3
-        self.poros_top = spara['org_poros']  # porosity, m3 m-3
-        self.fc_top = spara['org_fc']  # field capacity m3 m-3
-        self.rw_top = spara['org_rw']  # ree parameter m3 m-3
-        self.Wsto_top_max = self.fc_top * self.dz_top  # maximum storage m
-        
-        """ rootzone layer """
-        # rootzone layer properties
-        self.fc_root = spara['root_fc']
-        self.wp_root = spara['root_wp']
-        self.poros_root = spara['root_poros']
-        self.beta_root = spara['root_beta']
-        self.ksat_root = spara['root_ksat']
-        self.dz_root = spara['root_depth']
-        self.Wsto_root_max = self.dz_root*self.poros_root  # maximum soil water storage, m
-
-        # initial state: toplayer storage and relative conductance for evaporation
-        self.Wsto_top = self.Wsto_top_max * spara['org_sat']
-        self.Wliq_top = self.poros_top * self.Wsto_top / (self.Wsto_top_max+eps)
-        self.Ree = np.maximum(0.0, np.minimum(
-                0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
-        
-        # root zone storage and relative extractable water
-        self.Wsto_root = np.minimum(spara['root_sat']*self.dz_root*self.poros_root, self.dz_root*self.poros_root)
-        
-        self.Wliq_root = self.poros_root*self.Wsto_root / self.Wsto_root_max
-        self.Wair_root = self.poros_root - self.Wliq_root
-        self.Sat_root = self.Wliq_root/self.poros_root
-        self.Rew_root = np.minimum((self.Wliq_root - self.wp_root) / (self.fc_root - self.wp_root + eps), 1.0)
-        
-        # grid total drainage to ground water [m]
-        self._drainage_to_gw = 0.0
-
-
         """ deep soil """
+
         # soil/peat type
         self.soiltype = spara['soiltype']
 
@@ -103,28 +67,31 @@ class SoilGrid_2Dflow(object):
         # replace nans (values outside catchment area)
         self.H[np.isnan(self.H)] = -999
         #self.h[np.isnan(self.h)] = -999
-
         # water storage [m]
-        self.Wsto_max = np.full_like(self.h, 0.0)  # storage of fully saturated profile
+        self.Wsto_deep_max = np.full_like(self.h, 0.0)  # storage of fully saturated profile
         for key, value in self.gwl_to_wsto.items():
-            self.Wsto_max[self.soiltype == key] = value(0.0)
-        self.Wsto = np.full_like(self.h, 0.0)  # storage corresponding to h
+            self.Wsto_deep_max[self.soiltype == key] = value(0.0)
+        self.Wsto_deep = np.full_like(self.h, 0.0)  # storage corresponding to h
         for key, value in self.gwl_to_wsto.items():
-            self.Wsto[self.soiltype == key] = value(self.h[self.soiltype == key])
+            self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
+
+        # air volume
+        self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
+        self.retflow = np.full_like(self.h, 0.0) # retflow not in use
 
         # rootzone moisture [m3 m-3], parameters related to transpiration limit during dry conditions
-        self.rootmoist = np.full_like(self.Wliq_top, 0.0)
-        self.rootmoist[np.isnan(self.Wliq_top)] = np.nan
-        self.root_fc0 = np.full_like(self.h, 0.0)
-        self.root_fc1 = np.full_like(self.h, 0.0)
-        self.root_wp = np.full_like(self.h, 0.0)
+        self.deepmoist = np.full_like(self.h, 0.0)
+        self.deepmoist[np.isnan(self.h)] = np.nan
+        self.deep_fc0 = np.full_like(self.h, 0.0)
+        self.deep_fc1 = np.full_like(self.h, 0.0)
+        self.deep_wp = np.full_like(self.h, 0.0)
         for key, value in self.gwl_to_rootmoist.items():
-            self.rootmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
-            self.root_fc0[self.soiltype == key] = value(-0.7 - 0.1)
-            self.root_fc1[self.soiltype == key] = value(-1.2 - 0.1)
-            self.root_wp[self.soiltype == key] = value(-150.0 - 0.1)
+            self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
+            self.deep_fc0[self.soiltype == key] = value(-0.7 - 0.1)
+            self.deep_fc1[self.soiltype == key] = value(-1.2 - 0.1)
+            self.deep_wp[self.soiltype == key] = value(-150.0 - 0.1)
 
-        self.Rew = 1.0
+        #self.Rew = 1.0
 
         """ parameters for 2D solution """
         # parameters for solving
@@ -160,17 +127,17 @@ class SoilGrid_2Dflow(object):
         self.CC = np.ones((self.rows,self.cols))
         self.Tr0 = np.zeros((self.rows,self.cols))
         self.Tr1 = np.zeros((self.rows,self.cols))
-        self.Wtso1 = np.zeros((self.rows,self.cols))
-        self.tmstep = 1
-        self.conv99 = 0
-        self.totit = 0
+        self.Wtso1_deep = np.zeros((self.rows,self.cols))
+        self.tmstep = 0
+        #self.conv99 = 0
+        #self.totit = 0
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
         strides = a.strides + (a.strides[-1],)
         return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
-    def run_timestep(self, dt=1.0, rr=0.0, tr=0.0, evap=0.0):
+    def run_timestep(self, dt=1.0, RR=0.0):
 
         r""" Solves soil water storage in column assuming hydrostatic equilibrium.
 
@@ -195,7 +162,7 @@ class SoilGrid_2Dflow(object):
         """
         self.tmstep += 1
 
-
+        '''
         # for computing mass balance later
         state0 = self.Wsto + self.Wsto_top + rr
 
@@ -224,12 +191,19 @@ class SoilGrid_2Dflow(object):
         self.Wsto_top += to_top_layer
         # route remaining to surface runoff
         surface_runoff = exfil - to_top_layer
+        '''
+        # for computing mass balance later, RR: drainage from bucketgrid
+        #RR = np.minimum(RR, self.airv_deep)
+        S = RR
+        S[np.isnan(S)] = 0.0
+
+        state0 = self.Wsto_deep + S # Wsto_deep ????
 
         # ravel 2D arrays
         HW = np.ravel(self.HW); HE = np.ravel(self.HE)
         HN = np.ravel(self.HN); HS = np.ravel(self.HS)
         H = np.ravel(self.H)
-        Wsto = np.ravel(self.Wsto)
+        Wsto_deep = np.ravel(self.Wsto_deep)
         ditch_h = np.ravel(self.ditch_h)
         ele = np.ravel(self.ele)
 
@@ -324,7 +298,7 @@ class SoilGrid_2Dflow(object):
 
             # water storage
             for key, value in self.gwl_to_wsto.items():
-                self.Wtso1[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
+                self.Wtso1_deep[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
 
             # Setup of diagonal sparse matrix
             a_d = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
@@ -336,7 +310,7 @@ class SoilGrid_2Dflow(object):
             # Knowns: Right hand side of the eq
             Htmp = np.ravel(Htmp)
             hs = (np.ravel(S) * dt * self.dxy**2 + alfa * Htmp
-                   - np.ravel(self.Wtso1) * self.dxy**2 / dt + Wsto * self.dxy**2 / dt
+                   - np.ravel(self.Wtso1_deep) * self.dxy**2 / dt + Wsto_deep * self.dxy**2 / dt
                   + (1.-self.implic) * (TrN0*HN) + (1.-self.implic) * (TrW0*HW)
                   - (1.-self.implic) * (TrN0 + TrW0 + TrE0 + TrS0) * H
                   + (1.-self.implic) * (TrE0*HE) + (1.-self.implic) * (TrS0*HS))
@@ -388,8 +362,8 @@ class SoilGrid_2Dflow(object):
             # end of iteration loop
         if it == 99:
             self.conv99 +=1
-        self.totit += it
-        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index], 'it99:', self.conv99, 'it_tot:', self.totit)
+        #self.totit += it
+        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index])
 
         # lateral flow is calculated in two parts: one depending on previous time step
         # and other on current time step (lateral flowsee 2/2). Their wiegthing depends
@@ -405,7 +379,7 @@ class SoilGrid_2Dflow(object):
         self.H = Htmp.copy()
         self.h = self.H - self.ele
         for key, value in self.gwl_to_wsto.items():
-            self.Wsto[self.soiltype == key] = value(self.h[self.soiltype == key])
+            self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
 
         # Head in four neighbouring cells
         self.HW[:,1:] = self.H[:,:-1]
@@ -420,11 +394,15 @@ class SoilGrid_2Dflow(object):
                         + self.TrS0*(self.H - self.HS)))/ self.dxy**2
 
         # organic top layer; maximum that can be hold is Fc
-        self.Wliq_top = self.fc_top * self.Wsto_top / (self.Wsto_top_max+eps)
-        self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
+        #self.Wliq_top = self.fc_top * self.Wsto_top / (self.Wsto_top_max+eps)
+        #self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
 
         for key, value in self.gwl_to_rootmoist.items():
-            self.rootmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
+            self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
+
+        # air volume
+        self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
+        #self.retflow = np.maximum(bu_airv, self.Wsto_deep_max - self.Wsto_deep) # retflow not in use
 
         # This is limit transpiration when gwl < -0.7 which is not what we want here.
         # # Koivusalo et al. 2008 HESS without wet side limit
@@ -435,28 +413,26 @@ class SoilGrid_2Dflow(object):
 
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
-        netflow_to_ditch = (state0  - self.Wsto_top - self.Wsto -
-                           tr - surface_runoff - evap - lateral_flow)
+        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow)
         netflow_to_ditch = np.where(self.ditch_h < -eps, netflow_to_ditch, 0.0)
 
         # mass balance error [m]
-        mbe = (state0  - self.Wsto_top - self.Wsto -
-               tr - surface_runoff - evap - lateral_flow)
+        mbe = (state0  - self.Wsto_deep - lateral_flow)
 
         mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
 
         results = {
                 'ground_water_level': self.h,  # [m]
-                'infiltration': (S - tr) * 1e3,  # [mm d-1]
-                'surface_runoff': surface_runoff * 1e3,  # [mm d-1]
-                'evaporation': evap * 1e3,  # [mm d-1]
+                #'infiltration': (S - tr) * 1e3,  # [mm d-1]
+                #'surface_runoff': surface_runoff * 1e3,  # [mm d-1]
+                #'evaporation': evap * 1e3,  # [mm d-1]
                 'lateral_netflow': -lateral_flow * 1e3,  # [mm d-1]
                 'netflow_to_ditch': netflow_to_ditch * 1e3,  # [mm d-1]
-                'moisture_top': self.Wliq_top,  # [m3 m-3]
+                #'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'water_closure': mbe * 1e3,  # [mm d-1]
-                'transpiration_limitation': self.Rew,  # [-]
-                'rootzone_moisture': self.rootmoist,  # [m3 m-3]
-                'water_storage': (self.Wsto_top + self.Wsto) * 1e3, # [mm]
+                #'transpiration_limitation': self.Rew,  # [-]
+                'moisture_deep': self.deepmoist,  # [m3 m-3]
+                'water_storage': (self.Wsto_deep) * 1e3, # [mm]
                 }
 
         return results
@@ -480,8 +456,8 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
             'to_Tr'
     """
 
-    z = np.array(z) # profile depths 
-    dz = abs(z) 
+    z = np.array(z) # profile depths
+    dz = abs(z)
     dz[1:] = z[:-1] - z[1:] # profile depths into profile thicknesses
 
     # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
@@ -501,31 +477,31 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     # --------- connection between gwl and Wsto, Tr, C------------
     gwl = np.arange(1.0, -10., -1e-2)
     # solve water storage corresponding to gwls
-    Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
+    Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
             + max(0.0,g) for g in gwl]  # water storage above ground surface == gwl
     # Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]  # old
 
     if root:
-        Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]
-        Wsto = Wsto/sum(dz)
-        GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
+        Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]
+        Wsto_deep = Wsto_deep/sum(dz)
+        GwlToWsto = interp1d(np.array(gwl), np.array(Wsto_deep), fill_value='extrapolate')
         return {'to_rootmoist': GwlToWsto}
 
     # solve transmissivity corresponding to gwls
     Tr = [transmissivity(dz, Ksat, g) * 86400. for g in gwl]  # [m2 d-1]
 
     # interpolate functions
-    WstoToGwl = interp1d(np.array(Wsto), np.array(gwl), fill_value='extrapolate')
-    GwlToWsto = interp1d(np.array(gwl), np.array(Wsto), fill_value='extrapolate')
-    GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto)/np.gradient(gwl)), fill_value='extrapolate')
+    WstoToGwl = interp1d(np.array(Wsto_deep), np.array(gwl), fill_value='extrapolate')
+    GwlToWsto = interp1d(np.array(gwl), np.array(Wsto_deep), fill_value='extrapolate')
+    GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
 
     plt.figure(1)
-    plt.plot(np.array(gwl), np.array(np.gradient(Wsto/np.gradient(gwl))))
+    plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
     plt.figure(2)
     plt.plot(np.array(gwl), np.array(Tr))
     plt.figure(3)
-    plt.plot(np.array(gwl), np.array(Wsto))
+    plt.plot(np.array(gwl), np.array(Wsto_deep))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -566,7 +542,7 @@ def h_to_cellmoist(pF, h, dz):
     else:
         ixx = ix
     # moisture of unsaturated part
-    x[ix] = -(dz[ix]/2 - h[ix]) / 2 
+    x[ix] = -(dz[ix]/2 - h[ix]) / 2
     theta[ix] = Tr[ixx] + (Ts[ixx] - Tr[ixx]) / (1 + abs(alfa[ixx] * 100 * x[ix])**n[ixx])**m[ixx]
     # total moisture as weighted average
     theta[ix] = (theta[ix] * (dz[ix]/2 - h[ix]) + Ts[ixx] * (dz[ix]/2 + h[ix])) / (dz[ix])

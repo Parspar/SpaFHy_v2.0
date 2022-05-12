@@ -103,12 +103,19 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# data files
+rad_ds.npy
+
+
 # folders
 /figures
 /results
 /data
 /sompa_data
 /calibration
+/obs
+/olds
+
 
 # sandbucket, sandbox
 sand*.py

@@ -12,10 +12,10 @@ Based on simple schemes for computing water flows and storages within vegetation
 canopy and snowpack at daily or sub-daily timesteps.
 
 (C) Samuli Launiainen, 2016-
-last edit: Oct 2018 / Samuli
+
 ******************************************************************************
 
-khaahti: modifications to allow for spatially varying forcing data
+Modified by khaahti, jpnousu
 
 """
 import numpy as np
@@ -54,14 +54,54 @@ class CanopyGrid():
 
         # phenology
         self.phenopara = cpara['phenopara']
+        #spec_para = cpara['spec_para']
 
         # canopy parameters and state
-        self.hc = state['hc'] + epsi
-        self.cf = state['cf'] + epsi
+        self.hc = state['hc'] + eps
+        self.cf = state['cf'] + eps
 
-        self._LAIconif = np.maximum(state['lai_conif'], epsi)  # m2m-2
+        '''
+        state['lai_decid'] = state['lai_decid_max']
+
+        ptypes = {}
+        LAI = 0.0
+
+        for pt in list(spec_para.keys()):
+            ptypes[pt] = spec_para[pt]
+            ptypes[pt]['LAImax'] = state['lai_' + pt]
+
+        self.ptypes = ptypes
+
+        # compute gridcell average LAI and photosynthesis-stomatal conductance parameters:
+        LAI = 0.0
+        Amax = 0.0
+        q50 = 0.0
+        g1 = 0.0
+        for pt in self.ptypes.keys():
+            if self.ptypes[pt]['lai_cycle']:
+                pt_lai = self.ptypes[pt]['LAImax'] * self.phenopara['lai_decid_min']
+            else:
+                pt_lai = self.ptypes[pt]['LAImax']
+
+            LAI += pt_lai
+            Amax += pt_lai * ptypes[pt]['amax']
+            q50 += pt_lai * ptypes[pt]['q50']
+            g1 += pt_lai * ptypes[pt]['g1']
+
+        self.LAI = LAI + eps
+        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
+
+        del Amax, q50, g1, pt, LAI, pt_lai
+        '''
+
+        self._LAIconif = np.maximum(state['lai_conif'], eps)  # m2m-2
         self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
-        self.LAI = self._LAIconif + self._LAIdecid
+        self._LAIgrass_max = state['lai_grass']
+        self._LAIgrass = state['lai_grass'] * self.phenopara['lai_decid_min']
+        #print(self._LAIgrass[60,60])
+        self._LAIshrub = np.maximum(state['lai_shrub'], eps)
+
+        self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
 
         self._LAIdecid_max = state['lai_decid_max']  # m2m-2
 
@@ -103,6 +143,7 @@ class CanopyGrid():
         # NOTE: this assumes simulations start 1st Jan each year !!!
         self.DDsum = self.W * 0.0
         self.X = self.W * 0.0
+        #self._relative_lai = self.phenopara['lai_decid_min']
         self._growth_stage = self.W * 0.0
         self._senesc_stage = self.W *0.0
 
@@ -131,8 +172,13 @@ class CanopyGrid():
         Rn = np.maximum(2.57 * self.LAI / (2.57 * self.LAI + 0.57) - 0.2,
                         0.55) * Rg  # Launiainen et al. 2016 GCB, fit to Fig 2a
 
+        # vpd limit
+        #if VPD < 0.1:
+        #    VPD = 0.1
+
 
         """ --- update phenology: self.ddsum & self.X ---"""
+        #self.update_daily(Ta, doy)
         self._degreeDays(Ta, doy)
         fPheno = self._photoacclim(Ta)
 
@@ -144,14 +190,15 @@ class CanopyGrid():
                                                   zg=self.zground, zos=self.zo_ground)
 
         """ --- interception, evaporation and snowpack --- """
-        PotInf, Trfall, Evap, Interc, MBE, erate, unload, fact = self.canopy_water_snow(dt, Ta, Prec, Rn, VPD, Ra=Ra)
+        PotInf, Trfall, Evap, Interc, MBE, erate, unload, fact, Sfall, Rfall = self.canopy_water_snow(dt, Ta, Prec, Rn, VPD, Ra=Ra)
 
         """--- dry-canopy evapotranspiration [mm s-1] --- """
         Transpi, Efloor, Gc = self.dry_canopy_et(VPD, Par, Rn, Ta, Ra=Ra, Ras=Ras, CO2=CO2, Rew=Rew, beta=beta, fPheno=fPheno)
 
         Transpi = Transpi * dt
         Efloor = Efloor * dt
-        ET = Transpi + Efloor
+        #ET = Transpi + Efloor
+
 
         results = {
                 'potential_infiltration': PotInf,  # [mm d-1]
@@ -165,10 +212,53 @@ class CanopyGrid():
                 'phenostate': fPheno,  # [-]
                 'leaf_area_index': self.LAI,  # [m2 m-2]
                 'stomatal_conductance': Gc,  # [m s-1]
-                'degree_day_sum': self.DDsum  # [degC]
+                'degree_day_sum': self.DDsum,  # [degC]
+                'fLAI': self.LAI,
+                'water_storage': self.W,
+                'snowfall': Sfall, # [mm d-1]
+                'rainfall': Rfall  # [mm d-1]
                 }
 
         return results
+    '''
+    def update_daily(self, T, doy):
+        """
+        updates temperature sum, leaf-area development, phenology and
+        computes effective parameters for grid-cell
+        Args:
+            T - daily mean temperature (degC)
+            doy - day of year
+        Returns:
+            None
+        """
+
+        self._degreeDays(T, doy)
+        self._photoacclim(T)
+
+        # deciduous relative leaf-area index
+        self._lai_dynamics(doy)
+
+        # canopy effective photosynthesis-stomatal conductance parameters:
+        LAI = 0.0
+        Amax = 0.0
+        q50 = 0.0
+        g1 = 0.0
+        for pt in self.ptypes.keys():
+            if self.ptypes[pt]['lai_cycle']:
+                pt_lai = self.ptypes[pt]['LAImax'] * self._relative_lai
+            else:
+                pt_lai = self.ptypes[pt]['LAImax']
+            LAI += pt_lai
+            Amax += pt_lai * self.ptypes[pt]['amax']
+            q50 += pt_lai * self.ptypes[pt]['q50']
+            g1 += pt_lai * self.ptypes[pt]['g1']
+
+        self.LAI = LAI + eps
+
+        #print(doy, LAI, Amax / self.LAI, g1 / self.LAI)
+
+        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
+        '''
 
     def _degreeDays(self, T, doy):
         """
@@ -234,7 +324,8 @@ class CanopyGrid():
 
         # update self.LAIdecid and total LAI
         self._LAIdecid = self._LAIdecid_max * f
-        self.LAI = self._LAIconif + self._LAIdecid
+        self._LAIgrass = self._LAIgrass_max * f
+        self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
         return f
 
     def dry_canopy_et(self, D, Qp, AE, Ta, Ra=25.0, Ras=250.0, CO2=380.0, Rew=1.0, beta=1.0, fPheno=1.0):
@@ -274,7 +365,6 @@ class CanopyGrid():
         # ---Amax and g1 as LAI -weighted average of conifers and decid.
 
         rhoa = 101300.0 / (8.31 * (Ta + 273.15)) # mol m-3
-
         Amax = 1./self.LAI * (self._LAIconif * self.physpara['amax']
                 + self._LAIdecid *self.physpara['amax']) # umolm-2s-1
 
@@ -298,8 +388,8 @@ class CanopyGrid():
         # fQ = 1./ kp * np.log((Qp + q50) / (Qp*np.exp(-kp*self.LAI) + q50))
 
         # soil moisture response: Lagergren & Lindroth, xxxx"""
-#        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
-        fRew = Rew
+        fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
+        #fRew = Rew
 
         # CO2 -response of canopy conductance, derived from APES-simulations
         # (Launiainen et al. 2016, Global Change Biology). relative to 380 ppm
@@ -401,6 +491,9 @@ class CanopyGrid():
 
         fS = 1.0 - fW
 
+        sf = fS * Prec
+        rf = fW * Prec
+
         """ --- initial conditions for calculating mass balance error --"""
         Wo = self.W  # canopy storage
         SWEo = self.SWE  # Snow water equivalent mm
@@ -448,7 +541,7 @@ class CanopyGrid():
         # mass-balance error mm
         MBE = (self.W + self.SWE) - (Wo + SWEo) - (Prec - Evap - PotInf)
 
-        return PotInf, Trfall, Evap, Interc, MBE, erate, Unload, fS + fW
+        return PotInf, Trfall, Evap, Interc, MBE, erate, Unload, fS + fW, sf, rf
 
 
 """ *********** utility functions ******** """
@@ -548,9 +641,9 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
 
     x = (s * AE + rho * cp * Ga * D) / (s + g * (1.0 + Ga / (Gs + eps)))  # Wm-2
 
-    if units is 'mm':
+    if units == 'mm':
         x = x / L  # kgm-2s-1 = mms-1
-    if units is 'mol':
+    if units == 'mol':
         x = x / L / Mw  # mol m-2 s-1
 
     x = np.maximum(x, 0.0)
