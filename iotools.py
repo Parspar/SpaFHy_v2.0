@@ -283,7 +283,7 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
 
     if set(soil_ids) >= set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()):
         # no problems
-        print('No undefined soil ids',set(soil_ids),
+        print('DEFINED SOIL IDS:',set(soil_ids), 'USED SOIL IDS:',
               set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()))
     else:
         print(set(soil_ids),set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()))
@@ -561,7 +561,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
     # -H2O partial pressure (hPa)
 
     sourcefile = os.path.join(sourcefile)
-    print(sourcefile)
+    print('SIMULATION FORCED WITH:', sourcefile)
     ID = int(ID)
 
     # import forcing data
@@ -635,14 +635,14 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
 
     # dimensions
     date_dimension = None
-    i_dimension, j_dimension = np.shape(cmask)
+    lat_shape, lon_shape = np.shape(cmask)
 
     xllcorner = gisinfo['xllcorner']
     yllcorner = gisinfo['yllcorner']
     cellsize = gisinfo['dxy']
 
-    xcoords = np.arange(xllcorner, (xllcorner + (j_dimension*cellsize)), cellsize)
-    ycoords = np.arange(yllcorner, (yllcorner + (i_dimension*cellsize)), cellsize)
+    xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
+    ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
     ycoords = np.flip(ycoords)
 
     if not os.path.exists(filepath):
@@ -654,24 +654,24 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     ncf = Dataset(ff, 'w')
     ncf.description = 'SpaFHy results : ' + description
     ncf.history = 'created ' + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    ncf.source = 'modified SpaFHy v.1.0'
+    ncf.source = 'modified SpaFHy'
 
-    ncf.createDimension('date', date_dimension)
-    ncf.createDimension('i', i_dimension)
-    ncf.createDimension('j', j_dimension)
+    ncf.createDimension('time', date_dimension)
+    ncf.createDimension('lat', lat_shape)
+    ncf.createDimension('lon', lon_shape)
 
-    date = ncf.createVariable('date', 'f8', ('date',))
+    date = ncf.createVariable('time', 'f8', ('time',))
     date.units = 'days since 0001-01-01 00:00:00.0'
     date.calendar = 'standard'
     tvec = pd.date_range(pgen['spinup_end'], pgen['end_date']).tolist()[1:]
     date[:] = date2num(tvec, units=date.units, calendar=date.calendar)
 
-    ivar = ncf.createVariable('i', 'f8', ('i',))
-    ivar.units = 'y coordinates'
+    ivar = ncf.createVariable('lat', 'f8', ('lat',))
+    ivar.units = 'ETRS-TM35FIN'
     ivar[:] = ycoords
 
-    jvar = ncf.createVariable('j', 'f8', ('j',))
-    jvar.units = 'x coordinates'
+    jvar = ncf.createVariable('lon', 'f8', ('lon',))
+    jvar.units = 'ETRS-TM35FIN'
     jvar[:] = xcoords
 
     for var in pgen['variables']:
@@ -681,13 +681,13 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
 
         if (var_name.split('_')[0] == 'forcing' and
             pgen['spatial_forcing'] == False):
-            var_dim = ('date')
+            var_dim = ('time')
         elif (var_name.split('_')[0] == 'top' and var_name.split('_')[1] != 'local'):
-            var_dim = ('date')
+            var_dim = ('time')
         elif var_name.split('_')[0] == 'parameters':
-            var_dim = ('i', 'j')
+            var_dim = ('lat', 'lon')
         else:
-            var_dim = ('date','i', 'j')
+            var_dim = ('time','lat', 'lon')
 
         variable = ncf.createVariable(
                 var_name, 'f4', var_dim)
@@ -712,7 +712,7 @@ def write_ncf(results, ncf, steps=None):
 
     for key in keys:
 
-        if key in variables and key != 'date':
+        if key in variables and key != 'time':
             if len(ncf[key].shape) > 2:
                 if steps==None:
                     ncf[key][:,:,:] = results[key]
@@ -813,8 +813,14 @@ def read_results(outputfile):
     import xarray as xr
 
     result = xr.open_dataset(outputfile)
-    result.coords['i'] = -np.arange(0,result.dims['i'])
-    result.coords['j'] = np.arange(0,result.dims['j'])
+    try:
+        result.coords['lat'] = -np.arange(0,result.dims['lat'])
+    except KeyError:
+        result.coords['i'] = -np.arange(0,result.dims['i'])
+    try:
+        result.coords['lon'] = np.arange(0,result.dims['lon'])
+    except KeyError:
+        result.coords['j'] = np.arange(0,result.dims['j'])
 
     return result
 

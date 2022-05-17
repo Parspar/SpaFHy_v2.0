@@ -11,10 +11,10 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'simtype': 'TOP', # 1D, TOP, 2D
-            'start_date': '2020-08-01',  # '2007-08-01'
+            'simtype': '2D', # 1D, TOP, 2D
+            'start_date': '2007-08-01',  # '2007-08-01'
             'end_date': '2021-09-09', # 2021-09-09
-            'spinup_end': '2020-12-31',  # '2008-12-31' results after this are saved in result file
+            'spinup_end': '2008-12-31',  # '2008-12-31' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -27,7 +27,7 @@ def parameters(folder=''):
             'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing_era5.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
-            'results_folder': r'results/',
+            'results_folder': r'D:\SpaFHy_2D_2021/',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
@@ -270,7 +270,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2,
                     'alpha': [0.054]*2,
                     'n': [1.293]*2},
-            'saturated_conductivity': [1E-04, 1E-05],
+            'saturated_conductivity': [1E-05, 5E-06],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
@@ -280,7 +280,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-05, 1E-05],
+            'saturated_conductivity': [5E-06, 1E-06],
                 },
         'FineTextured':{
             'soil_id': 3.0,
@@ -300,7 +300,7 @@ def soilprofiles():
                     'ThetaR': [0.196]*5, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.072]*5,  # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.255]*5}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [5E-04, 1E-04, 5E-5, 1E-6, 5E-07], # MEASURED
+            'saturated_conductivity': [1E-04, 5E-5, 3E-7, 3E-07], # MEASURED
                 },
         'Humus': {
             'soil_id': 5.0,
@@ -329,7 +329,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 3.1,
                   'root_fc': 0.21,
-                  'root_ksat': 1E-04,
+                  'root_ksat': 1E-05,
                   'root_n': 1.2,
                   'root_poros': 0.41,
                   'soil_id': 1.0,
@@ -341,7 +341,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.33,
-                  'root_ksat': 1E-05,
+                  'root_ksat': 5E-06,
                   'root_n': 1.2,
                   'root_poros': 0.448,
                   'soil_id': 2.0,
@@ -365,7 +365,7 @@ def rootproperties():
                   'root_alpha': 0.08, # Menbery et al. 2021
                   'root_beta': 6.0,
                   'root_fc': 0.53, # MEASURED
-                  'root_ksat': 5E-04, # MEASURED
+                  'root_ksat': 2E-04, # MEASURED
                   'root_n': 1.75, # Menbery et al. 2021
                   'root_poros': 0.888, # MEASURED
                   'soil_id': 4.0,

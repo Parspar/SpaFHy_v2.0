@@ -7,7 +7,7 @@ Created on Mon Nov  8 12:26:01 2021
 
 # SpaFHy_v1_Pallas_2D figures
 
-from iotools import read_results, read_results_coord
+from iotools import read_results
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np

@@ -2,20 +2,24 @@
 """
 Created on Wed Jan 23 15:25:15 2019
 
-@author: khaahti
+@author: janousu
 """
 
 from model_driver import driver
 from iotools import read_results
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 # example of calling driver, reading results and plotting gwl
 
 outputfile = driver(create_ncf=True, folder='testcase_input')
 
-results = read_results(outputfile)
+#results = read_results(outputfile)
+results = xr.open_dataset(outputfile)
 
+
+'''
 results['soil_ground_water_level_abs'] = results['soil_ground_water_level'][-1,:,:] + results['parameters_elevation']
 results['soil_netflow_to_ditch'] = results['soil_netflow_to_ditch'] * results['parameters_cmask']
 results['soil_lateral_netflow'] = results['soil_lateral_netflow'] * results['parameters_cmask']
@@ -100,3 +104,4 @@ plt.legend()
 
 plt.figure(figsize=(20,5))
 plt.plot(results['date'],results['soil_water_closure'].mean(['i','j']))
+'''
