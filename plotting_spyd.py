@@ -23,6 +23,8 @@ import rasterio
 import xarray as xr
 from raster_utils import read_pkrasteri_for_extent
 
+os.chdir(r'C:\SpaFHy_v1_Pallas_2D\figures')
+
 #%%
 
 ## reading simulation results
@@ -31,12 +33,16 @@ outputfile_1d = r'D:\SpaFHy_2D_2021\results_1d.nc'
 res_1d = xr.open_dataset(outputfile_1d)
 
 # reading the 2D results
-outputfile_2d = r'D:\SpaFHy_2D_2021\results_2d.nc'
+outputfile_2d = r'D:\SpaFHy_2D_2021\results_2d_new.nc'
 res_2d = xr.open_dataset(outputfile_2d)
 
 # reading the top results
 outputfile_top = r'D:\SpaFHy_2D_2021\results_top.nc'
 res_top = xr.open_dataset(outputfile_top)
+
+# raster parameters
+soilclass = np.array(res_2d['parameters_soilclass'])
+cmask = np.array(res_2d['parameters_cmask'])
 
 dates_spa = []
 for d in range(len(res_1d['time'])):
@@ -51,9 +57,27 @@ pk, meta = read_pkrasteri_for_extent(pkfp, bbox, showfig=False)
 # reading SAR files
 sar_tempfile = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_SM_PALLAS_2019_16M_TM35_CATCHMENT_TEMPINTERP.nc'
 sar_temp = xr.open_dataset(sar_tempfile)
+sar_temp = sar_temp * cmask
 
 sar_spatfile = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_SM_PALLAS_2019_16M_TM35_CATCHMENT_TEMPINTERP_SPATINTERP.nc'
 sar_spat = xr.open_dataset(sar_spatfile)
+sar_spat = sar_spat * cmask
+
+# parameters
+today = date.today()
+saveplots = True
+
+# indexes for tighet plots
+zx = np.arange(20, 171, 1)
+zy = np.arange(20, 246, 1)
+
+# defining important raster locations
+ht = [118,136] # hilltop
+om = [46, 54]   # open mire
+
+
+
+
 
 #%%
 
@@ -128,19 +152,6 @@ theta_spat_gpd = pd.read_csv(fn7, sep=';', index_col=0, parse_dates=True)
 theta_spat_gpd = gpd.GeoDataFrame(theta_spat_gpd)
 theta_spat_gpd['geometry'] = gpd.GeoSeries.from_wkt(theta_spat_gpd['geometry'])
 
-#%%
-
-# parameters
-today = date.today()
-saveplots = True
-
-# indexes for tighet plots
-zx = np.arange(20, 171, 1)
-zy = np.arange(20, 246, 1)
-
-# defining important raster locations
-ht = [118, 136] # hilltop
-om = [46, 54]   # open mire
 
 
 #%%
@@ -224,22 +235,22 @@ ax6.set_title('canopy fraction')
 fig.colorbar(im6, ax=ax6)
 
 cmapsoil = plt.get_cmap('viridis', 4)
-im7 = ax7.imshow(res_top['parameters_soilclass'][20:250,20:165], cmap=cmapsoil)
+im7 = ax7.imshow(res_2d['parameters_soilclass'][20:250,20:165], cmap=cmapsoil)
 ax7.set_title('soilclass')
 fig.colorbar(im7, ax=ax7)
 
 cmapsite = plt.get_cmap('viridis', 4)
-im8 = ax8.imshow(res_top['parameters_sitetype'][20:250,20:165], cmap=cmapsite)
+im8 = ax8.imshow(res_2d['parameters_sitetype'][20:250,20:165], cmap=cmapsite)
 ax8.set_title('sitetype')
 fig.colorbar(im8, ax=ax8)
 
 cmapditch = plt.get_cmap('viridis', 2)
-im9 = ax9.imshow(res_top['parameters_ditches'][20:250,20:165], cmap=cmapditch)
+im9 = ax9.imshow(res_2d['parameters_ditches'][20:250,20:165], cmap=cmapditch)
 ax9.set_title('streams/ditches')
 cbar = fig.colorbar(im9, ax=ax9)
 cbar.ax.locator_params(nbins=1)
 
-im10 = ax10.imshow(res_top['parameters_elevation'][20:250,20:165])
+im10 = ax10.imshow(res_2d['parameters_elevation'][20:250,20:165])
 ax10.set_title('elevation')
 fig.colorbar(im10, ax=ax10)
 
@@ -262,6 +273,89 @@ if saveplots == True:
         plt.savefig(f'GIS_rasters_{today}.pdf',bbox_inches='tight')
         plt.savefig(f'GIS_rasters_{today}.png',bbox_inches='tight')
 
+#%%
+
+alp=0.75
+
+# Plotting
+fig = plt.figure(constrained_layout=True, figsize=(16,6))
+gs = fig.add_gridspec(2, 5)
+
+ax0 = fig.add_subplot(gs[0:, 0:2])
+ax1 = fig.add_subplot(gs[0, 2])
+ax2 = fig.add_subplot(gs[0, 3])
+ax3 = fig.add_subplot(gs[0, 4])
+ax4 = fig.add_subplot(gs[1, 2])
+ax5 = fig.add_subplot(gs[1, 3])
+ax6 = fig.add_subplot(gs[1, 4])
+
+
+'''
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(11,8));
+ax1 = axs[0][0]
+ax2 = axs[0][1]
+ax3 = axs[0][2]
+ax4 = axs[1][0]
+ax5 = axs[1][1]
+ax6 = axs[1][2]
+'''
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax0)
+im0 = res_2d['parameters_cmask'].plot(ax=ax0, alpha=0.2, add_colorbar=False)
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax1)
+im1 = res_2d['parameters_lai_conif'].plot(ax=ax1, alpha=alp, add_colorbar=False)
+fig.colorbar(im1, ax=ax1)
+# this creates colorbar
+ax1.axes.get_xaxis().set_ticklabels([])
+ax1.axes.get_yaxis().set_ticklabels([])
+ax1.axis('off')
+ax1.set_title(r'LAI conif [m$^2$/m$^2$]')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
+im2 = res_2d['parameters_hc'].plot(ax=ax2, alpha=alp, add_colorbar=False)
+fig.colorbar(im2, ax=ax2)
+ax2.set_title('Canopy height [m]')
+ax2.axes.get_xaxis().set_ticklabels([])
+ax2.axes.get_yaxis().set_ticklabels([])
+ax2.axis('off')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax3);
+im3 = res_2d['parameters_cf'].plot(ax=ax3, alpha=alp, add_colorbar=False)
+fig.colorbar(im3, ax=ax3)
+ax3.set_title('Canopy fraction [m$^2$/m$^2$]')
+ax3.axes.get_xaxis().set_ticklabels([])
+ax3.axes.get_yaxis().set_ticklabels([])
+ax3.axis('off')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax4);
+im4 = res_2d['parameters_soilclass'].plot(ax=ax4, alpha=alp, add_colorbar=False)
+fig.colorbar(im4, ax=ax4)
+ax4.set_title('Soilclass [-]')
+ax4.axes.get_xaxis().set_ticklabels([])
+ax4.axes.get_yaxis().set_ticklabels([])
+ax4.axis('off')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax5);
+im5 = res_2d['parameters_elevation'].plot(ax=ax5, alpha=alp, add_colorbar=False)
+fig.colorbar(im5, ax=ax5)
+ax5.axes.get_yaxis().set_ticks([])
+ax5.axes.get_xaxis().set_ticks([])
+ax5.set_title('Elevation [m]')
+ax5.axis('off')
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax6);
+im6 = res_top['parameters_twi'].plot(ax=ax6, alpha=alp, add_colorbar=False)
+fig.colorbar(im6, ax=ax6)
+ax6.axes.get_yaxis().set_ticks([])
+ax6.axes.get_xaxis().set_ticks([])
+ax6.set_title('TWI [-]')
+ax6.axis('off')
+
+#plt.subplots_adjust(wspace=0.3, hspace=0.1)
+
+plt.savefig(f'EGU_gis_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'EGU_gis_{today}.png', bbox_inches='tight', dpi=300)
 
 #%%
 
@@ -341,7 +435,6 @@ ax1.set_ylabel(r'$\theta$ [m$^3$/m$^3$]')
 #ax1.text(dates_spa[start:end][0], 0.2, 'a')
 ax1.grid()
 ax1.grid()
-
 ax1.xaxis.set_tick_params(rotation=20)
 
 rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
@@ -360,7 +453,10 @@ plt.savefig(f'spatial_06_2021_{today}.png', bbox_inches='tight', dpi=300)
 
 #%%
 
-d = '2021-09-01'
+start = np.where(pd.to_datetime(dates_spa) == '2021-05-01')[0][0]
+end = np.where(pd.to_datetime(dates_spa) == '2021-09-02')[0][0]
+
+d = '2021-06-17'
 doi = np.where(pd.to_datetime(dates_spa[start:end]) == d)[0][0]
 doi_m = np.where(pd.to_datetime(theta_spat['time'][:].data) == d)[0][0]
 
@@ -375,12 +471,13 @@ ax3 = fig.add_subplot(gs[0, 2])
 
 rasterio.plot.show(pk, transform=meta['transform'], ax=ax1);
 im1 = res_1d['bucket_moisture_root'][start:end][doi].plot(ax=ax1, cmap='coolwarm_r', vmin=ylims[0], vmax=ylims[1], alpha=alp,
-                                                          add_colorbar=False)
+                                                          add_colorbar=False, label='MOD')
 theta_spat_gpd.loc[theta_spat_gpd.index == d,
                    ['theta', 'geometry']].plot(column='theta',
                                                ax=ax1, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
                                                markersize=25,
-                                               alpha=alp, vmin=ylims[0], vmax=ylims[1])
+                                               alpha=alp, vmin=ylims[0], vmax=ylims[1], label='OBS')
+ax1.legend()
 rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
 #im1 = ax2.imshow(results_catch['bucket_moisture_root'][start:end][maxd], cmap='coolwarm_r', vmin=0.1, vmax=0.88)
 im2 = res_top['bucket_moisture_root'][start:end][doi].plot(ax=ax2, cmap='coolwarm_r', vmin=ylims[0], vmax=ylims[1], alpha=alp,
@@ -389,7 +486,8 @@ theta_spat_gpd.loc[theta_spat_gpd.index == d,
                    ['theta', 'geometry']].plot(column='theta',
                                                ax=ax2, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
                                                markersize=25,
-                                               alpha=alp, vmin=ylims[0], vmax=ylims[1])
+                                               alpha=alp, vmin=ylims[0], vmax=ylims[1], label='OBS')
+ax2.legend()
 
 rasterio.plot.show(pk, transform=meta['transform'], ax=ax3)
 
@@ -399,8 +497,9 @@ theta_spat_gpd.loc[theta_spat_gpd.index == d,
                    ['theta', 'geometry']].plot(column='theta',
                                                ax=ax3, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
                                                markersize=25,
-                                               alpha=alp, vmin=ylims[0], vmax=ylims[1])
-                                               #theta_spat_gpd.loc[theta_spat_gpd.index == d][['SM_mean', 'geometry']].plot()
+                                               alpha=alp, vmin=ylims[0], vmax=ylims[1], label='OBS')
+ax3.legend()
+                                              #theta_spat_gpd.loc[theta_spat_gpd.index == d][['SM_mean', 'geometry']].plot()
 
 
 
@@ -420,14 +519,46 @@ plt.savefig(f'spatial_mode_{d}_2021_{today}.png', bbox_inches='tight', dpi=300)
 
 #%%
 
-june_id = np.where(pd.to_datetime(dates_spa).month == 6)
-july_id = np.where(pd.to_datetime(dates_spa).month == 7)
-august_id = np.where(pd.to_datetime(dates_spa).month == 8)
-sept_id = np.where(pd.to_datetime(dates_spa).month == 9)
-
 # HISTOGRAMS
 
-fig = plt.figure(figsize=(15,6))
+june_id = np.where(pd.to_datetime(dates_spa).month == 6)[0]
+july_id = np.where(pd.to_datetime(dates_spa).month == 7)[0]
+august_id = np.where(pd.to_datetime(dates_spa).month == 8)[0]
+sept_id = np.where(pd.to_datetime(dates_spa).month == 9)[0]
+
+peat_id = np.where(np.ravel(soilclass == 4))[0]
+mineral_id = np.where(np.ravel(soilclass == 2))[0]
+
+top_moist_peat = np.array(res_top['bucket_moisture_root']).reshape(res_top['bucket_moisture_root'].shape[0], -1)[:,peat_id]
+d2_moist_peat = np.array(res_2d['bucket_moisture_root']).reshape(res_2d['bucket_moisture_root'].shape[0], -1)[:,peat_id]
+
+top_moist_mineral = np.array(res_top['bucket_moisture_root']).reshape(res_top['bucket_moisture_root'].shape[0], -1)[:,mineral_id]
+d2_moist_mineral = np.array(res_2d['bucket_moisture_root']).reshape(res_2d['bucket_moisture_root'].shape[0], -1)[:,mineral_id]
+
+alp=0.6
+peat_lims = [0.1,0.9]
+min_lims = [0.1,0.9]
+
+'''
+hobs,binobs = np.histogram(top_moist_mineral[peat_id],bins=25, range=min_lims)
+hsim,binsim = np.histogram(d2_moist_mineral[peat_id],bins=25, range=min_lims)
+#convert int to float, critical conversion for the result
+hobs=np.float64(hobs)
+hsim=np.float64(hsim)
+#find the overlapping of two histogram
+minima = np.minimum(hsim, hobs)
+#compute the fraction of intersection area to the observed histogram area, hist intersection/overlap index
+gamma = np.sum(minima)/np.sum(hobs)
+'''
+
+#%%
+
+
+alp=0.6
+peat_lims = [0.1,0.9]
+min_lims = [0.1,0.9]
+
+fig = plt.figure(figsize=(12,4))
 gs = fig.add_gridspec(2, 4)
 
 ax1 = fig.add_subplot(gs[0, 0])
@@ -440,30 +571,188 @@ ax6 = fig.add_subplot(gs[1, 1])
 ax7 = fig.add_subplot(gs[1, 2])
 ax8 = fig.add_subplot(gs[1, 3])
 
-res_top['bucket_moisture_root'][june_id].plot.hist(ax=ax1, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][june_id].plot.hist(ax=ax1, bins=25, alpha=0.7, label='2D')
+ax1.hist(d2_moist_mineral[june_id].flatten(), bins=25, range=min_lims, alpha=alp, label='2D')
+ax1.hist(top_moist_mineral[june_id].flatten(), bins=25, range=min_lims, alpha=alp, label='TOP')
 ax1.legend()
+ax1.set_title('JUNE')
+ax1.set_ylabel('occurences')
 
-res_top['bucket_moisture_root'][july_id].plot.hist(ax=ax2, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][july_id].plot.hist(ax=ax2, bins=25, alpha=0.7, label='2D')
+ax2.hist(d2_moist_mineral[july_id].flatten(), bins=25, range=min_lims, alpha=alp, label='2D')
+ax2.hist(top_moist_mineral[july_id].flatten(), bins=25, range=min_lims, alpha=alp, label='TOP')
+ax2.set_title('JULY')
 
-res_top['bucket_moisture_root'][august_id].plot.hist(ax=ax3, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][august_id].plot.hist(ax=ax3, bins=25, alpha=0.7, label='2D')
+ax3.hist(d2_moist_mineral[august_id].flatten(), bins=25, range=min_lims, alpha=alp, label='2D')
+ax3.hist(top_moist_mineral[august_id].flatten(), bins=25, range=min_lims, alpha=alp, label='TOP')
+ax3.set_title('AUGUST')
 
-res_top['bucket_moisture_root'][august_id].plot.hist(ax=ax4, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][august_id].plot.hist(ax=ax4, bins=25, alpha=0.7, label='2D')
+ax4.hist(d2_moist_mineral[sept_id].flatten(), bins=25, range=min_lims, alpha=alp, label='2D')
+ax4.hist(top_moist_mineral[sept_id].flatten(), bins=25, range=min_lims, alpha=alp, label='TOP')
+ax4.set_title('SEPTEMBER')
 
 ###
+ax5.hist(d2_moist_peat[june_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='2D')
+ax5.hist(top_moist_peat[june_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='TOP')
+ax5.set_ylabel('occurences')
 
-res_top['bucket_moisture_root'][june_id].plot.hist(ax=ax5, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][june_id].plot.hist(ax=ax5, bins=25, alpha=0.7, label='2D')
+ax6.hist(d2_moist_peat[july_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='2D')
+ax6.hist(top_moist_peat[july_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='TOP')
+
+ax7.hist(d2_moist_peat[august_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='2D')
+ax7.hist(top_moist_peat[august_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='TOP')
+
+ax8.hist(d2_moist_peat[sept_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='2D')
+ax8.hist(top_moist_peat[sept_id].flatten(), bins=25, range=peat_lims, alpha=alp, label='TOP')
+
+ax1.axes.get_yaxis().set_ticklabels([])
+ax2.axes.get_yaxis().set_ticklabels([])
+ax3.axes.get_yaxis().set_ticklabels([])
+ax4.axes.get_yaxis().set_ticklabels([])
+
+#ax1.axes.get_xaxis().set_ticklabels([])
+#ax2.axes.get_xaxis().set_ticklabels([])
+#ax3.axes.get_xaxis().set_ticklabels([])
+#ax4.axes.get_xaxis().set_ticklabels([])
+
+ax5.axes.get_yaxis().set_ticklabels([])
+ax6.axes.get_yaxis().set_ticklabels([])
+ax7.axes.get_yaxis().set_ticklabels([])
+ax8.axes.get_yaxis().set_ticklabels([])
+
+ax1.grid()
+ax2.grid()
+ax3.grid()
+ax4.grid()
+ax5.grid()
+ax6.grid()
+ax7.grid()
+ax8.grid()
+
+plt.subplots_adjust(wspace=0.05, hspace=0.2)
+fig.text(0.5, 0.03, 'Rootzone volumetric water content [m3/m3]', ha='center')
+
+fig.text(0.92, 0.6, 'MINERAL SOIL', rotation='vertical', ha='center')
+fig.text(0.92, 0.27, 'PEAT SOIL', rotation='vertical', ha='center')
+
+
+
+plt.savefig(f'histogram_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'histogram_{today}.png', bbox_inches='tight', dpi=300)
+
+#%%
+from pyproj import CRS
+import geopandas as gpd
+from shapely.geometry import Point
+import cartopy.crs as ccrs
+
+world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+pallas = [67.995, 24.224]
+lons = np.array([24.224,24.224,24.224])
+lats = np.array([67.995, 67.995, 67.995])
+
+# Define an orthographic projection, centered in Finland! from: http://www.statsmapsnpix.com/2019/09/globe-projections-and-insets-in-qgis.html
+ortho = CRS.from_proj4("+proj=ortho +lat_0=60.00 +lon_0=23.0000 +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs")
+ortho = ccrs.Orthographic(central_longitude=23, central_latitude=60)
+geo = ccrs.Geodetic()
+
+points = ortho.transform_points(geo, lons, lats)
+
+world.to_crs(ortho).plot(color='tab:blue', linewidth=0.5, edgecolor='white')
+plt.scatter(points[0][0],points[1][1], color='red', s=4)
+plt.text(-1.5e6,1.2e6, '68$^\circ$N,24$^\circ$E', fontsize='x-small')
+# Remove x and y axis
+plt.axis('off')
+
+plt.savefig(f'world_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'world_{today}.png', bbox_inches='tight', dpi=300)
+
+#%%
+
+# SAR SPATIAL PLOTS
+start_day = pd.to_datetime('2019-05-01')
+end_day = pd.to_datetime('2019-09-15')
+
+start = np.where(pd.to_datetime(dates_spa) == start_day)[0][0]
+end = np.where(pd.to_datetime(dates_spa) == end_day)[0][0]
+
+sar_wet_day = np.where(np.nansum(sar_temp['theta'], axis=(1,2)) == np.nansum(sar_temp['theta'], axis=(1,2)).max())
+sar_dry_day = np.where(np.nansum(sar_temp['theta'], axis=(1,2)) == np.nansum(sar_temp['theta'], axis=(1,2)).min())
+
+wet_day = pd.to_datetime(sar_temp['time'][sar_wet_day].data[0])
+dry_day = pd.to_datetime(sar_temp['time'][sar_dry_day].data[0])
+
+doi = np.where(pd.to_datetime(dates_spa[start:end]) == wet_day)[0][0]
+d = pd.to_datetime(wet_day)
+
+alp=0.5
+ylims = [0.2,0.88]
+ylimstemp = [0.08,0.5]
+fig = plt.figure(figsize=(12,8))
+gs = fig.add_gridspec(3, 3)
+
+ax0 = fig.add_subplot(gs[0, :])
+ax2 = fig.add_subplot(gs[1:, 0])
+ax1 = fig.add_subplot(gs[1:, 1])
+ax3 = fig.add_subplot(gs[1:, 2])
+
+#ax0.plot(dates_spa[start:end], np.nanmean(res_2d['bucket_moisture_root'][start:end], axis=(1,2)), linewidth=2, color='black', label='mean')
+ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_root'][start:end, ht[0], ht[1]], linewidth=2, color='black', label='2D rootzone')
+ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_top'][start:end, ht[0], ht[1]], linewidth=2, color='green', label='2D topsoil')
+
+#ax0.fill_between(dates_spa[start:end], np.nanquantile(res_2d['bucket_moisture_root'][start:end], 0.8, axis=(1,2)),
+#                      np.nanquantile(res_2d['bucket_moisture_root'][start:end], 0.2, axis=(1,2)), alpha=0.3, label='20-quantile')
+
+#ax0.scatter(pd.to_datetime(sar_temp['time'][:].data), np.nanmean(sar_temp['theta'], axis=(1,2)), s=50, color='red', label='SAR')
+ax0.scatter(pd.to_datetime(sar_temp['time'][:].data), sar_temp['theta'][:,ht[0], ht[1]], s=25, color='red', label='SAR')
+
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'mean_obs'], alpha=0.8, label='OBS mean')
+ax0.fill_between(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'min'],
+                      theta.loc[theta[start_day:end_day].index, 'max'], alpha=0.4, label='OBS range')
+ax0.legend(ncol=5)
+ax0.set_title('Timeseries 2019')
+ax0.set_ylabel(r'$\theta$ [m$^3$/m$^3$]')
+#ax1.text(dates_spa[start:end][0], 0.2, 'a')
+ax0.grid()
+ax0.xaxis.set_tick_params(rotation=15)
+ax0.set_ylim(ylimstemp)
+
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax1);
+im1 = res_2d['bucket_moisture_root'][start:end][doi].plot(ax=ax1, cmap='coolwarm_r', vmin=ylims[0], vmax=ylims[1], alpha=alp,
+                                                          add_colorbar=False, label='2D root')
+
+theta_spat_gpd.loc[theta_spat_gpd.index == d,
+                   ['theta', 'geometry']].plot(column='theta',
+                                               ax=ax1, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
+                                               markersize=35,
+                                               alpha=alp, vmin=ylims[0], vmax=ylims[1], label='OBS')
 ax1.legend()
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
+#im1 = ax2.imshow(results_catch['bucket_moisture_root'][start:end][maxd], cmap='coolwarm_r', vmin=0.1, vmax=0.88)
+im2 = sar_temp['theta'].sel(time=d).plot(ax=ax2, cmap='coolwarm_r', vmin=ylims[0], vmax=ylims[1], alpha=alp,
+                                                          add_colorbar=False)
+theta_spat_gpd.loc[theta_spat_gpd.index == d,
+                   ['theta', 'geometry']].plot(column='theta',
+                                               ax=ax2, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
+                                               markersize=35,
+                                               alpha=alp, vmin=ylims[0], vmax=ylims[1], label='OBS')
+ax2.legend()
+ax2.axes.get_yaxis().set_ticklabels([])
+ax2.set_ylabel('')
 
-res_top['bucket_moisture_root'][july_id].plot.hist(ax=ax6, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][july_id].plot.hist(ax=ax6, bins=25, alpha=0.7, label='2D')
+rasterio.plot.show(pk, transform=meta['transform'], ax=ax3);
+im3 = res_2d['bucket_moisture_top'][start:end][doi].plot(ax=ax3, cmap='coolwarm_r', vmin=ylims[0], vmax=ylims[1], alpha=alp,
+                                                          add_colorbar=False, label='2D')
+theta_spat_gpd.loc[theta_spat_gpd.index == d,
+                   ['theta', 'geometry']].plot(column='theta',
+                                               ax=ax3, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
+                                               markersize=35,
+                                               alpha=alp, vmin=ylims[0], vmax=ylims[1], label='OBS')
+ax3.legend()
 
-res_top['bucket_moisture_root'][august_id].plot.hist(ax=ax7, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][august_id].plot.hist(ax=ax7, bins=25, alpha=0.7, label='2D')
+cax = plt.axes([0.1, 0.04, 0.8, 0.03]) # 4-tuple of floats rect = [left, bottom, width, height]. A new axes is added
+cbar1 = plt.colorbar(im1, cax=cax, orientation='horizontal')
 
-res_top['bucket_moisture_root'][august_id].plot.hist(ax=ax8, bins=25, alpha=0.7, label='TOP')
-res_2d['bucket_moisture_root'][august_id].plot.hist(ax=ax8, bins=25, alpha=0.7, label='2D')
+plt.subplots_adjust(wspace=0.1, hspace=0.3)
+
+
+plt.savefig(f'sar_spa_2_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'sar_spa_2_{today}.png', bbox_inches='tight', dpi=300)

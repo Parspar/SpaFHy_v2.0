@@ -14,7 +14,7 @@ def parameters(folder=''):
             'simtype': '2D', # 1D, TOP, 2D
             'start_date': '2007-08-01',  # '2007-08-01'
             'end_date': '2021-09-09', # 2021-09-09
-            'spinup_end': '2008-12-31',  # '2008-12-31' results after this are saved in result file
+            'spinup_end': '2008-12-31',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -188,7 +188,7 @@ def parameters(folder=''):
             'root_depth': 0.3, # depth of rootzone layer (m)
             'root_sat': 0.6, # root zone saturation ratio (-)
             'root_fc': 0.33, # root zone field capacity
-            'root_poros': 0.43, # root zone porosity
+            'root_poros': 0.443, # root zone porosity
             'root_wp': 0.13, # root zone wilting point
             'root_ksat': 1e-05, # root zone hydraulic conductivity
             'root_beta': 4.7,
@@ -266,7 +266,7 @@ def soilprofiles():
             'soil_id': 1.0,
             'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348]*2,
+                    'ThetaS': [0.443]*2,
                     'ThetaR': [0.03]*2,
                     'alpha': [0.054]*2,
                     'n': [1.293]*2},
@@ -276,17 +276,17 @@ def soilprofiles():
             'soil_id': 2.0,
             'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*2, # MEASURED AND OPTIMIZED PARAMETER
+                    'ThetaS': [0.443]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [5E-06, 1E-06],
+            'saturated_conductivity': [4E-06, 1E-06],
                 },
         'FineTextured':{
             'soil_id': 3.0,
             'z': [-0.05, -0.1, -0.8, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*4,
+                    'ThetaS': [0.443]*4,
                     'ThetaR': [0.03]*4,
                     'alpha': [0.054]*4,
                     'n': [1.293]*4},
@@ -300,7 +300,7 @@ def soilprofiles():
                     'ThetaR': [0.196]*5, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.072]*5,  # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.255]*5}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-04, 5E-5, 3E-7, 3E-07], # MEASURED
+            'saturated_conductivity': [1E-04, 5E-05, 5E-06, 2E-07, 1E-07], # MEASURED
                 },
         'Humus': {
             'soil_id': 5.0,
@@ -331,7 +331,7 @@ def rootproperties():
                   'root_fc': 0.21,
                   'root_ksat': 1E-05,
                   'root_n': 1.2,
-                  'root_poros': 0.41,
+                  'root_poros': 0.443,
                   'soil_id': 1.0,
                   'root_wp': 0.10,
                   'root_wr': 0.05,
@@ -341,9 +341,9 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.33,
-                  'root_ksat': 5E-06,
+                  'root_ksat': 4E-06,
                   'root_n': 1.2,
-                  'root_poros': 0.448,
+                  'root_poros': 0.443,
                   'soil_id': 2.0,
                   'root_wp': 0.13,
                   'root_wr': 0.05,
@@ -355,7 +355,7 @@ def rootproperties():
                   'root_fc': 0.34,
                   'root_ksat': 1E-06, # saturated hydraulic conductivity
                   'root_n': 1.16, # van genuchten parameter
-                  'root_poros': 0.5, # porosity (-)
+                  'root_poros': 0.443, # porosity (-)
                   'soil_id': 3.0,
                   'root_wp': 0.25, # wilting point (-)
                   'root_wr': 0.07,
@@ -365,7 +365,7 @@ def rootproperties():
                   'root_alpha': 0.08, # Menbery et al. 2021
                   'root_beta': 6.0,
                   'root_fc': 0.53, # MEASURED
-                  'root_ksat': 2E-04, # MEASURED
+                  'root_ksat': 1E-04, # MEASURED
                   'root_n': 1.75, # Menbery et al. 2021
                   'root_poros': 0.888, # MEASURED
                   'soil_id': 4.0,

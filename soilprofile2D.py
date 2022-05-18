@@ -129,7 +129,7 @@ class SoilGrid_2Dflow(object):
         self.Tr1 = np.zeros((self.rows,self.cols))
         self.Wtso1_deep = np.zeros((self.rows,self.cols))
         self.tmstep = 0
-        #self.conv99 = 0
+        self.conv99 = 99
         #self.totit = 0
 
     def rolling_window(self, a, window):
