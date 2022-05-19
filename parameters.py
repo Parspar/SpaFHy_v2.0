@@ -196,7 +196,7 @@ def parameters(folder=''):
             'ground_water_level': -0.0,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0,  # initial pond depth at surface [m]
-            'ditch_depth': -0.2   # initial ditch water level relative to ground surface (currently not dynamic) [m]
+            'ditch_depth': -0.1   # initial ditch water level relative to ground surface (currently not dynamic) [m]
             }
 
     return pgen, pcpy, psp
