@@ -115,7 +115,7 @@ class SpaFHy():
 
         if self.simtype == '2D':
             # run Soilprofile water balance
-            RR = self.bu.drain*1e-3
+            RR = self.bu.drain
             #bu_airv = self.bu.Wair_root
             soil_results = self.soil.run_timestep(
                 dt=self.dt / 86400.,
