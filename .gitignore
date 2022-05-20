@@ -126,5 +126,4 @@ sand*.ipynb
 *.out
 *.err
 *.xml
-*.tif
 *.nc
