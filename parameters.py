@@ -13,8 +13,8 @@ def parameters(folder=''):
     pgen = {'description': 'testcase',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D
             'start_date': '2007-08-01',  # '2007-08-01'
-            'end_date': '2021-09-09', # 2021-09-09
-            'spinup_end': '2008-12-31',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
+            'end_date': '2008-08-01', # 2021-09-09
+            'spinup_end': '2007-12-31',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -193,10 +193,10 @@ def parameters(folder=''):
             'root_ksat': 1e-05, # root zone hydraulic conductivity
             'root_beta': 4.7,
             # initial states
-            'ground_water_level': -0.0,  # groundwater depth [m]
+            'ground_water_level': -0.5,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0,  # initial pond depth at surface [m]
-            'ditch_depth': -0.1   # initial ditch water level relative to ground surface (currently not dynamic) [m]
+            'ditch_depth': -0.2   # initial ditch water level relative to ground surface (currently not dynamic) [m]
             }
 
     return pgen, pcpy, psp

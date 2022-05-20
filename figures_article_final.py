@@ -28,15 +28,15 @@ from rasterio.transform import from_origin
 from raster_utils import read_pkrasteri_for_extent
 
 # reading the stand results
-outputfile_stand = r'D:\SpaFHy_2D_2021\testcase_input_1d_new.nc'
+outputfile_stand = r'D:\SpaFHy_2D_2021\results_1d.nc'
 results_stand = read_results(outputfile_stand)
 
 # reading the stand results
-outputfile_2d = r'D:\SpaFHy_2D_2021\testcase_input_2d_new.nc'
+outputfile_2d = r'D:\SpaFHy_2D_2021\testcase_input_2d_new_d02.nc'
 results_2d = read_results(outputfile_2d)
 
 # reading the catch results
-outputfile_catch = r'D:\SpaFHy_2D_2021\testcase_input_top_new_fixed.nc'
+outputfile_catch = r'D:\SpaFHy_2D_2021\results_top.nc'
 results_catch = read_results(outputfile_catch)
 
 sar_file = 'C:\SpaFHy_v1_Pallas_2D/obs/SAR_PALLAS_2019_mask2_16m_direct_catchment_ma3.nc'
@@ -70,8 +70,8 @@ pk, meta = read_pkrasteri_for_extent(pkfp, bbox=bbox,showfig=True)
 
 
 dates_spa = []
-for d in range(len(results_stand['date'])):
-    dates_spa.append(pd.to_datetime(str(results_stand['date'][d])[36:46]))
+for d in range(len(results_stand['time'])):
+    dates_spa.append(pd.to_datetime(str(results_stand['time'][d])[36:46]))
 
 dates_sar = pd.to_datetime(sar['time'][:], format='%Y%m%d')
 
