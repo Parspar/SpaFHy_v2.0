@@ -270,7 +270,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2,
                     'alpha': [0.054]*2,
                     'n': [1.293]*2},
-            'saturated_conductivity': [3E-06, 1E-06],
+            'saturated_conductivity': [5E-06, 1E-06],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
@@ -280,7 +280,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [3E-06, 1E-06],
+            'saturated_conductivity': [5E-06, 1E-06],
                 },
         'FineTextured':{
             'soil_id': 3.0,
@@ -329,7 +329,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 3.1,
                   'root_fc': 0.21,
-                  'root_ksat': 3E-06,
+                  'root_ksat': 1E-05,
                   'root_n': 1.2,
                   'root_poros': 0.443,
                   'soil_id': 1.0,
@@ -341,7 +341,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.33,
-                  'root_ksat': 3E-06,
+                  'root_ksat': 1E-05,
                   'root_n': 1.2,
                   'root_poros': 0.443,
                   'soil_id': 2.0,
@@ -353,7 +353,7 @@ def rootproperties():
                   'root_alpha': 0.018, # van genuchten parameter
                   'root_beta': 7.9,
                   'root_fc': 0.34,
-                  'root_ksat': 1E-06, # saturated hydraulic conductivity
+                  'root_ksat': 1E-05, # saturated hydraulic conductivity
                   'root_n': 1.16, # van genuchten parameter
                   'root_poros': 0.443, # porosity (-)
                   'soil_id': 3.0,
