@@ -10,6 +10,9 @@ from iotools import read_results
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+import os
+
+os.chdir(r'C:\SpaFHy_v1_Pallas_2D')
 
 # example of calling driver, reading results and plotting gwl
 

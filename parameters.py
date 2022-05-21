@@ -13,8 +13,8 @@ def parameters(folder=''):
     pgen = {'description': 'testcase',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D
             'start_date': '2007-08-01',  # '2007-08-01'
-            'end_date': '2008-08-01', # 2021-09-09
-            'spinup_end': '2007-12-31',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
+            'end_date': '2021-09-09', # 2021-09-09
+            'spinup_end': '2008-12-31',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -196,7 +196,7 @@ def parameters(folder=''):
             'ground_water_level': -0.5,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0,  # initial pond depth at surface [m]
-            'ditch_depth': -0.2   # initial ditch water level relative to ground surface (currently not dynamic) [m]
+            'ditch_depth': -0.5   # initial ditch water level relative to ground surface (currently not dynamic) [m]
             }
 
     return pgen, pcpy, psp
@@ -270,7 +270,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2,
                     'alpha': [0.054]*2,
                     'n': [1.293]*2},
-            'saturated_conductivity': [1E-05, 5E-06],
+            'saturated_conductivity': [3E-06, 1E-06],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
@@ -280,7 +280,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [4E-06, 1E-06],
+            'saturated_conductivity': [3E-06, 1E-06],
                 },
         'FineTextured':{
             'soil_id': 3.0,
@@ -300,7 +300,7 @@ def soilprofiles():
                     'ThetaR': [0.196]*5, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.072]*5,  # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.255]*5}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-04, 5E-05, 5E-06, 2E-07, 1E-07], # MEASURED
+            'saturated_conductivity': [1E-04, 5E-05, 1E-05, 5E-07, 2E-07], # MEASURED
                 },
         'Humus': {
             'soil_id': 5.0,
@@ -329,7 +329,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 3.1,
                   'root_fc': 0.21,
-                  'root_ksat': 1E-05,
+                  'root_ksat': 3E-06,
                   'root_n': 1.2,
                   'root_poros': 0.443,
                   'soil_id': 1.0,
@@ -341,7 +341,7 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.33,
-                  'root_ksat': 4E-06,
+                  'root_ksat': 3E-06,
                   'root_n': 1.2,
                   'root_poros': 0.443,
                   'soil_id': 2.0,
@@ -365,7 +365,7 @@ def rootproperties():
                   'root_alpha': 0.08, # Menbery et al. 2021
                   'root_beta': 6.0,
                   'root_fc': 0.53, # MEASURED
-                  'root_ksat': 1E-04, # MEASURED
+                  'root_ksat': 3E-04, # MEASURED
                   'root_n': 1.75, # Menbery et al. 2021
                   'root_poros': 0.888, # MEASURED
                   'soil_id': 4.0,
