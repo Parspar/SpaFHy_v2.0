@@ -188,7 +188,7 @@ def parameters(folder=''):
             'root_depth': 0.3, # depth of rootzone layer (m)
             'root_sat': 0.6, # root zone saturation ratio (-)
             'root_fc': 0.33, # root zone field capacity
-            'root_poros': 0.443, # root zone porosity
+            'root_poros': 0.448, # root zone porosity
             'root_wp': 0.13, # root zone wilting point
             'root_ksat': 1e-05, # root zone hydraulic conductivity
             'root_beta': 4.7,
@@ -266,21 +266,21 @@ def soilprofiles():
             'soil_id': 1.0,
             'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.443]*2,
+                    'ThetaS': [0.348]*2,
                     'ThetaR': [0.03]*2,
                     'alpha': [0.054]*2,
                     'n': [1.293]*2},
-            'saturated_conductivity': [1E-05, 5E-05],
+            'saturated_conductivity': [1E-04, 1E-05],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
             'z': [-0.5, -4.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.443]*2, # MEASURED AND OPTIMIZED PARAMETER
+                    'ThetaS': [0.448]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-05, 5E-05],
+            'saturated_conductivity': [1E-05, 1E-05],
                 },
         'FineTextured':{
             'soil_id': 3.0,
@@ -290,7 +290,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*4,
                     'alpha': [0.054]*4,
                     'n': [1.293]*4},
-            'saturated_conductivity': [1E-05, 5E-05]*4,
+            'saturated_conductivity': [1E-05]*4,
                 },
         'Peat':{
             'soil_id': 4.0,
@@ -329,9 +329,9 @@ def rootproperties():
                   'root_alpha': 0.024,
                   'root_beta': 3.1,
                   'root_fc': 0.21,
-                  'root_ksat': 1E-05,
+                  'root_ksat': 1E-04,
                   'root_n': 1.2,
-                  'root_poros': 0.443,
+                  'root_poros': 0.41,
                   'soil_id': 1.0,
                   'root_wp': 0.10,
                   'root_wr': 0.05,
@@ -343,7 +343,7 @@ def rootproperties():
                   'root_fc': 0.33,
                   'root_ksat': 1E-05,
                   'root_n': 1.2,
-                  'root_poros': 0.443,
+                  'root_poros': 0.448,
                   'soil_id': 2.0,
                   'root_wp': 0.13,
                   'root_wr': 0.05,

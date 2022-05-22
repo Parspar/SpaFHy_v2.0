@@ -33,7 +33,7 @@ outputfile_1d = r'D:\SpaFHy_2D_2021\results_1d.nc'
 res_1d = xr.open_dataset(outputfile_1d)
 
 # reading the 2D results
-outputfile_2d = r'D:\SpaFHy_2D_2021\results_2d_bugfix_ditch02_paramrevised2.nc'
+outputfile_2d = r'D:\SpaFHy_2D_2021\results_2d_bugfix_ditch02_paramrevised3.nc'
 res_2d = xr.open_dataset(outputfile_2d)
 
 # reading the top results
