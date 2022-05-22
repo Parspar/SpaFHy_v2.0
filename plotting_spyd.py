@@ -33,7 +33,7 @@ outputfile_1d = r'D:\SpaFHy_2D_2021\results_1d.nc'
 res_1d = xr.open_dataset(outputfile_1d)
 
 # reading the 2D results
-outputfile_2d = r'D:\SpaFHy_2D_2021\results_2d_bugfix_ditch05_paramrevised.nc'
+outputfile_2d = r'D:\SpaFHy_2D_2021\results_2d_bugfix_ditch02_paramrevised2.nc'
 res_2d = xr.open_dataset(outputfile_2d)
 
 # reading the top results
@@ -466,7 +466,7 @@ plt.savefig(f'spatial_06_2021_{today}.png', bbox_inches='tight', dpi=300)
 start = np.where(pd.to_datetime(dates_spa) == '2021-05-01')[0][0]
 end = np.where(pd.to_datetime(dates_spa) == '2021-09-02')[0][0]
 
-d = '2021-06-17'
+d = '2021-09-01'
 doi = np.where(pd.to_datetime(dates_spa[start:end]) == d)[0][0]
 doi_m = np.where(pd.to_datetime(theta_spat['time'][:].data) == d)[0][0]
 

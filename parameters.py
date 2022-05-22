@@ -196,7 +196,7 @@ def parameters(folder=''):
             'ground_water_level': -0.5,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0,  # initial pond depth at surface [m]
-            'ditch_depth': -0.5   # initial ditch water level relative to ground surface (currently not dynamic) [m]
+            'ditch_depth': -0.2   # initial ditch water level relative to ground surface (currently not dynamic) [m]
             }
 
     return pgen, pcpy, psp
@@ -270,7 +270,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2,
                     'alpha': [0.054]*2,
                     'n': [1.293]*2},
-            'saturated_conductivity': [5E-06, 1E-06],
+            'saturated_conductivity': [1E-05, 5E-05],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
@@ -280,7 +280,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
                     'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [5E-06, 1E-06],
+            'saturated_conductivity': [1E-05, 5E-05],
                 },
         'FineTextured':{
             'soil_id': 3.0,
@@ -290,7 +290,7 @@ def soilprofiles():
                     'ThetaR': [0.03]*4,
                     'alpha': [0.054]*4,
                     'n': [1.293]*4},
-            'saturated_conductivity': [1E-06]*4,
+            'saturated_conductivity': [1E-05, 5E-05]*4,
                 },
         'Peat':{
             'soil_id': 4.0,
