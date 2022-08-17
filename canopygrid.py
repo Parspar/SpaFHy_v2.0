@@ -20,10 +20,11 @@ Modified by khaahti, jpnousu
 """
 import numpy as np
 import configparser
+from netCDF4 import Dataset
 eps = np.finfo(float).eps
 
 class CanopyGrid():
-    def __init__(self, cpara, state):
+    def __init__(self, cpara, state, dist_rad_file=None):
         """
         initializes CanopyGrid -object
 
@@ -147,6 +148,14 @@ class CanopyGrid():
         self._growth_stage = self.W * 0.0
         self._senesc_stage = self.W *0.0
 
+        if dist_rad_file:
+            self.rad_coeff = Dataset(dist_rad_file, 'r')
+            self.distributed_radiation = True
+            print('Distributed radiation is TRUE')
+        else:
+            self.distributed_radiation = False
+
+
     def run_timestep(self, doy, dt, Ta, Prec, Rg, Par, VPD, U=2.0, CO2=380.0, Rew=1.0, beta=1.0, P=101300.0):
         """
         Runs CanopyGrid instance for one timestep
@@ -167,10 +176,11 @@ class CanopyGrid():
             updated CanopyGrid instance state variables
             flux grids PotInf, Trfall, Interc, Evap, ET, MBE [mm]
         """
-
+        if self.distributed_radiation == True:
+            Rg = update_distributed_radiation(rad_coeff=self.rad_coeff, doy=doy, Rg=Rg)
         # Rn = 0.7 * Rg #net radiation
         Rn = np.maximum(2.57 * self.LAI / (2.57 * self.LAI + 0.57) - 0.2,
-                        0.55) * Rg  # Launiainen et al. 2016 GCB, fit to Fig 2a
+                            0.55) * Rg  # Launiainen et al. 2016 GCB, fit to Fig 2a
 
         # vpd limit
         #if VPD < 0.1:
@@ -814,3 +824,56 @@ def read_ini(inifile):
     pgen = pp['General']
     cpara = pp['CanopyGrid']
     return pgen, cpara
+
+def update_distributed_radiation(rad_coeff, doy, Rg):
+    """
+
+
+    Parameters
+    ----------
+    rad_coeff : TYPE
+        DESCRIPTION.
+    doy : TYPE
+        DESCRIPTION.
+    Rg : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    doy = int(doy)
+    if doy <= 365:
+        Rg = np.array(rad_coeff['c_rad'][doy-1,:,:]) * Rg
+    elif doy == 366:
+        Rg = np.array(rad_coeff['c_rad'][doy-2,:,:]) * Rg
+    return Rg
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

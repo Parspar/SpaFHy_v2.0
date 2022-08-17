@@ -11,10 +11,10 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'testcase',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D
+            'simtype': '1D', # 1D, TOP, 2D
             'start_date': '2007-08-01',  # '2007-08-01'
-            'end_date': '2021-09-09', # 2021-09-09
-            'spinup_end': '2008-12-31',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
+            'end_date': '2008-09-01', # 2021-09-09
+            'spinup_end': '2007-08-01',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -22,6 +22,7 @@ def parameters(folder=''):
             'topmodel': True,
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
+            'spatial_radiation_file': r'C:\SpaFHy_v1_Pallas_2D\obs\rad_ds.nc', # if spatial radiation file, otherwise None, r'C:\SpaFHy_v1_Pallas_2D\obs\rad_ds.nc'
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(folder+r'/parameters')),
             'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing_era5.csv')),

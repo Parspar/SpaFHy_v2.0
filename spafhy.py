@@ -83,7 +83,7 @@ class SpaFHy():
         self.bu = BucketGrid(psoil)
 
         """--- initialize CanopyGrid ---"""
-        self.cpy = CanopyGrid(pcpy, pcpy['state'])
+        self.cpy = CanopyGrid(pcpy, pcpy['state'], dist_rad_file=pgen['spatial_radiation_file'])
 
         if self.simtype == '2D':
             """--- initialize SoilGrid ---"""
@@ -91,6 +91,8 @@ class SpaFHy():
         elif self.simtype == 'TOP':
             """--- initialize Topmodel ---"""
             self.top = Topmodel(ptopmodel)
+
+        self.timestep = 1
 
     def run_timestep(self, forc):
         """
@@ -112,6 +114,8 @@ class SpaFHy():
         co2 = forc['CO2'].values
         u = forc['wind_speed'].values + eps
 
+        print('Running timestep: ', self.timestep)
+        self.timestep += 1
 
         if self.simtype == '2D':
             # run Soilprofile water balance

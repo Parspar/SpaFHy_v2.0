@@ -195,10 +195,10 @@ def preprocess_forcing(pgen):
         for var in variables:
             ddict[var][1][:,ix[0],ix[1]] = np.matmul(
                     df[var].values.reshape(len(dates),1),np.ones((1,len(ix[0]))))
-
     ds = xr.Dataset(ddict, coords={'date': dates})
 
     return ds
+
 
 def _create_results(pgen, cmask, Nsteps):
     """
