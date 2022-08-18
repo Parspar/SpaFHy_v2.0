@@ -831,16 +831,13 @@ def update_distributed_radiation(rad_coeff, doy, Rg):
 
     Parameters
     ----------
-    rad_coeff : TYPE
-        DESCRIPTION.
-    doy : TYPE
-        DESCRIPTION.
-    Rg : TYPE
-        DESCRIPTION.
+    rad_coeff : .nc file containing variable 'c_rad' for dimensions 1) all days of year 2) lat 3) lon
+    doy : day of year as in canopygrid
+    Rg : global radiation as in forcing
 
     Returns
+    global radiation multiplied by rad_coeff of doy -> 2D radiationa array
     -------
-    None.
 
     """
     doy = int(doy)
