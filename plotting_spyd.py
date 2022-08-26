@@ -57,17 +57,6 @@ pkfp = 'C:\SpaFHy_v1_Pallas_2D/testcase_input/parameters/pkmosaic_clipped.tif'
 bbox = [res_1d['lon'].min(), res_1d['lon'].max(), res_1d['lat'].min(), res_1d['lat'].max()]
 pk, meta = read_pkrasteri_for_extent(pkfp, bbox, showfig=False)
 
-'''
-# reading SAR files
-sar_tempfile = r'D:\SpaFHy_2D_2021\PALLAS_RAW_DATA\SAR_maankosteus\processed\m16_nc_spafhy_pallas\original\SAR_SM_PALLAS_2019_16M_TM35_CATCHMENT_all.nc'
-sar_temp = xr.open_dataset(sar_tempfile)
-sar_temp = sar_temp * cmask
-
-sar_spatfile = r'D:\SpaFHy_2D_2021\PALLAS_RAW_DATA\SAR_maankosteus\processed\m16_nc_spafhy_pallas\interpolated_temporally\SAR_SM_PALLAS_2019_16M_TM35_CATCHMENT_TEMPINTERP_all.nc'
-sar_spat = xr.open_dataset(sar_spatfile)
-sar_spat = sar_spat * cmask
-'''
-
 # reading SAR files
 sar_mfile = r'D:\SpaFHy_2D_2021\PALLAS_RAW_DATA\SAR_maankosteus\processed\m16_nc_spafhy_pallas\original\SAR_SM_PALLAS_2019_16M_TM35_CATCHMENT_morning.nc'
 sar_m = xr.open_dataset(sar_mfile) * cmask
@@ -410,53 +399,6 @@ ax3.set_ylabel(r'$\theta$ m$^3$m$^{-3}$')
 if saveplots == True:
         plt.savefig(f'theta_model_ts_{today}.pdf', bbox_inches='tight', dpi=300)
         plt.savefig(f'theta_model_ts_{today}.png', bbox_inches='tight', dpi=300)
-
-
-#%%
-'''
-## ONE SPAFHY SOIL MOIST PLOT WITH OBSERVATIONS IN JUNE 2021
-
-start = np.where(pd.to_datetime(dates_spa) == '2021-05-01')[0][0]
-end = np.where(pd.to_datetime(dates_spa) == '2021-09-02')[0][0]
-
-d = '2021-06-17'
-doi = np.where(pd.to_datetime(dates_spa[start:end]) == d)[0][0]
-doi_m = np.where(pd.to_datetime(theta_spat['time'][:].data) == d)[0][0]
-
-alp=0.5
-ylims = [0.2,0.88]
-fig = plt.figure(figsize=(8,13))
-gs = fig.add_gridspec(5, 2)
-
-ax1 = fig.add_subplot(gs[0, :2])
-ax2 = fig.add_subplot(gs[1:4, 0:2])
-
-ax1.plot(dates_spa[start:end], np.nanmean(res_top['bucket_moisture_root'][start:end], axis=(1,2)), linewidth=2, color='black', label='mean')
-ax1.fill_between(dates_spa[start:end], np.nanquantile(res_top['bucket_moisture_root'][start:end], 0.8, axis=(1,2)),
-                      np.nanquantile(res_top['bucket_moisture_root'][start:end], 0.2, axis=(1,2)), alpha=0.3, label='20-quantile')
-ax1.scatter(dates_spa[start:end][doi], np.nanmean(res_top['bucket_moisture_root'][start:end][doi]), s=70, color='blue')
-ax1.legend()
-ax1.set_title('Timeseries 2021')
-ax1.set_ylabel(r'$\theta$ [m$^3$/m$^3$]')
-#ax1.text(dates_spa[start:end][0], 0.2, 'a')
-ax1.grid()
-ax1.grid()
-ax1.xaxis.set_tick_params(rotation=20)
-
-rasterio.plot.show(pk, transform=meta['transform'], ax=ax2);
-#im1 = ax2.imshow(results_catch['bucket_moisture_root'][start:end][maxd], cmap='coolwarm_r', vmin=0.1, vmax=0.88)
-res_top['bucket_moisture_root'][start:end][doi].plot(ax=ax2, cmap='coolwarm_r', vmin=ylims[0], vmax=ylims[1], alpha=alp)
-theta_spat_gpd.loc[theta_spat_gpd.index == d,
-                   ['theta', 'geometry']].plot(column='theta',
-                                               ax=ax2, cmap='coolwarm_r', edgecolor='black', linewidth=0.5,
-                                               alpha=alp, vmin=ylims[0], vmax=ylims[1])
-
-plt.subplots_adjust(wspace=0.05, hspace=0.7)
-
-
-plt.savefig(f'spatial_06_2021_{today}.pdf', bbox_inches='tight', dpi=300)
-plt.savefig(f'spatial_06_2021_{today}.png', bbox_inches='tight', dpi=300)
-'''
 
 
 #%%
@@ -980,6 +922,72 @@ plt.savefig(f'histogram_{today}.png', bbox_inches='tight', dpi=300)
 # SAR SPATIAL PLOTS
 start_day = pd.to_datetime('2019-05-01')
 end_day = pd.to_datetime('2019-09-15')
+
+start = np.where(pd.to_datetime(dates_spa) == start_day)[0][0]
+end = np.where(pd.to_datetime(dates_spa) == end_day)[0][0]
+
+
+window = pd.date_range(start_day, end_day, freq='D')
+
+window_sar = window[window.isin(dates_sar_m)]
+
+alp=0.5
+ylims = [0.2,0.88]
+ylimstemp = [0.08,0.45]
+fig = plt.figure(figsize=(14,2))
+gs = fig.add_gridspec(1, 1)
+
+ax0 = fig.add_subplot(gs[0, 0])
+
+#ax0.plot(dates_spa[start:end], np.nanmean(res_2d['bucket_moisture_root'][start:end], axis=(1,2)), linewidth=2, color='black', label='mean')
+ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_root'][start:end, ht[0], ht[1]], linewidth=1.5, color='black', label='MOD (2D)')
+#ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_top'][start:end, ht[0], ht[1]], linewidth=2, color='black', label='2D rootzone')
+
+#ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_top'][start:end, ht[0], ht[1]], linewidth=2, color='green', label='2D topsoil')
+
+#ax0.fill_between(dates_spa[start:end], np.nanquantile(res_2d['bucket_moisture_root'][start:end], 0.8, axis=(1,2)),
+#                      np.nanquantile(res_2d['bucket_moisture_root'][start:end], 0.2, axis=(1,2)), alpha=0.3, label='20-quantile')
+
+#ax0.scatter(pd.to_datetime(sar_temp['time'][:].data), np.nanmean(sar_temp['theta'], axis=(1,2)), s=50, color='red', label='SAR')
+ax0.scatter(pd.to_datetime(sar_m['time'][:].data), sar_m['theta'][:,ht[0], ht[1]], marker='o', s=15, alpha=0.7, color='tab:red', label='SAR (m)')
+#ax0.plot(pd.to_datetime(sar_m['time'][:].data[4:]),
+#        sar_m['theta'][:,ht[0], ht[1]].rolling(time=5, center=True).mean().dropna("time"), color='tab:red', alpha=0.5, label='SAR rolling mean')
+
+ax0.scatter(pd.to_datetime(sar_e['time'][:].data), sar_e['theta'][:,ht[0], ht[1]], s=15, color='tab:red', marker='d', alpha=0.7, label='SAR (e)')
+#ax0.plot(pd.to_datetime(sar_e['time'][:].data[4:]),
+#         sar_e['theta'][:,ht[0], ht[1]].rolling(time=5, center=True).mean().dropna("time"), color='tab:red', alpha=0.5)
+#ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'mean_obs'], alpha=0.8, label='OBS mean')
+ax0.fill_between(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'min'],
+                      theta.loc[theta[start_day:end_day].index, 'max'], alpha=0.3, label='OBS range')
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 's3'], alpha=0.4, color='tab:blue', label='OBS')
+#ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 's5'], alpha=0.8, color='tab:blue')
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 's18'], alpha=0.4, color='tab:blue')
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'SH-5A'], alpha=0.4, color='tab:blue')
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'SH-5B'], alpha=0.4, color='tab:blue')
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'SH-20A'], alpha=0.4, color='tab:blue')
+ax0.plot(theta[start_day:end_day].index, theta.loc[theta[start_day:end_day].index, 'SH-20B'], alpha=0.4, color='tab:blue')
+
+ax0.legend(ncol=5)#,bbox_to_anchor=(0.9,1.3))
+#ax1.text(dates_spa[start:end][0], 0.2, 'a')
+#ax0.xaxis.set_tick_params(rotation=15)
+ax0.set_ylim(ylimstemp)
+
+ax0.xaxis.set_tick_params(rotation=15)
+ax0.set_xticks(pd.date_range(start_day, end_day, freq='10D'))
+
+ax0.set_ylabel(r'$\theta$ [m$^3$/m$^3$]')
+
+
+plt.savefig(f'sar_spa_temp_single_{today}.pdf', bbox_inches='tight', dpi=300)
+plt.savefig(f'sar_spa_temp_single_{today}.png', bbox_inches='tight', dpi=300)
+
+#%%
+
+# temporal sar model obs
+
+# SAR SPATIAL PLOTS
+start_day = pd.to_datetime('2019-05-01')
+end_day = pd.to_datetime('2019-09-15')
 window = pd.date_range(start_day, end_day, freq='D')
 
 window_sar = window[window.isin(dates_sar_m)]
@@ -1003,7 +1011,7 @@ ax7 = fig.add_subplot(gs[13:16, 0])
 ax8 = fig.add_subplot(gs[13:16, 1])
 
 #ax0.plot(dates_spa[start:end], np.nanmean(res_2d['bucket_moisture_root'][start:end], axis=(1,2)), linewidth=2, color='black', label='mean')
-ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_root'][start:end, ht[0], ht[1]], linewidth=1, color='black', label='2D rootzone')
+ax0.plot(window, res_2d['bucket_moisture_root'][start_day:end_day, ht[0], ht[1]], linewidth=1, color='black', label='2D rootzone')
 #ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_top'][start:end, ht[0], ht[1]], linewidth=2, color='black', label='2D rootzone')
 
 #ax0.plot(dates_spa[start:end], res_2d['bucket_moisture_top'][start:end, ht[0], ht[1]], linewidth=2, color='green', label='2D topsoil')
@@ -1050,7 +1058,13 @@ sar_m['theta'].sel(
     lat=theta_spat_gpd.loc[theta_spat_gpd['ID_i'] == 'i13', 'geometry'].y[0],
     lon=theta_spat_gpd.loc[theta_spat_gpd['ID_i'] == 'i13', 'geometry'].x[0],
     time=window, method='nearest').rolling(time=5, center=True).mean().plot(ax=ax1, color='tab:red', alpha=0.7)
+'''
+ax1.fill_between()
 
+theta_spat_gpd.loc[(theta_spat_gpd['ID_i'] == 'i13') &
+                   (theta_spat_gpd.index >= start_day) &
+                   (theta_spat_gpd.index <= end_day), 'theta']
+'''
 theta_spat_gpd.loc[(theta_spat_gpd['ID_i'] == 'i13') &
                    (theta_spat_gpd['z'] == meas_depth) & (theta_spat_gpd.index >= start_day) &
                    (theta_spat_gpd.index <= end_day), 'theta'].plot(ax=ax1, alpha=0.7, color='tab:blue')
