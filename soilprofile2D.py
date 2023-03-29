@@ -50,7 +50,7 @@ class SoilGrid_2Dflow(object):
         # soil/peat type
         self.soiltype = spara['soiltype']
 
-        # interpolated functions for soil column ground water dpeth vs. water storage, transmissivity etc.
+        # interpolated functions for soil column ground water depth vs. water storage, transmissivity etc.
         self.wsto_to_gwl = spara['wtso_to_gwl']
         self.gwl_to_wsto = spara['gwl_to_wsto']
         self.gwl_to_Tr = spara['gwl_to_Tr']
