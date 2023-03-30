@@ -4,16 +4,17 @@
 PARAMETERS
 @author: slauniai & khaahti
 """
+
 import pathlib
 import time
 
-
 def parameters(folder=''):
 
-    pgen = {'description': 'testcase',  # description written in result file
-            'simtype': '1D', # 1D, TOP, 2D
+    pgen = {'description': 'spinuptest',  # description written in result file
+            'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2007-08-01',  # '2007-08-01'
-            'end_date': '2008-09-01', # 2021-09-09
+            'end_date': '2007-10-01', # 2021-09-09,
+            'spinup_file': r'F:/SpaFHy_2D_2021/testcase_input_202303301618.nc',
             'spinup_end': '2007-08-01',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
@@ -28,7 +29,7 @@ def parameters(folder=''):
             'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing_era5.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
-            'results_folder': r'D:\SpaFHy_2D_2021/',
+            'results_folder': r'F:\SpaFHy_2D_2021/',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
@@ -58,6 +59,8 @@ def parameters(folder=''):
                     ['bucket_evaporation', 'evaporation from soil surface [mm d-1]'],
                     ['bucket_drainage', 'drainage from root layer [mm d-1]'],
                     ['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
+                    ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                    ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
                     ['bucket_storage_change', 'bucket water storage change (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
                     ['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],

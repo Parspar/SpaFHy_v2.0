@@ -729,6 +729,7 @@ def write_ncf(results, ncf, steps=None):
                 else:
                     ncf[key][steps[0]:steps[1]] = results[key][0:steps[1]-steps[0]]
 
+
 def read_AsciiGrid(fname, setnans=True):
     """
     reads AsciiGrid format in fixed format as below:

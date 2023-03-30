@@ -65,13 +65,22 @@ class BucketGrid(object):
 
         # toplayer storage and relative conductance for evaporation
         self.WatStoTop = self.MaxStoTop * spara['org_sat']
+        try:
+            self.WatStoTop = spara['top_storage']#, self.MaxStoTop * spara['org_sat'])
+        except:
+            pass
+
         self.Wliq_top = self.poros_top *self.WatStoTop / (self.MaxStoTop + eps)
         self.Ree = np.maximum(0.0, np.minimum(
                 0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
 
         # root zone storage and relative extractable water
         self.WatStoRoot = np.minimum(spara['root_sat']*self.D_root*self.poros_root, self.D_root*self.poros_root)
-
+        try:
+            self.WatStoRoot = spara['root_storage']#, spara['root_sat']*self.D_root*self.poros_root)
+        except:
+            pass
+        print('bucket root storage', np.nanmean(self.WatStoRoot))
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
         self.Wair_root = self.poros_root - self.Wliq_root
         self.Sat_root = self.Wliq_root/self.poros_root
@@ -195,6 +204,8 @@ class BucketGrid(object):
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'moisture_root': self.Wliq_root,  # [m3 m-3]
                 'transpiration_limitation': self.Rew,  # [-] !!!
+                'water_storage_root': self.WatStoRoot * 1e3, # [mm]
+                'water_storage_top': self.WatStoTop * 1e3, # [mm]
                 'water_storage': (self.WatStoTop + self.WatStoRoot) * 1e3, # [mm]
                 'storage_change': dStorage * 1e3, # [mm]
                 'return_flow': self.retflow * 1e3 # [mm d-1]

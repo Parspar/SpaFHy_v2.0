@@ -99,11 +99,8 @@ class CanopyGrid():
         self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
         self._LAIgrass_max = state['lai_grass']
         self._LAIgrass = state['lai_grass'] * self.phenopara['lai_decid_min']
-        #print(self._LAIgrass[60,60])
         self._LAIshrub = np.maximum(state['lai_shrub'], eps)
-
         self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
-
         self._LAIdecid_max = state['lai_decid_max']  # m2m-2
 
         # senescence starts at first doy when daylength < self.phenopara['sdl']

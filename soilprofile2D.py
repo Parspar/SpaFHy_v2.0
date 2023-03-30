@@ -59,7 +59,7 @@ class SoilGrid_2Dflow(object):
 
         # initial h (= gwl) and boundaries [m]
         self.ditch_h = spara['ditches']
-        self.h = np.minimum(spara['ground_water_level'], self.ditch_h)
+        self.h = spara['ground_water_level']
         # soil surface elevation and hydraulic head [m]
         self.ele = spara['elevation']
         self.H = self.ele + self.h
