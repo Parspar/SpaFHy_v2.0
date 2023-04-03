@@ -50,7 +50,7 @@ class SoilGrid_2Dflow(object):
         # soil/peat type
         self.soiltype = spara['soiltype']
 
-        # interpolated functions for soil column ground water dpeth vs. water storage, transmissivity etc.
+        # interpolated functions for soil column ground water depth vs. water storage, transmissivity etc.
         self.wsto_to_gwl = spara['wtso_to_gwl']
         self.gwl_to_wsto = spara['gwl_to_wsto']
         self.gwl_to_Tr = spara['gwl_to_Tr']
@@ -59,7 +59,7 @@ class SoilGrid_2Dflow(object):
 
         # initial h (= gwl) and boundaries [m]
         self.ditch_h = spara['ditches']
-        self.h = np.minimum(spara['ground_water_level'], self.ditch_h)
+        self.h = spara['ground_water_level']
         # soil surface elevation and hydraulic head [m]
         self.ele = spara['elevation']
         self.H = self.ele + self.h
@@ -200,8 +200,10 @@ class SoilGrid_2Dflow(object):
         state0 = self.Wsto_deep + S # Wsto_deep ????
 
         # ravel 2D arrays
-        HW = np.ravel(self.HW); HE = np.ravel(self.HE)
-        HN = np.ravel(self.HN); HS = np.ravel(self.HS)
+        HW = np.ravel(self.HW)
+        HE = np.ravel(self.HE)
+        HN = np.ravel(self.HN)
+        HS = np.ravel(self.HS)
         H = np.ravel(self.H)
         Wsto_deep = np.ravel(self.Wsto_deep)
         ditch_h = np.ravel(self.ditch_h)
@@ -258,8 +260,10 @@ class SoilGrid_2Dflow(object):
 
         # ravel 2D arrays
         # to avoid reshaping, save in other variable
-        TrW0 = np.ravel(self.TrW0); TrE0 = np.ravel(self.TrE0)
-        TrN0 = np.ravel(self.TrN0); TrS0 = np.ravel(self.TrS0)
+        TrW0 = np.ravel(self.TrW0)
+        TrE0 = np.ravel(self.TrE0)
+        TrN0 = np.ravel(self.TrN0)
+        TrS0 = np.ravel(self.TrS0)
 
         # hydraulic heads, new iteration and old iteration
         Htmp = self.H.copy()
@@ -366,7 +370,7 @@ class SoilGrid_2Dflow(object):
         print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index])
 
         # lateral flow is calculated in two parts: one depending on previous time step
-        # and other on current time step (lateral flowsee 2/2). Their wiegthing depends
+        # and other on current time step (lateral flowsee 2/2). Their weighting depends
         # on self. implic
         # lateral flow 1/2
         lateral_flow = (self.implic*(self.TrW1*(self.H - self.HW)

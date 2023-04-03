@@ -16,10 +16,10 @@ os.chdir(r'C:\SpaFHy_v1_Pallas_2D')
 
 # example of calling driver, reading results and plotting gwl
 
-outputfile = driver(create_ncf=True, folder='testcase_input')
+outputfile = driver(create_ncf=True, create_spinup=True, folder='testcase_input')
 
 #results = read_results(outputfile)
-results = xr.open_dataset(outputfile)
+#results = xr.open_dataset(outputfile)
 
 
 '''
