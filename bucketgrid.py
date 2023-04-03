@@ -80,7 +80,6 @@ class BucketGrid(object):
             self.WatStoRoot = spara['root_storage']#, spara['root_sat']*self.D_root*self.poros_root)
         except:
             pass
-        print('bucket root storage', np.nanmean(self.WatStoRoot))
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
         self.Wair_root = self.poros_root - self.Wliq_root
         self.Sat_root = self.Wliq_root/self.poros_root

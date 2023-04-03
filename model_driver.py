@@ -9,13 +9,13 @@ import time
 import numpy as np
 import pandas as pd
 from spafhy import SpaFHy
-from iotools import read_FMI_weather, initialize_netcdf, write_ncf
+from iotools import read_FMI_weather, initialize_netcdf, initialize_netcdf_spinup, write_ncf, write_ncf_spinup
 import matplotlib.pyplot as plt
 import xarray as xr
 
 eps = np.finfo(float).eps
 
-def driver(create_ncf=False, output=True, folder=''):
+def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -65,7 +65,25 @@ def driver(create_ncf=False, output=True, folder=''):
                 description=pgen['description'],
                 gisinfo=gisinfo)
 
+    if create_spinup:
+        ncf_spinup, outputfile_spinup = initialize_netcdf_spinup(
+                pgen=pgen,
+                cmask=cmask,
+                filepath=pgen['results_folder'],
+                filename=pgen['ncf_file'],
+                description=pgen['description'],
+                gisinfo=gisinfo)
+
     print('*** Running model ***')
+
+    if pgen['simtype'] == '2D':
+            print('*** 2D run')
+    elif pgen['simtype'] == 'TOP':
+            print('*** TOPMODEL run')
+    elif pgen['simtype'] == '1D':
+            print('*** 1D run')
+
+
 
     interval = 0
     Nsaved = Nspin - 1
@@ -96,6 +114,10 @@ def driver(create_ncf=False, output=True, folder=''):
                         date=slice(Nsaved + 1, k + 1))], results)
                 write_ncf(results=results, ncf=ncf, steps=[Nsaved + 1 - Nspin, k + 1 - Nspin])
                 Nsaved = k
+    if (create_spinup) and (k == Nsteps - 1):
+        write_ncf_spinup(results=results, pgen=pgen, ncf_spinup=ncf_spinup)
+        print('*** Writing spinup to netCDF4-file')
+
 
     if create_ncf:
         interval += 1
@@ -155,19 +177,18 @@ def preprocess_parameters(folder=''):
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
+    # overwrites the state variables with the last day of spinup file (if given)
     try:
         spinup = xr.open_dataset(pgen['spinup_file'])
         cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
         cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
         soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
         soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
-        print('model driver root storage', np.nanmean(soildata['root_storage']))
-        #plt.imshow(soildata['root_storage']) #!!!
         if pgen['simtype'] == '2D':
             soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
-        print('State variables read from ', pgen['spinup_file'])
+        print('*** State variables assigned from ', pgen['spinup_file'],  '***')
     except:
-        print('State variables taken from parameters.py')
+        print('*** State variables assigned from parameters.py ***')
 
     return pgen, cpydata, soildata, gisdata['cmask'], ptopmodel, gisinfo
 
@@ -210,33 +231,6 @@ def preprocess_forcing(pgen):
     ds = xr.Dataset(ddict, coords={'date': dates})
 
     return ds
-
-def read_spinup(fname, simtype='1D'):
-    '''
-    Parameters
-    ----------
-    fname : filename to results file that is used as spinup
-        filename to results file that is used as spinup
-    simtype :
-        Simtype 'TOP', '1D', or '2D'. The default is '1D'.
-
-    Returns spinup variables necessary for canopy, bucket, topmodel and soilprofile2D
-    -------
-
-    '''
-    spinup = xr.open_dataset(fname)
-    spinup_states = dict()
-
-    spinup_states['canopy_W'] = np.array(spinup['canopy_water_storage'][-1])
-    spinup_states['canopy_SWE'] = np.array(spinup['canopy_water_storage'][-1])
-    spinup_states['bucket_WatStoTop'] = np.array(spinup['bucket_water_storage_top'][-1])
-    spinup_states['bucket_WatStoRoot'] = np.array(spinup['bucket_water_storage_root'][-1])
-
-    if simtype == '2D':
-        spinup_states['soil_H'] = np.array(spinup['soil_ground_water_level'][-1])
-
-    return spinup_states
-
 
 def _create_results(pgen, cmask, Nsteps):
     """
@@ -287,9 +281,6 @@ def _append_results(group, step_results, results, step=None):
             else:
                 results[key][step] = res
     return results
-
-#def read_spinup(pgen):
-
 
 
 if __name__ == '__main__':

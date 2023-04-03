@@ -10,11 +10,11 @@ import time
 
 def parameters(folder=''):
 
-    pgen = {'description': 'spinuptest',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D,
+    pgen = {'description': 'spinup',  # description written in result file
+            'simtype': 'TOP', # 1D, TOP, 2D,
             'start_date': '2007-08-01',  # '2007-08-01'
-            'end_date': '2007-10-01', # 2021-09-09,
-            'spinup_file': r'F:/SpaFHy_2D_2021/testcase_input_202303301618.nc',
+            'end_date': '2007-09-01', # 2021-09-09,
+            'spinup_file': r'F:/SpaFHy_2D_2021/testcase_input_202304031152_spinup.nc',
             'spinup_end': '2007-08-01',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
@@ -82,7 +82,7 @@ def parameters(folder=''):
                     #['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     #['canopy_degree_day_sum', 'sum of degree days [degC]'],
                     #['canopy_fLAI', 'state of LAI'],
-                    ['canopy_water_storage', 'canopy intercepted water storage'],
+                    ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
                     ['canopy_snowfall', 'canopy snowfall'],
                     ['top_baseflow', 'topmodel baseflow [mm d-1]'],
                     ['top_water_closure', 'topmodel water balance error [mm d-1]'],

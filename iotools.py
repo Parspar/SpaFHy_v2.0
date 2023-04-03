@@ -284,7 +284,7 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
 
     if set(soil_ids) >= set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()):
         # no problems
-        print('DEFINED SOIL IDS:',set(soil_ids), 'USED SOIL IDS:',
+        print('*** Defined soil IDs:',set(soil_ids), 'Used soil IDs:',
               set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()))
     else:
         print(set(soil_ids),set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()))
@@ -336,7 +336,6 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
     data['gwl_to_C'] = {soiltype: soilp[soiltype]['to_C'] for soiltype in soilp.keys()}
     data['gwl_to_Tr'] = {soiltype: soilp[soiltype]['to_Tr'] for soiltype in soilp.keys()}
     data['gwl_to_rootmoist'] = {soiltype: soilp[soiltype]['to_rootmoist'] for soiltype in soilp.keys()}
-    #print(data['wtso_to_gwl'])
     data['dxy'] = gisdata['dxy']
     data['cmask'] = gisdata['cmask']
 
@@ -562,7 +561,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
     # -H2O partial pressure (hPa)
 
     sourcefile = os.path.join(sourcefile)
-    print('SIMULATION FORCED WITH:', sourcefile)
+    print('*** Simulation forced with:', sourcefile)
     ID = int(ID)
 
     # import forcing data
@@ -698,6 +697,109 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     return ncf, ff
 
 
+def initialize_netcdf_spinup(pgen, cmask, filepath, filename, description, gisinfo):
+    """
+    netCDF4 format output spinup file initialization
+
+    Args:
+        variables (list): list of variables to be saved in netCDF4
+        cmask
+        filepath: path for saving results
+        filename: filename
+        description: description
+    """
+    from netCDF4 import Dataset, date2num
+    from datetime import datetime
+
+    filename = filename[0:-3]+'_spinup.nc'
+    # dimensions
+    date_dimension = None
+    lat_shape, lon_shape = np.shape(cmask)
+
+    xllcorner = gisinfo['xllcorner']
+    yllcorner = gisinfo['yllcorner']
+    cellsize = gisinfo['dxy']
+
+    xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
+    ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
+    ycoords = np.flip(ycoords)
+
+    if not os.path.exists(filepath):
+        os.makedirs(filepath)
+
+    ff = os.path.join(filepath, filename)
+
+    # create dataset and dimensions
+    ncf = Dataset(ff, 'w')
+    ncf.description = 'SpaFHy results : ' + description
+    ncf.history = 'created ' + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ncf.source = 'modified SpaFHy'
+
+    ncf.createDimension('time', date_dimension)
+    ncf.createDimension('lat', lat_shape)
+    ncf.createDimension('lon', lon_shape)
+
+    date = ncf.createVariable('time', 'f8', ('time',))
+    date.units = 'days since 0001-01-01 00:00:00.0'
+    date.calendar = 'standard'
+    tvec = pd.to_datetime(pgen['end_date'])
+    date[:] = date2num(tvec, units=date.units, calendar=date.calendar)
+
+    ivar = ncf.createVariable('lat', 'f8', ('lat',))
+    ivar.units = 'ETRS-TM35FIN'
+    ivar[:] = ycoords
+
+    jvar = ncf.createVariable('lon', 'f8', ('lon',))
+    jvar.units = 'ETRS-TM35FIN'
+    jvar[:] = xcoords
+
+    # 1D run
+    if pgen['simtype'] == '1D':
+        state_variables = {'variables':[
+                ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
+                ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]']
+                ]
+            }
+    # 2D run
+    elif pgen['simtype'] == '2D':
+        state_variables = {'variables':[
+                ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
+                ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
+                ['soil_ground_water_level', 'ground water level [m]']
+                ]
+            }
+    # TOP run
+    elif pgen['simtype'] == 'TOP':
+        state_variables = {'variables':[
+                ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
+                ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
+                ['top_saturation_deficit', 'topmodel saturation deficit [m]]']
+                ]
+            }
+
+    for var in state_variables['variables']:
+
+        var_name = var[0]
+        var_unit = var[1]
+
+        if (var_name.split('_')[0] == 'top' and var_name.split('_')[1] != 'local'):
+            var_dim = ('time')
+        else:
+            var_dim = ('time','lat', 'lon')
+        variable = ncf.createVariable(
+                var_name, 'f4', var_dim)
+
+        variable.units = var_unit
+
+    return ncf, ff
+
+
 def write_ncf(results, ncf, steps=None):
     """
     Writes model simultaion results in netCDF4-file
@@ -728,6 +830,60 @@ def write_ncf(results, ncf, steps=None):
                     ncf[key][:] = results[key]
                 else:
                     ncf[key][steps[0]:steps[1]] = results[key][0:steps[1]-steps[0]]
+
+def write_ncf_spinup(results, pgen, ncf_spinup, steps=None):
+    """
+    Writes model simultaion results in netCDF4-file
+
+    Args:
+        index (int): model loop index
+        results (dict): calculation results from group
+        ncf (object): netCDF4-file handle
+    """
+
+
+    # 1D run
+    if pgen['simtype'] == '1D':
+        state_variables = {'variables':[
+                ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
+                ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]']
+                ]
+            }
+    # 2D run
+    elif pgen['simtype'] == '2D':
+        state_variables = {'variables':[
+                ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
+                ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
+                ['soil_ground_water_level', 'ground water level [m]']
+                ]
+            }
+    # TOP run
+    elif pgen['simtype'] == 'TOP':
+        state_variables = {'variables':[
+                ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
+                ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
+                ['top_saturation_deficit', 'topmodel saturation deficit [m]]']
+                ]
+            }
+
+    variables = ncf_spinup.variables.keys()
+    for key in state_variables['variables']:
+        var = key[0]
+        if var in variables and var != 'time':
+            if len(ncf_spinup[var].shape) > 2:
+                ncf_spinup[var][:,:,:] = results[var][-1]
+            elif len(ncf_spinup[var].shape) > 1:
+                ncf_spinup[var][:,:] = results[var][-1]
+            elif len(ncf_spinup[var].shape) == 1:
+                ncf_spinup[var][:] = results[var][-1]
+            else:
+                ncf_spinup[var][:] = results[var][-1]
 
 
 def read_AsciiGrid(fname, setnans=True):

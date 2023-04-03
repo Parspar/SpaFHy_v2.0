@@ -148,7 +148,7 @@ class CanopyGrid():
         if dist_rad_file:
             self.rad_coeff = Dataset(dist_rad_file, 'r')
             self.distributed_radiation = True
-            print('Distributed radiation is TRUE')
+            print('*** Distributed radiation used ***')
         else:
             self.distributed_radiation = False
 
