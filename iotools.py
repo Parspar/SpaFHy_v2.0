@@ -48,7 +48,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # dem
     try:
-        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem_d4_filled.dat'))
+        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem_d8_filled.dat'))
     except:
         print('Constant elevation')
         dem = np.full_like(soilclass, 0.0)
@@ -383,17 +383,15 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
     """
     creates input dictionary for initializing CanopyGrid
     Args:
-        canopy parameters
+        topmodel parameters as in parameters.py 'pgen' and:
         gisdata
         flowacc - flow accumulation raster
         slope - slope raster
         twi - topographic wetness index
         cmask - catchment mask
             (lat, lon)
-        spatial
     """
     # inputs for CanopyGrid initialization: update pcpy using spatial data
-
     if spatial:
         ptopmodel['slope'] = gisdata['slope']
         ptopmodel['flowacc'] = gisdata['flowacc']
@@ -406,7 +404,6 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
     else:
         for key in ptopmodel.keys():
             ptopmodel[key] *= gisdata['cmask']
-
     return ptopmodel
 
 
@@ -705,7 +702,7 @@ def initialize_netcdf_spinup(pgen, cmask, filepath, filename, description, gisin
         variables (list): list of variables to be saved in netCDF4
         cmask
         filepath: path for saving results
-        filename: filename
+        filename: filename, spinup notion automatically added
         description: description
     """
     from netCDF4 import Dataset, date2num
@@ -837,7 +834,7 @@ def write_ncf_spinup(results, pgen, ncf_spinup, steps=None):
 
     Args:
         index (int): model loop index
-        results (dict): calculation results from group
+        results (dict): calculation results
         ncf (object): netCDF4-file handle
     """
 

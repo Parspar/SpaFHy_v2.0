@@ -177,7 +177,7 @@ def preprocess_parameters(folder=''):
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
-    # overwrites the state variables with the last day of spinup file (if given)
+    # overwrites the state variables with the last timestep of spinup file (if given)
     try:
         spinup = xr.open_dataset(pgen['spinup_file'])
         cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
@@ -186,6 +186,9 @@ def preprocess_parameters(folder=''):
         soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
         if pgen['simtype'] == '2D':
             soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
+        elif pgen['simtype'] == 'TOP':
+            ptopmodel['so'] = np.array(spinup['top_saturation_deficit'][-1])
+
         print('*** State variables assigned from ', pgen['spinup_file'],  '***')
     except:
         print('*** State variables assigned from parameters.py ***')

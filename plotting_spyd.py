@@ -48,6 +48,9 @@ res_top['total_evapotranspiration'] = res_top['bucket_evaporation'] + res_top['c
 soilclass = np.array(res_2d['parameters_soilclass'])
 cmask = np.array(res_2d['parameters_cmask'])
 
+peat_id = np.where(np.ravel(soilclass == 4))[0]
+mineral_id = np.where(np.ravel(soilclass == 2))[0]
+
 dates_spa = []
 for d in range(len(res_1d['time'])):
     dates_spa.append(pd.to_datetime(str(res_1d['time'][d])[36:46]))
@@ -441,7 +444,7 @@ wbplot = wbdfy.mean()
 #%%
 
 
-# Plotting
+# Plotting water budget and climatology
 fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(12,4));
 ax0 = axs[0]
 ax1 = axs[1]
@@ -1113,9 +1116,6 @@ sept_id = np.where(pd.to_datetime(dates_spa).month == 9)[0]
 sept_id_sar = np.where(pd.to_datetime(dates_sar_m).month == 9)[0]
 sept_id_sarmask = np.where((dates_spa.isin(dates_sar_m)) & (dates_spa.month == 9))[0]
 
-
-peat_id = np.where(np.ravel(soilclass == 4))[0]
-mineral_id = np.where(np.ravel(soilclass == 2))[0]
 
 top_moist_peat = np.array(res_top['bucket_moisture_root']).reshape(res_top['bucket_moisture_root'].shape[0], -1)[:,peat_id]
 d2_moist_peat = np.array(res_2d['bucket_moisture_root']).reshape(res_2d['bucket_moisture_root'].shape[0], -1)[:,peat_id]

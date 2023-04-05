@@ -40,6 +40,7 @@ class Topmodel_Homogenous():
             slope - local slope (deg)
             S_initial - initial storage deficit, overrides that in 'pp'
         """
+        #print(pp)
         if not S_initial:
             S_initial = pp['so']
 
