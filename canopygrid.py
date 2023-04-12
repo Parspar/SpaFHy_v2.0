@@ -793,7 +793,6 @@ def daylength(LAT, DOY):
     # --- compute day length, the period when sun is above horizon
     # i.e. neglects civil twilight conditions
     cosZEN = 0.0
-
     dl = 2.0*np.arccos(cosZEN - np.sin(LAT)*np.sin(DECL) / (np.cos(LAT)*np.cos(DECL))) / CF / 15.0  # hours
 
     return dl

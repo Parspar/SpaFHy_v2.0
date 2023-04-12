@@ -203,6 +203,12 @@ obs_list = []
 mod_list_1d = []
 mod_list_2d = []
 mod_list_top = []
+mod_list_1d_peat = []
+mod_list_2d_peat = []
+mod_list_top_peat = []
+mod_list_1d_mineral = []
+mod_list_2d_mineral = []
+mod_list_top_mineral = []
 
 for i in theta_spat_gpd.index.unique():
     data = theta_spat_gpd.loc[i]

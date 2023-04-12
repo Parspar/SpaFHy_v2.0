@@ -138,8 +138,9 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     # ditches, no stand in ditch cells
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
-    #ditch_mask = np.where(ditches < -eps, 0.0, 1)
-
+    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    #cmask[ditch_mask == np.nan] = np.nan
+    
     # dict of all rasters
     gis = {'cmask': cmask,
            'LAI_conif': LAI_conif, 'LAI_decid': LAI_decid, 'LAI_shrub': LAI_shrub, 'LAI_grass': LAI_grass,
@@ -216,15 +217,20 @@ def read_top_gisdata(fpath, plotgrids=False):
 
     # flow accumulation
     flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat'))
-    flowacc = flowacc + eps
+    flowacc = flowacc #+ eps
 
     # slope
     slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat'))
-    slope = slope + eps
+    slope = slope #+ eps
 
     # twi
     twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
 
+    # ditches
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    #cmask[ditch_mask == np.nan] = np.nan    
+    
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))

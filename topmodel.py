@@ -16,11 +16,12 @@ Modified by jpnousu
 """
 
 import numpy as np
-# import matplotlib.pyplot as plt
+from scipy.ndimage import maximum_filter
+import matplotlib.pyplot as plt
 eps = np.finfo(float).eps  # machine epsilon
 
 class Topmodel_Homogenous():
-    def __init__(self, pp, S_initial=None):
+    def __init__(self, pp, S_initial=None, twi_method='saga'):
         """
         sets up Topmodel for the catchment assuming homogenous
         effective soil depth 'm' and sat. hydr. conductivity 'ko'.
@@ -44,26 +45,24 @@ class Topmodel_Homogenous():
         if not S_initial:
             S_initial = pp['so']
 
-        self.dt = float(pp['dt'])
+        # importing grids from parameters
         cmask = pp['cmask']
         flowacc = pp['flowacc']
         slope = pp['slope']
-        dxy = pp['dxy']
-
-        self.CellArea = dxy**2
-        dx = self.CellArea**0.5
-        self.CatchmentArea = np.size(cmask[cmask == 1])*self.CellArea
-        self.qr = np.full_like(cmask, 0.0)
-
-        # topography
+        
         self.a = flowacc*cmask  # flow accumulation grid
         self.slope = slope*cmask  # slope (deg) grid
+        
+        # importing other parameters
+        dxy  = pp['dxy'] # grid size
+        self.M = pp['m'] # effective soil depth [m]
+        self.dt = float(pp['dt']) # timestep 
+        self.To = pp['ko']*self.dt # transmissivity at saturation
 
-        # effective soil depth [m]
-        self.M = pp['m']
-        # lat. hydr. conductivity at surface [m2/timestep]
-        # self.To = pp['ko']*pp['m']*self.dt
-        self.To = pp['ko']*self.dt
+        # area of a given cell
+        self.CellArea = dxy**2
+        self.CatchmentArea = np.size(cmask[cmask == 1])*self.CellArea
+        self.qr = np.full_like(cmask, 0.0)
 
         """
         local and catchment average hydrologic similarity indices (xi, X).
@@ -73,16 +72,25 @@ class Topmodel_Homogenous():
         """
         slope_rad = np.radians(self.slope)  # deg to rad
 
-        xi = np.log(self.a / dx / (np.tan(slope_rad) + eps))
+        # computing twi
+        xi = self.twi(flowacc=self.a, dxy=dxy, slope_rad=slope_rad, twi_method=twi_method) 
+        n, bins, patches = plt.hist((xi*cmask).flatten(), bins=20, alpha=0.5, label='raw')
+        
+        # calculates twi-value corresponding to twi_cutoff percentile
         clim = np.percentile(xi[xi > 0], pp['twi_cutoff'])
-
         # cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
         xi[xi > clim] = clim
         # second way to cut the tail and assign the exceeded values into distribution median
         #xi[xi > clim] = np.nanmedian(xi)
+        
+        n, bins, patches = plt.hist((xi*cmask).flatten(), bins=20, alpha=0.5, label='cut')
+        plt.legend()
+        plt.title('TWI')
 
+        # local indices
         self.xi = xi
 
+        # catchment average indice
         self.X = 1.0 / self.CatchmentArea*np.nansum(self.xi*self.CellArea)
 
         # baseflow rate when catchment Smean=0.0
@@ -101,6 +109,23 @@ class Topmodel_Homogenous():
         s = Smean + self.M*(self.X - self.xi)
         return s
 
+    def twi(self, flowacc, dxy, slope_rad, twi_method):
+        """
+        computes TWI according to 'standard' method (Launiainen et al. 2019) or
+        as 'saga' wetness index (Tyystjärvi et al. 2022)
+        """        
+        if twi_method == 'standard':
+            xi = np.log(flowacc / dxy / (np.tan(slope_rad) + eps))
+        elif twi_method == 'saga':
+            footprint = np.array([[1, 1, 1], [1, 0, 1],[1, 1, 1]])
+            scamax = maximum_filter(flowacc/dxy, footprint=footprint)
+            scamax_mod = scamax * (1/15)**slope_rad*np.exp(slope_rad)**15
+            scam = np.maximum(scamax_mod, flowacc/dxy)
+            xi = np.log(scam / dxy / (np.tan(slope_rad) + eps))
+        
+        return xi
+    
+    
     def subsurfaceflow(self):
         """subsurface flow to stream network (per unit catchment area)"""
         Qb = self.Qo*np.exp(-self.S / (self.M + eps))

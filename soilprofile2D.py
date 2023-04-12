@@ -500,12 +500,12 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
 
-    plt.figure(1)
-    plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
-    plt.figure(2)
-    plt.plot(np.array(gwl), np.array(Tr))
-    plt.figure(3)
-    plt.plot(np.array(gwl), np.array(Wsto_deep))
+    #plt.figure(1)
+    #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
+    #plt.figure(2)
+    #plt.plot(np.array(gwl), np.array(Tr))
+    #plt.figure(3)
+    #plt.plot(np.array(gwl), np.array(Wsto_deep))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
