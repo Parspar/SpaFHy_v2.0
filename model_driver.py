@@ -170,7 +170,8 @@ def preprocess_parameters(folder=''):
 
     if pgen['simtype'] == 'TOP':
         gisdata.update(read_top_gisdata(pgen['gis_folder']))
-        ptopmodel = preprocess_topdata(ptopmodel, gisdata)
+        ptopmodel = preprocess_topdata(ptopmodel, gisdata, spatial=True)
+
 
     gisinfo = {}
     gisinfo['xllcorner'] = gisdata['xllcorner']

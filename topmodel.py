@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 eps = np.finfo(float).eps  # machine epsilon
 
 class Topmodel_Homogenous():
-    def __init__(self, pp, S_initial=None, twi_method='saga'):
+    def __init__(self, pp, S_initial=None, twi_method='swi'):
         """
         sets up Topmodel for the catchment assuming homogenous
         effective soil depth 'm' and sat. hydr. conductivity 'ko'.
@@ -41,7 +41,6 @@ class Topmodel_Homogenous():
             slope - local slope (deg)
             S_initial - initial storage deficit, overrides that in 'pp'
         """
-        #print(pp)
         if not S_initial:
             S_initial = pp['so']
 
@@ -49,9 +48,7 @@ class Topmodel_Homogenous():
         cmask = pp['cmask']
         flowacc = pp['flowacc']
         slope = pp['slope']
-        
-        self.a = flowacc*cmask  # flow accumulation grid
-        self.slope = slope*cmask  # slope (deg) grid
+        twi = pp['twi']
         
         # importing other parameters
         dxy  = pp['dxy'] # grid size
@@ -65,30 +62,30 @@ class Topmodel_Homogenous():
         self.qr = np.full_like(cmask, 0.0)
 
         """
-        local and catchment average hydrologic similarity indices (xi, X).
+        local and catchment average hydrologic similarity indices (xi=twi, X).
         Set xi > twi_cutoff equal to cutoff value to remove tail of twi-distribution.
         This concerns mainly the stream network cells. 'Outliers' in twi-distribution are
         problem for streamflow prediction
         """
-        slope_rad = np.radians(self.slope)  # deg to rad
 
-        # computing twi
-        xi = self.twi(flowacc=self.a, dxy=dxy, slope_rad=slope_rad, twi_method=twi_method) 
-        n, bins, patches = plt.hist((xi*cmask).flatten(), bins=20, alpha=0.5, label='raw')
-        
+        # twi
+        twi = twi*cmask
+        #bina = len(np.arange(np.sort(twi.flatten()[~np.isnan(twi.flatten())])[0], np.sort(twi.flatten()[~np.isnan(twi.flatten())])[-1], 0.5))     
+        #n, bins, patches = plt.hist((twi).flatten(), bins=bina, alpha=0.5, label='raw')
         # calculates twi-value corresponding to twi_cutoff percentile
-        clim = np.percentile(xi[xi > 0], pp['twi_cutoff'])
+        #clim = np.percentile(twi[twi > 0], pp['twi_cutoff'])
         # cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
-        xi[xi > clim] = clim
+        #twi[twi > clim] = clim
         # second way to cut the tail and assign the exceeded values into distribution median
         #xi[xi > clim] = np.nanmedian(xi)
         
-        n, bins, patches = plt.hist((xi*cmask).flatten(), bins=20, alpha=0.5, label='cut')
-        plt.legend()
-        plt.title('TWI')
+        #bina = len(np.arange(np.sort(twi.flatten()[~np.isnan(twi.flatten())])[0], np.sort(twi.flatten()[~np.isnan(twi.flatten())])[-1], 0.5))      
+        #n, bins, patches = plt.hist((twi).flatten(), bins=bina, alpha=0.5, label='cut')
+        #plt.legend()
+        #plt.title('TWI')
 
         # local indices
-        self.xi = xi
+        self.xi = twi
 
         # catchment average indice
         self.X = 1.0 / self.CatchmentArea*np.nansum(self.xi*self.CellArea)
@@ -107,24 +104,7 @@ class Topmodel_Homogenous():
         computes local storage deficit s [m] from catchment average
         """
         s = Smean + self.M*(self.X - self.xi)
-        return s
-
-    def twi(self, flowacc, dxy, slope_rad, twi_method):
-        """
-        computes TWI according to 'standard' method (Launiainen et al. 2019) or
-        as 'saga' wetness index (Tyystjärvi et al. 2022)
-        """        
-        if twi_method == 'standard':
-            xi = np.log(flowacc / dxy / (np.tan(slope_rad) + eps))
-        elif twi_method == 'saga':
-            footprint = np.array([[1, 1, 1], [1, 0, 1],[1, 1, 1]])
-            scamax = maximum_filter(flowacc/dxy, footprint=footprint)
-            scamax_mod = scamax * (1/15)**slope_rad*np.exp(slope_rad)**15
-            scam = np.maximum(scamax_mod, flowacc/dxy)
-            xi = np.log(scam / dxy / (np.tan(slope_rad) + eps))
-        
-        return xi
-    
+        return s    
     
     def subsurfaceflow(self):
         """subsurface flow to stream network (per unit catchment area)"""
@@ -193,3 +173,24 @@ class Topmodel_Homogenous():
                 }
 
         return results
+
+    
+def twi(flowacc, dxy, slope_rad, twi_method):
+    """
+    computes TWI according to standard method (twi) (Launiainen et al. 2019) or
+    as saga wetness index (swi, Tyystjärvi et al. 2022) 
+    """
+    
+    from scipy.ndimage import maximum_filter
+    import numpy as np
+    eps = np.finfo(float).eps  # machine epsilon
+
+    if twi_method == 'twi':
+        xi = np.log(flowacc / dxy / (np.tan(slope_rad) + eps))
+    elif twi_method == 'swi':
+        footprint = np.array([[1, 1, 1], [1, 0, 1],[1, 1, 1]])
+        scamax = maximum_filter(flowacc/dxy, footprint=footprint)
+        scamax_mod = scamax * (1/15)**slope_rad*np.exp(slope_rad)**15
+        scam = np.maximum(scamax_mod, flowacc/dxy)
+        xi = np.log(scam / dxy / (np.tan(slope_rad) + eps))
+    return xi

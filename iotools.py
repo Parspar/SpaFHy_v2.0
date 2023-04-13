@@ -11,6 +11,7 @@ import os
 import matplotlib.pyplot as plt
 from soilprofile2D import gwl_Wsto, nan_function
 from koordinaattimuunnos import koordTG
+from topmodel import twi as twicalc
 import re
 
 eps = np.finfo(float).eps  # machine epsilon
@@ -37,7 +38,8 @@ def read_soil_gisdata(fpath, plotgrids=False):
     # ditches
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
     #ditches[ditches == np.nan] = 0.0
-
+    ditches = np.where(ditches == 0, np.nan, -1)
+    
     # site type
     try:
         sitetype, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'sitetype.dat'))
@@ -58,7 +60,12 @@ def read_soil_gisdata(fpath, plotgrids=False):
         cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
     else:
         cmask = np.ones(np.shape(soilclass))
+    
+    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    cmask = cmask
 
+    #plt.imshow(cmask)
+    
     # dict of all rasters
     gis = {'cmask': cmask,
            'soilclass': soilclass,
@@ -71,7 +78,11 @@ def read_soil_gisdata(fpath, plotgrids=False):
     yllcorner = int(re.findall(r'\d+', info[3])[0])
 
     for key in gis.keys():
-        gis[key] *= cmask
+        if (key != 'ditches') & (key != 'cmask'):
+            gis[key] *= cmask #* ditch_mask
+        elif key == 'ditches':
+            gis[key] *= cmask
+            gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
         plt.figure()
@@ -138,17 +149,22 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     # ditches, no stand in ditch cells
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    ditches = np.where(ditches == 0, np.nan, -1)
+
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    #cmask[ditch_mask == np.nan] = np.nan
-    
+    cmask = cmask#*ditch_mask
+
     # dict of all rasters
     gis = {'cmask': cmask,
            'LAI_conif': LAI_conif, 'LAI_decid': LAI_decid, 'LAI_shrub': LAI_shrub, 'LAI_grass': LAI_grass,
            'hc': hc, 'cf': cf}
 
     for key in gis.keys():
-        if key != 'cmask':
-            gis[key] = gis[key] * cmask #* ditch_mask
+        if (key != 'ditches') & (key != 'cmask'):
+            gis[key] *= cmask #* ditch_mask
+        elif key == 'ditches':
+            gis[key] *= cmask
+            gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
 
@@ -159,6 +175,73 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         plt.title('LAI decid (m2/m2)')
         plt.subplot(223); plt.imshow(hc); plt.colorbar(); plt.title('hc (m)')
         plt.subplot(224); plt.imshow(cf); plt.colorbar(); plt.title('cf (-)')
+
+    return gis
+
+def read_top_gisdata(fpath, plotgrids=False):
+    """
+    reads gis-data grids and returns numpy 2d-arrays
+    Args:
+        fpath - relative path to data folder (str)
+        plotgrids - True plots
+    Returns:
+        gis - dict of gis-data rasters
+        flowacc - flow accumulation raster
+        slope - slope raster
+        twi - topographic wetness index
+        cmask - catchment mask
+
+    """
+    fpath = os.path.join(workdir, fpath)
+
+    # flow accumulation
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat'))
+    flowacc = flowacc #+ eps
+    # slope
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat'))
+    slope = slope #+ eps
+
+    twi = np.ones(np.shape(slope))
+    twi = twicalc(flowacc=flowacc, dxy=cellsize, slope_rad=np.radians(slope), twi_method='swi') 
+
+    # twi
+    #twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
+
+    # ditches
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    ditches = np.where(ditches == 0, np.nan, -1)
+
+    # catchment mask cmask[i,j] == 1, np.NaN outside
+    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+    else:
+        cmask = np.ones(np.shape(slope))
+
+    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    cmask = cmask
+
+    # dict of all rasters
+    gis = {'cmask': cmask,
+           'flowacc': flowacc,
+           'slope': slope,
+           'twi': twi,
+           'ditches': ditches
+           }
+
+    for key in gis.keys():
+        if (key != 'ditches') & (key != 'cmask'):
+            gis[key] *= cmask #* ditch_mask
+        elif key == 'ditches':
+            gis[key] *= cmask
+            gis[key] = np.where(gis[key] == -1, -1, np.nan)
+
+    if plotgrids is True:
+        plt.figure()
+        plt.subplot(311); plt.imshow(slope); plt.colorbar(); plt.title('soiltype')
+        plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('dem')
+        plt.subplot(313); plt.imshow(flowacc); plt.colorbar(); plt.title('ditches')
+
+    gis.update({'dxy': cellsize})
 
     return gis
 
@@ -197,66 +280,6 @@ def read_forcing_gisdata(fpath):
         gis[key] *= cmask
 
     return gis
-
-
-def read_top_gisdata(fpath, plotgrids=False):
-    """
-    reads gis-data grids and returns numpy 2d-arrays
-    Args:
-        fpath - relative path to data folder (str)
-        plotgrids - True plots
-    Returns:
-        gis - dict of gis-data rasters
-        flowacc - flow accumulation raster
-        slope - slope raster
-        twi - topographic wetness index
-        cmask - catchment mask
-
-    """
-    fpath = os.path.join(workdir, fpath)
-
-    # flow accumulation
-    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat'))
-    flowacc = flowacc #+ eps
-
-    # slope
-    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat'))
-    slope = slope #+ eps
-
-    # twi
-    twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
-
-    # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
-    ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    #cmask[ditch_mask == np.nan] = np.nan    
-    
-    # catchment mask cmask[i,j] == 1, np.NaN outside
-    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
-    else:
-        cmask = np.ones(np.shape(slope))
-
-    # dict of all rasters
-    gis = {'cmask': cmask,
-           'flowacc': flowacc,
-           'slope': slope,
-           'twi': twi,
-           }
-
-    for key in gis.keys():
-        gis[key] *= cmask
-
-    if plotgrids is True:
-        plt.figure()
-        plt.subplot(311); plt.imshow(slope); plt.colorbar(); plt.title('soiltype')
-        plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('dem')
-        plt.subplot(313); plt.imshow(flowacc); plt.colorbar(); plt.title('ditches')
-
-    gis.update({'dxy': cellsize})
-
-    return gis
-
 
 def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
     """
@@ -397,19 +420,28 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
         cmask - catchment mask
             (lat, lon)
     """
-    # inputs for CanopyGrid initialization: update pcpy using spatial data
-    if spatial:
-        ptopmodel['slope'] = gisdata['slope']
-        ptopmodel['flowacc'] = gisdata['flowacc']
-        ptopmodel['twi'] = gisdata['twi']
-        ptopmodel['cmask'] = gisdata['cmask']
-        ptopmodel['dxy'] = gisdata['dxy']
-        if {'lat','lon'}.issubset(gisdata.keys()):
-            ptopmodel['loc']['lat'] = gisdata['lat']
-            ptopmodel['loc']['lon'] = gisdata['lon']
-    else:
-        for key in ptopmodel.keys():
-            ptopmodel[key] *= gisdata['cmask']
+    # inputs for topmodel initialization: update ptopmodel using spatial data
+    ptopmodel['slope'] = gisdata['slope']
+    ptopmodel['flowacc'] = gisdata['flowacc']
+    ptopmodel['twi'] = gisdata['twi']
+    ptopmodel['cmask'] = gisdata['cmask']
+    ptopmodel['dxy'] = gisdata['dxy']
+    ptopmodel['ditches'] = gisdata['ditches']
+    if {'lat','lon'}.issubset(gisdata.keys()):
+        ptopmodel['loc']['lat'] = gisdata['lat']
+        ptopmodel['loc']['lon'] = gisdata['lon']
+    
+    bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
+                         np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))     
+    n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='raw')
+    #cutting the twi tail according to parameter twi_cutoff
+    twi_clim = np.percentile(ptopmodel['twi'][ptopmodel['twi'] > 0], ptopmodel['twi_cutoff'])
+    #cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
+    ptopmodel['twi'][ptopmodel['twi'] > twi_clim] = twi_clim
+    bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
+                         np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))      
+    n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='cut')
+    
     return ptopmodel
 
 

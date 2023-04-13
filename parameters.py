@@ -211,9 +211,9 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {'dt': 86400.0, # timestep (s)
-            'm': 0.025, # 0.025, scaling depth (m)
+            'm': 0.01, # 0.025, scaling depth (m)
             'ko': 0.001, # transmissivity parameter (ms-1)
-            'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
+            'twi_cutoff': 99.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
            }
     return ptopmodel
