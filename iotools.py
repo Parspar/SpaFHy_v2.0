@@ -33,11 +33,11 @@ def read_soil_gisdata(fpath, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # soil classification
-    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id_peatsoils.dat'))
+    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id_peatsoils.dat')) # soil_id_peatsoils.dat
 
     # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
-    #ditches[ditches == np.nan] = 0.0
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat')) # ditches.dat
+    ditches[ditches == np.nan] = 0.0
     ditches = np.where(ditches == 0, np.nan, -1)
     
     # site type
@@ -50,14 +50,14 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     # dem
     try:
-        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem_d8_filled.dat'))
+        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem_d8_filled.dat')) # dem_d8_filled.dat
     except:
         print('Constant elevation')
         dem = np.full_like(soilclass, 0.0)
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat')) # cmask.dat
     else:
         cmask = np.ones(np.shape(soilclass))
     
@@ -79,7 +79,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask #* ditch_mask
+            gis[key] *= cmask * ditch_mask
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -148,11 +148,11 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         cmask = np.ones(np.shape(hc))
 
     # ditches, no stand in ditch cells
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat')) # ditches.dat / ditches_edit.dat
     ditches = np.where(ditches == 0, np.nan, -1)
 
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    cmask = cmask#*ditch_mask
+    cmask = cmask
 
     # dict of all rasters
     gis = {'cmask': cmask,
@@ -161,7 +161,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask #* ditch_mask
+            gis[key] *= cmask * ditch_mask
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -195,20 +195,20 @@ def read_top_gisdata(fpath, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # flow accumulation
-    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat'))
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat')) # flowacc_p.dat
     flowacc = flowacc #+ eps
     # slope
-    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat'))
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat')) # slope_old
     slope = slope #+ eps
 
     twi = np.ones(np.shape(slope))
-    twi = twicalc(flowacc=flowacc, dxy=cellsize, slope_rad=np.radians(slope), twi_method='swi') 
+    twi = twicalc(flowacc=flowacc, dxy=cellsize, slope_rad=np.radians(slope), twi_method='twi') 
 
     # twi
     #twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
 
     # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat'))
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat')) # ditches.dat / ditches_edit.dat
     ditches = np.where(ditches == 0, np.nan, -1)
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
@@ -230,7 +230,7 @@ def read_top_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask #* ditch_mask
+            gis[key] *= cmask * ditch_mask
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -441,7 +441,7 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
     bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
                          np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))      
     n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='cut')
-    
+    plt.legend()
     return ptopmodel
 
 

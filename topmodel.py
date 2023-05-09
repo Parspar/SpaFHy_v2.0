@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 eps = np.finfo(float).eps  # machine epsilon
 
 class Topmodel_Homogenous():
-    def __init__(self, pp, S_initial=None, twi_method='swi'):
+    def __init__(self, pp, S_initial=None):
         """
         sets up Topmodel for the catchment assuming homogenous
         effective soil depth 'm' and sat. hydr. conductivity 'ko'.

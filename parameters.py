@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PARAMETERS
-@author: slauniai & khaahti
+@author: slauniai & khaahti & jpnousu
 """
 
 import pathlib
@@ -12,10 +12,10 @@ def parameters(folder=''):
 
     pgen = {'description': 'spinup',  # description written in result file
             'simtype': 'TOP', # 1D, TOP, 2D,
-            'start_date': '2020-09-09',  # '2007-08-01'
+            'start_date': '2019-09-09',  # '2007-08-01' or '2012-01-01'
             'end_date': '2021-09-09', # 2021-09-09,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2020-09-09',  # '2008-12-31' / '2009-08-01' results after this are saved in result file
+            'spinup_end': '2020-09-09',  # '2008-12-31' / '2009-08-01' or '2013-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -211,9 +211,9 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {'dt': 86400.0, # timestep (s)
-            'm': 0.01, # 0.025, scaling depth (m)
+            'm': 0.005, # 0.025, scaling depth (m) or 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
-            'twi_cutoff': 99.5,  # cutoff of cumulative twi distribution (%)
+            'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
            }
     return ptopmodel

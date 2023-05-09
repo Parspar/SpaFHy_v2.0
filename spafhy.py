@@ -136,7 +136,7 @@ class SpaFHy():
                 rr=1e-3*canopy_results['potential_infiltration'],
                 tr=1e-3*canopy_results['transpiration'],
                 evap=1e-3*canopy_results['forestfloor_evaporation'],
-                airv_deep=self.soil.airv_deep)
+                airv_deep=self.soil.airv_deep) 
 
             return soil_results, canopy_results, bucket_results
 
