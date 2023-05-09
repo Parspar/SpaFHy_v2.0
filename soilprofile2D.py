@@ -75,9 +75,9 @@ class SoilGrid_2Dflow(object):
         for key, value in self.gwl_to_wsto.items():
             self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
 
-        # air volume
+        # air volume and returnflow
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
-        self.retflow = np.full_like(self.h, 0.0) # retflow not in use
+        self.qr = np.full_like(self.h, 0.0) # 
         
         # rootzone moisture [m3 m-3], parameters related to transpiration limit during dry conditions
         self.deepmoist = np.full_like(self.h, 0.0)
@@ -193,12 +193,17 @@ class SoilGrid_2Dflow(object):
         surface_runoff = exfil - to_top_layer
         '''
         # for computing mass balance later, RR: drainage from bucketgrid
-        #RR = np.minimum(RR, self.airv_deep)
         S = RR
         S[np.isnan(S)] = 0.0
 
         state0 = self.Wsto_deep + S # Wsto_deep ????
 
+        # Head in four neighbouring cells
+        self.HW[:,1:] = self.H[:,:-1]
+        self.HE[:,:-1] = self.H[:,1:]
+        self.HN[1:,:] = self.H[:-1,:]
+        self.HS[:-1,:] = self.H[1:,:]
+        
         # ravel 2D arrays
         HW = np.ravel(self.HW)
         HE = np.ravel(self.HE)
@@ -368,7 +373,7 @@ class SoilGrid_2Dflow(object):
             self.conv99 +=1
         #self.totit += it
         print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index])
-
+        
         # lateral flow is calculated in two parts: one depending on previous time step
         # and other on current time step (lateral flowsee 2/2). Their weighting depends
         # on self. implic
@@ -380,34 +385,37 @@ class SoilGrid_2Dflow(object):
 
         """ update state """
         # soil profile
-        self.H = Htmp.copy()
+        self.H = Htmp.copy()      
         self.h = self.H - self.ele
         for key, value in self.gwl_to_wsto.items():
             self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
-
-        # Head in four neighbouring cells
-        self.HW[:,1:] = self.H[:,:-1]
-        self.HE[:,:-1] = self.H[:,1:]
-        self.HN[1:,:] = self.H[:-1,:]
-        self.HS[:-1,:] = self.H[1:,:]
-
+            
+        
         # lateral flow 2/2
         lateral_flow += ((1-self.implic)*(self.TrW0*(self.H - self.HW)
                         + self.TrE0*(self.H - self.HE)
                         + self.TrN0*(self.H - self.HN)
                         + self.TrS0*(self.H - self.HS)))/ self.dxy**2
 
-        # organic top layer; maximum that can be hold is Fc
-        #self.Wliq_top = self.fc_top * self.Wsto_top / (self.Wsto_top_max+eps)
-        #self.Ree = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
 
+        """ new update state """
+        # Let's limit head to 0 and assign rest as return flow to bucketgrid
+        #Wsto_before_qr = self.Wsto_deep.copy()
+        #self.h = np.minimum(0.0, self.h)
+        #self.H = self.h + self.ele
+        #self.H[np.isnan(self.H)] = -999
+
+        # Updating the storage according to new head
+        #for key, value in self.gwl_to_wsto.items():
+        #    self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
+        
+        # The difference is the return flow to bucket grid
+        #self.qr = np.maximum(0.0, Wsto_before_qr - self.Wsto_deep)
+        
+        ##################################################
         for key, value in self.gwl_to_rootmoist.items():
             self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
-
-        # air volume
-        self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
-        #self.retflow = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep) # retflow not in use
-
+            
         # This is limit transpiration when gwl < -0.7 which is not what we want here.
         # # Koivusalo et al. 2008 HESS without wet side limit
         # self.Rew = np.where(self.rootmoist > self.root_fc1,
@@ -417,14 +425,17 @@ class SoilGrid_2Dflow(object):
 
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
-        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow)
+        netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow - self.qr)
         netflow_to_ditch = np.where(self.ditch_h < -eps, netflow_to_ditch, 0.0)
 
+        # air volume
+        self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
+        
         # mass balance error [m]
-        mbe = (state0  - self.Wsto_deep - lateral_flow)
+        mbe = (state0  - self.Wsto_deep - lateral_flow - self.qr)
 
         mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
-
+        
         results = {
                 'ground_water_level': self.h,  # [m]
                 #'infiltration': (S - tr) * 1e3,  # [mm d-1]
