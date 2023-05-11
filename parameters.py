@@ -12,10 +12,10 @@ def parameters(folder=''):
 
     pgen = {'description': 'spinup',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2020-09-09',  # '2007-08-01' or '2012-01-01'
-            'end_date': '2021-09-09', # 2021-09-09,
+            'start_date': '2011-01-01',  # '2007-08-01' or '2011-01-01'
+            'end_date': '2021-09-01', # 2021-09-09,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2020-09-09',  # '2008-12-31' / '2009-08-01' or '2013-09-01' results after this are saved in result file
+            'spinup_end': '2013-09-01',  # '2008-12-31' / '2009-08-01' or '2013-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -211,7 +211,7 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {'dt': 86400.0, # timestep (s)
-            'm': 0.005, # 0.025, scaling depth (m) or 0.01
+            'm': 0.025, # 0.025, scaling depth (m) or 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
             'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
@@ -257,7 +257,7 @@ def topsoil():
         }
     return topsoil
 
-
+'''
 def soilprofiles():
     """
     Properties of soil profiles.
@@ -315,6 +315,69 @@ def soilprofiles():
                     'alpha': [0.053],
                     'n': [1.251]},
             'saturated_conductivity': [1E-06],
+                },
+            }
+    return soilp
+'''
+
+# testing one layer
+def soilprofiles():
+    """
+    Properties of soil profiles.
+    Note z is elevation of lower boundary of layer (soil surface at 0.0),
+    e.g. z = [-0.05, -0.15] means first layer tickness is 5 cm and second 10 cm.
+    Output 'soil_rootzone_moisture' is calculated for two first layers.
+    """
+    soilp = {
+        'CoarseTextured':{
+            'soil_id': 1.0,
+            'z': [-5.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.348],
+                    'ThetaR': [0.03],
+                    'alpha': [0.054],
+                    'n': [1.293]},
+            'saturated_conductivity': [1E-05],
+                },
+        'MediumTextured':{
+            'soil_id': 2.0,
+            'z': [-5.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.448], # MEASURED AND OPTIMIZED PARAMETER
+                    'ThetaR': [0.03], # MEASURED AND OPTIMIZED PARAMETER
+                    'alpha': [0.054], # MEASURED AND OPTIMIZED PARAMETER
+                    'n': [1.293]}, # MEASURED AND OPTIMIZED PARAMETER
+            'saturated_conductivity': [1E-05],
+                },
+        'FineTextured':{
+            'soil_id': 3.0,
+            'z': [-5.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.443],
+                    'ThetaR': [0.03],
+                    'alpha': [0.054],
+                    'n': [1.293]},
+            'saturated_conductivity': [1E-05],
+                },
+        'Peat':{
+            'soil_id': 4.0,
+            'z': [-5.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.88],  # MEASURED AND OPTIMIZED PARAMETER
+                    'ThetaR': [0.196], # MEASURED AND OPTIMIZED PARAMETER
+                    'alpha': [0.072],  # MEASURED AND OPTIMIZED PARAMETER
+                    'n': [1.255]}, # MEASURED AND OPTIMIZED PARAMETER
+            'saturated_conductivity': [1E-05], # MEASURED
+                },
+        'Humus': {
+            'soil_id': 5.0,
+            'z': [-2.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.44],
+                    'ThetaR': [0.024],
+                    'alpha': [0.053],
+                    'n': [1.251]},
+            'saturated_conductivity': [1E-05],
                 },
             }
     return soilp

@@ -400,17 +400,17 @@ class SoilGrid_2Dflow(object):
 
         """ new update state """
         # Let's limit head to 0 and assign rest as return flow to bucketgrid
-        #Wsto_before_qr = self.Wsto_deep.copy()
-        #self.h = np.minimum(0.0, self.h)
-        #self.H = self.h + self.ele
-        #self.H[np.isnan(self.H)] = -999
+        Wsto_before_qr = self.Wsto_deep.copy()
+        self.h = np.minimum(0.0, self.h)
+        self.H = self.h + self.ele
+        self.H[np.isnan(self.H)] = -999
 
         # Updating the storage according to new head
-        #for key, value in self.gwl_to_wsto.items():
-        #    self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
+        for key, value in self.gwl_to_wsto.items():
+            self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
         
         # The difference is the return flow to bucket grid
-        #self.qr = np.maximum(0.0, Wsto_before_qr - self.Wsto_deep)
+        self.qr = np.maximum(0.0, Wsto_before_qr - self.Wsto_deep)
         
         ##################################################
         for key, value in self.gwl_to_rootmoist.items():
