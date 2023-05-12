@@ -124,6 +124,9 @@ class BucketGrid(object):
 
         rr0 = rr.copy()
 
+        # check if there is pond storage and tweek maximum top storage accordingly
+        self.MaxStoTop = np.where(self.PondSto > 0, self.poros_top * self.D_top, self.Fc_top * self.D_top)
+        
         # add current Pond storage to rr & update storage, save intial conditions
         PondSto0 = self.PondSto.copy()
         rr += self.PondSto
@@ -131,7 +134,6 @@ class BucketGrid(object):
 
         WatStoRoot0 = self.WatStoRoot.copy()
         WatStoTop0 = self.WatStoTop.copy()
-
 
         #top layer interception & water balance
         interc = np.maximum(0.0, (self.MaxStoTop - self.WatStoTop))\
@@ -180,10 +182,9 @@ class BucketGrid(object):
 
         # compute diagnostic state variables at root zone:
         self.setState()
-
+        
         # update grid total drainage to ground water [m]
         self._drainage_to_gw = np.nansum(self.drain)
-
 
         # storage change
         dStorage = (self.WatStoRoot - WatStoRoot0)  + (self.WatStoTop - WatStoTop0) + (self.PondSto - PondSto0)
@@ -205,6 +206,7 @@ class BucketGrid(object):
                 'transpiration_limitation': self.Rew,  # [-] !!!
                 'water_storage_root': self.WatStoRoot * 1e3, # [mm]
                 'water_storage_top': self.WatStoTop * 1e3, # [mm]
+                'pond_storage': self.PondSto * 1e3, # [mm]
                 'water_storage': (self.WatStoTop + self.WatStoRoot) * 1e3, # [mm]
                 'storage_change': dStorage * 1e3, # [mm]
                 'return_flow': self.retflow * 1e3 # [mm d-1]
@@ -223,7 +225,9 @@ class BucketGrid(object):
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
 
         # organic top layer; maximum that can be hold is Fc
-        self.Wliq_top = self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps)
+        #self.Wliq_top = self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps)
+        self.Wliq_top = np.where(self.PondSto > 0, self.poros_top * self.WatStoTop / (self.MaxStoTop + eps), self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps))
+        
         self.Ree = self.relative_evaporation()
 
         # J-P! Jos ditch-soluissa ei ole juuristokerrosta niin lisää tämä jotta konsistentti canopyn kanssa:

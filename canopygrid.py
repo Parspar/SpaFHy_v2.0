@@ -182,8 +182,7 @@ class CanopyGrid():
         # vpd limit
         #if VPD < 0.1:
         #    VPD = 0.1
-
-
+        
         """ --- update phenology: self.ddsum & self.X ---"""
         #self.update_daily(Ta, doy)
         self._degreeDays(Ta, doy)
@@ -205,7 +204,6 @@ class CanopyGrid():
         Transpi = Transpi * dt
         Efloor = Efloor * dt
         #ET = Transpi + Efloor
-
 
         results = {
                 'potential_infiltration': PotInf,  # [mm d-1]
