@@ -100,7 +100,7 @@ class CanopyGrid():
         self._LAIgrass_max = state['lai_grass']
         self._LAIgrass = state['lai_grass'] * self.phenopara['lai_decid_min']
         self._LAIshrub = np.maximum(state['lai_shrub'], eps)
-        self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
+        self.LAI = self._LAIconif + self._LAIdecid + self._LAIshrub + self._LAIgrass
         self._LAIdecid_max = state['lai_decid_max']  # m2m-2
 
         # senescence starts at first doy when daylength < self.phenopara['sdl']
@@ -190,7 +190,7 @@ class CanopyGrid():
 
         """ --- update deciduous leaf area index --- """
         laifract = self._lai_dynamics(doy)
-
+        
         """ --- aerodynamic conductances --- """
         Ra, _, Ras, _, _, _ = aerodynamics(self.LAI, self.hc, U, w=0.01, zm=self.zmeas,
                                                   zg=self.zground, zos=self.zo_ground)
@@ -330,7 +330,7 @@ class CanopyGrid():
         # update self.LAIdecid and total LAI
         self._LAIdecid = self._LAIdecid_max * f
         self._LAIgrass = self._LAIgrass_max * f
-        self.LAI = self._LAIconif + self._LAIdecid #+ self._LAIshrub + self._LAIgrass
+        self.LAI = self._LAIconif + self._LAIdecid + self._LAIshrub + self._LAIgrass
         return f
 
     def dry_canopy_et(self, D, Qp, AE, Ta, Ra=25.0, Ras=250.0, CO2=380.0, Rew=1.0, beta=1.0, fPheno=1.0):
@@ -367,14 +367,18 @@ class CanopyGrid():
         Last edit: 13.6.2018: TESTING UPSCALING
         """
 
-        # ---Amax and g1 as LAI -weighted average of conifers and decid.
+        # ---Amax and g1 as LAI -weighted average of conifers, decid, shrub and grass.
 
         rhoa = 101300.0 / (8.31 * (Ta + 273.15)) # mol m-3
         Amax = 1./self.LAI * (self._LAIconif * self.physpara['amax']
-                + self._LAIdecid *self.physpara['amax']) # umolm-2s-1
+                + self._LAIdecid *self.physpara['amax']
+                             + self._LAIgrass *self.physpara['amax']
+                             + self._LAIshrub *self.physpara['amax']) # umolm-2s-1
 
         g1 = 1./self.LAI * (self._LAIconif * self.physpara['g1_conif']
-                + self._LAIdecid *self.physpara['g1_decid'])
+                + self._LAIdecid *self.physpara['g1_decid']
+                           + self._LAIgrass * self.physpara['g1_grass']
+                           + self._LAIshrub * self.physpara['g1_shrub'])
 
         kp = self.physpara['kp']  # (-) attenuation coefficient for PAR
         q50 = self.physpara['q50']  # Wm-2, half-sat. of leaf light response

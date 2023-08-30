@@ -10,12 +10,12 @@ import time
 
 def parameters(folder=''):
 
-    pgen = {'description': 'spinup',  # description written in result file
+    pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2018-10-01',  # '2007-08-01' or '2011-01-01'
-            'end_date': '2019-07-01', # 2021-09-09,
+            'start_date': '2011-01-01',  # '2007-08-01' or '2011-01-01'
+            'end_date': '2021-09-01', # 2021-09-01,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2018-10-01',  # '2008-12-31' / '2009-08-01' or '2013-09-01' results after this are saved in result file
+            'spinup_end': '2013-09-01',  # '2008-12-31' / '2009-08-01' or '2013-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -79,7 +79,7 @@ def parameters(folder=''):
                     ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
                     ['canopy_water_closure', 'canopy water balance error [mm d-1]'],
                     #['canopy_phenostate', 'canopy phenological state [-]'],
-                    #['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
+                    ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     #['canopy_degree_day_sum', 'sum of degree days [degC]'],
                     #['canopy_fLAI', 'state of LAI'],
                     ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
@@ -119,6 +119,8 @@ def parameters(folder=''):
                         'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
                         'g1_conif': f * 2.1, # stomatal parameter, conifers
                         'g1_decid': f * 3.5, # stomatal parameter, deciduous
+                        'g1_shrub': f * 3.0, # stomatal parameter, deciduous
+                        'g1_grass': f * 5.0, # stomatal parameter, deciduous
                         'q50': 50.0, # light response parameter (Wm-2)
                         'kp': 0.6, # light attenuation parameter (-)
                         'rw': 0.20, # critical value for REW (-),
@@ -184,8 +186,8 @@ def parameters(folder=''):
             'soil_id': 2.0,
             # organic (moss) layer
             'org_depth': 0.05, # depth of organic top layer (m)
-            'org_poros': 0.9, # porosity (-)
-            'org_fc': 0.3, # field capacity (-)
+            'org_poros': 0.448, # porosity (-)
+            'org_fc': 0.33, # field capacity (-)
             'org_rw': 0.15, # critical vol. moisture content (-) for decreasing phase in Ef
             'maxpond': 0.02,
             # rootzone layer
@@ -219,7 +221,6 @@ def ptopmodel():
     return ptopmodel
 
 
-
 def topsoil():
     """
     Properties of typical topsoils
@@ -229,98 +230,36 @@ def topsoil():
         'mineral':{
             'topsoil_id': 1,
             'org_depth': 0.05,
-            'org_poros': 0.448,
-            'org_fc': 0.33,
-            'org_rw': 0.15
+            'org_poros': 0.3,
+            'org_fc': 0.3,
+            'org_rw': 0.2
             },
         'fen':{
             'topsoil_id': 2,
             'org_depth': 0.05,
-            'org_poros': 0.88,
-            'org_fc': 0.514,
-            'org_rw': 0.15
+            'org_poros': 0.65,
+            'org_fc': 0.65,
+            'org_rw': 0.3
             },
         'peatland':{
             'topsoil_id': 3,
             'org_depth': 0.05,
-            'org_poros': 0.88,
-            'org_fc': 0.53,
-            'org_rw': 0.15
+            'org_poros': 0.65,
+            'org_fc': 0.65,
+            'org_rw': 0.3
             },
         'openmire':{
             'topsoil_id': 4,
             'org_depth': 0.05,
-            'org_poros': 0.88,
-            'org_fc': 0.53,
-            'org_rw': 0.15
+            'org_poros': 0.65,
+            'org_fc': 0.65,
+            'org_rw': 0.3
             }
         }
     return topsoil
 
-'''
-def soilprofiles():
-    """
-    Properties of soil profiles.
-    Note z is elevation of lower boundary of layer (soil surface at 0.0),
-    e.g. z = [-0.05, -0.15] means first layer tickness is 5 cm and second 10 cm.
-    Output 'soil_rootzone_moisture' is calculated for two first layers.
-    """
-    soilp = {
-        'CoarseTextured':{
-            'soil_id': 1.0,
-            'z': [-0.5, -4.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348]*2,
-                    'ThetaR': [0.03]*2,
-                    'alpha': [0.054]*2,
-                    'n': [1.293]*2},
-            'saturated_conductivity': [1E-04, 1E-05],
-                },
-        'MediumTextured':{
-            'soil_id': 2.0,
-            'z': [-0.5, -4.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448]*2, # MEASURED AND OPTIMIZED PARAMETER
-                    'ThetaR': [0.03]*2, # MEASURED AND OPTIMIZED PARAMETER
-                    'alpha': [0.054]*2, # MEASURED AND OPTIMIZED PARAMETER
-                    'n': [1.293]*2}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-05, 1E-05],
-                },
-        'FineTextured':{
-            'soil_id': 3.0,
-            'z': [-0.05, -0.1, -0.8, -4.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.443]*4,
-                    'ThetaR': [0.03]*4,
-                    'alpha': [0.054]*4,
-                    'n': [1.293]*4},
-            'saturated_conductivity': [1E-05]*4,
-                },
-        'Peat':{
-            'soil_id': 4.0,
-            'z': [-0.3, -0.6, -0.9, -1.2, -4.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.88]*5,  # MEASURED AND OPTIMIZED PARAMETER
-                    'ThetaR': [0.196]*5, # MEASURED AND OPTIMIZED PARAMETER
-                    'alpha': [0.072]*5,  # MEASURED AND OPTIMIZED PARAMETER
-                    'n': [1.255]*5}, # MEASURED AND OPTIMIZED PARAMETER
-            'saturated_conductivity': [1E-04, 5E-05, 1E-05, 5E-07, 2E-07], # MEASURED
-                },
-        'Humus': {
-            'soil_id': 5.0,
-            'z': [-2.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.44],
-                    'ThetaR': [0.024],
-                    'alpha': [0.053],
-                    'n': [1.251]},
-            'saturated_conductivity': [1E-06],
-                },
-            }
-    return soilp
-'''
 
-# testing one layer
+# one layer
 def soilprofiles():
     """
     Properties of soil profiles.
@@ -369,17 +308,6 @@ def soilprofiles():
                     'n': [1.255]}, # MEASURED AND OPTIMIZED PARAMETER
             'saturated_conductivity': [1E-05], # MEASURED
                 },
-        'Humus': {
-            'soil_id': 5.0,
-            'z': [-2.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.44],
-                    'ThetaR': [0.024],
-                    'alpha': [0.053],
-                    'n': [1.251]},
-            'saturated_conductivity': [1E-05],
-                },
-            }
     return soilp
 
 

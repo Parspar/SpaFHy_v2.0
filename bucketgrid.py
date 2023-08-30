@@ -125,7 +125,7 @@ class BucketGrid(object):
         rr0 = rr.copy()
 
         # check if there is pond storage and tweek maximum top storage accordingly
-        self.MaxStoTop = np.where(self.PondSto > 0, self.poros_top * self.D_top, self.Fc_top * self.D_top)
+        #self.MaxStoTop = np.where(self.PondSto > 0, self.poros_top * self.D_top, self.Fc_top * self.D_top)
         
         # add current Pond storage to rr & update storage, save intial conditions
         PondSto0 = self.PondSto.copy()
@@ -225,8 +225,8 @@ class BucketGrid(object):
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
 
         # organic top layer; maximum that can be hold is Fc
-        #self.Wliq_top = self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps)
-        self.Wliq_top = np.where(self.PondSto > 0, self.poros_top * self.WatStoTop / (self.MaxStoTop + eps), self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps))
+        self.Wliq_top = self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps)
+        #self.Wliq_top = np.where(self.PondSto > 0, self.poros_top * self.WatStoTop / (self.MaxStoTop + eps), self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps))
         
         self.Ree = self.relative_evaporation()
 
