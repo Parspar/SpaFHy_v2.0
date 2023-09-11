@@ -79,7 +79,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask #* ditch_mask
+            gis[key] *= cmask * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -161,7 +161,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask #* ditch_mask
+            gis[key] *= cmask * ditch_mask
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -230,7 +230,7 @@ def read_top_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask #* ditch_mask
+            gis[key] *= cmask * ditch_mask
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
