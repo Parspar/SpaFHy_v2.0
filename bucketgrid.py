@@ -46,7 +46,7 @@ class BucketGrid(object):
         self.poros_top = spara['org_poros'] # porosity, m3 m-3
         self.Fc_top = spara['org_fc']       # field capacity m3 m-3
         self.rw_top = spara['org_rw']       # ree parameter m3 m-3
-        self.MaxStoTop = self.Fc_top * self.D_top # maximum storage m
+        self.MaxStoTop = self.poros_top * self.D_top # maximum storage m
 
         # root-zone layer is a bucket, receives infiltration and returnflow, outflows
         # are transpiration and drainage
@@ -225,7 +225,7 @@ class BucketGrid(object):
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
 
         # organic top layer; maximum that can be hold is Fc
-        self.Wliq_top = self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps)
+        self.Wliq_top = self.poros_top * self.WatStoTop / (self.MaxStoTop + eps)
         #self.Wliq_top = np.where(self.PondSto > 0, self.poros_top * self.WatStoTop / (self.MaxStoTop + eps), self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps))
         
         self.Ree = self.relative_evaporation()
