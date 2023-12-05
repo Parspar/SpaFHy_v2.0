@@ -224,7 +224,7 @@ class BucketGrid(object):
         self.Rew = np.maximum(0.0,
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
 
-        # organic top layer; maximum that can be hold is Fc
+        # organic top layer; maximum that can be hold is Fc or poros
         self.Wliq_top = self.poros_top * self.WatStoTop / (self.MaxStoTop + eps)
         #self.Wliq_top = np.where(self.PondSto > 0, self.poros_top * self.WatStoTop / (self.MaxStoTop + eps), self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps))
         

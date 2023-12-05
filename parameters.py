@@ -11,11 +11,11 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2020-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'simtype': 'TOP', # 1D, TOP, 2D,
+            'start_date': '2011-01-01',  # '2011-01-01', for tests: '2020-01-01'
             'end_date': '2021-09-01', # 2021-09-01,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2020-09-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2013-09-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -189,7 +189,7 @@ def parameters(folder=''):
             'org_poros': 0.448, # porosity (-)
             'org_fc': 0.33, # field capacity (-)
             'org_rw': 0.15, # critical vol. moisture content (-) for decreasing phase in Ef
-            'maxpond': 0.01,
+            'maxpond': 0.02,
             # rootzone layer
             'root_depth': 0.3, # depth of rootzone layer (m)
             'root_sat': 0.6, # root zone saturation ratio (-)
@@ -213,7 +213,7 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {'dt': 86400.0, # timestep (s)
-            'm': 0.025, # 0.025, scaling depth (m) or 0.01
+            'm': 0.01, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
             'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
@@ -230,28 +230,28 @@ def topsoil():
         'mineral':{
             'topsoil_id': 1,
             'org_depth': 0.05,
-            'org_poros': 0.3,
+            'org_poros': 0.9,
             'org_fc': 0.3,
             'org_rw': 0.2
             },
         'fen':{
             'topsoil_id': 2,
             'org_depth': 0.05,
-            'org_poros': 0.88,
+            'org_poros': 0.9,
             'org_fc': 0.65,
             'org_rw': 0.3
             },
         'peatland':{
             'topsoil_id': 3,
             'org_depth': 0.05,
-            'org_poros': 0.88,
+            'org_poros': 0.9,
             'org_fc': 0.65,
             'org_rw': 0.3
             },
         'openmire':{
             'topsoil_id': 4,
             'org_depth': 0.05,
-            'org_poros': 0.88,
+            'org_poros': 0.9,
             'org_fc': 0.65,
             'org_rw': 0.3
             }
@@ -265,7 +265,6 @@ def soilprofiles():
     Properties of soil profiles.
     Note z is elevation of lower boundary of layer (soil surface at 0.0),
     e.g. z = [-0.05, -0.15] means first layer tickness is 5 cm and second 10 cm.
-    Output 'soil_rootzone_moisture' is calculated for two first layers.
     """
     soilp = {
         'CoarseTextured':{
