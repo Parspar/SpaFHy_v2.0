@@ -12,10 +12,10 @@ def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': 'TOP', # 1D, TOP, 2D,
-            'start_date': '2011-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'start_date': '2020-01-01',  # '2011-01-01', for tests: '2020-01-01'
             'end_date': '2021-09-01', # 2021-09-01,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2013-09-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2020-09-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
