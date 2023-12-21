@@ -114,10 +114,10 @@ def read_cpy_gisdata(fpath, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # tree height [m]
-    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'hc.dat'))
+    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'hc_aurela.dat')) # average
 
     # canopy closure [-]
-    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cf.dat'))
+    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cf_average.dat')) # average
 
 
     # leaf area indices
@@ -126,14 +126,14 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))
         LAI_conif = LAI_pine + LAI_spruce
     except:
-        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.dat')) # average
+        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif_aurela.dat')) # average
     try:
-        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.dat'))
-        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.dat'))
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
+        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub_aurela.dat')) # average
+        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass_aurela.dat')) # average
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_aurela.dat')) # average
         #LAI_decid = LAI_decid + LAI_grass + LAI_shrub
     except:
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.dat'))
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_aurela.dat')) # average
 
 
     # for stability, lets replace zeros with eps

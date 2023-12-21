@@ -11,11 +11,11 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': 'TOP', # 1D, TOP, 2D,
-            'start_date': '2020-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'simtype': '1D', # 1D, TOP, 2D,
+            'start_date': '2011-01-01',  # '2011-01-01', for tests: '2020-01-01'
             'end_date': '2021-09-01', # 2021-09-01,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2020-09-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2013-09-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -78,10 +78,10 @@ def parameters(folder=''):
                     #['canopy_throughfall', 'throughfall to moss or snow [mm d-1]'],
                     ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
                     ['canopy_water_closure', 'canopy water balance error [mm d-1]'],
-                    #['canopy_phenostate', 'canopy phenological state [-]'],
+                    ['canopy_phenostate', 'canopy phenological state [-]'],
                     ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     #['canopy_degree_day_sum', 'sum of degree days [degC]'],
-                    #['canopy_fLAI', 'state of LAI'],
+                    ['canopy_fLAI', 'state of LAI'],
                     ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
                     ['canopy_snowfall', 'canopy snowfall'],
                     ['top_baseflow', 'topmodel baseflow [mm d-1]'],
