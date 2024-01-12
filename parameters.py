@@ -26,7 +26,7 @@ def parameters(folder=''):
             'spatial_radiation_file': r'C:\SpaFHy_v1_Pallas_2D\obs\rad_ds.nc', # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(folder+r'/parameters')),
-            'forcing_file': str(pathlib.Path(folder+r'/forcing/Kenttarova_forcing_era5.csv')),
+            'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING_KENTTAROVA_final.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
             'results_folder': r'F:\SpaFHy_2D_2021/',
@@ -189,6 +189,8 @@ def parameters(folder=''):
             'org_poros': 0.448, # porosity (-)
             'org_fc': 0.33, # field capacity (-)
             'org_rw': 0.15, # critical vol. moisture content (-) for decreasing phase in Ef
+            'org_ksat': 1E-04,
+            'org_beta': 6.0,
             'maxpond': 0.02,
             # rootzone layer
             'root_depth': 0.3, # depth of rootzone layer (m)
@@ -213,7 +215,7 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {'dt': 86400.0, # timestep (s)
-            'm': 0.01, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
+            'm': 0.025, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
             'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
@@ -232,28 +234,36 @@ def topsoil():
             'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.3,
-            'org_rw': 0.2
+            'org_rw': 0.2,
+            'org_ksat': 1E-03,
+            'org_beta': 6.0
             },
         'fen':{
             'topsoil_id': 2,
             'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.65,
-            'org_rw': 0.3
+            'org_rw': 0.3,
+            'org_ksat': 1E-03,
+            'org_beta': 6.0
             },
         'peatland':{
             'topsoil_id': 3,
             'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.65,
-            'org_rw': 0.3
+            'org_rw': 0.3,
+            'org_ksat': 1E-03,
+            'org_beta': 6.0
             },
         'openmire':{
             'topsoil_id': 4,
             'org_depth': 0.05,
             'org_poros': 0.9,
             'org_fc': 0.65,
-            'org_rw': 0.3
+            'org_rw': 0.3,
+            'org_ksat': 1E-03,
+            'org_beta': 6.0
             }
         }
     return topsoil
@@ -267,44 +277,44 @@ def soilprofiles():
     e.g. z = [-0.05, -0.15] means first layer tickness is 5 cm and second 10 cm.
     """
     soilp = {
-        'CoarseTextured':{
+        'CoarseTextured':{ # Launiainen et al. 2021
             'soil_id': 1.0,
             'z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.348],
-                    'ThetaR': [0.03],
-                    'alpha': [0.054],
-                    'n': [1.293]},
+                    'ThetaS': [0.41], # Launiainen et al. 2021
+                    'ThetaR': [0.05], # Launiainen et al. 2021
+                    'alpha': [0.024], # Launiainen et al. 2021
+                    'n': [1.2]}, # Launiainen et al. 2021
             'saturated_conductivity': [1E-05],
                 },
         'MediumTextured':{
             'soil_id': 2.0,
             'z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.448], # MEASURED AND OPTIMIZED PARAMETER
-                    'ThetaR': [0.03], # MEASURED AND OPTIMIZED PARAMETER
-                    'alpha': [0.054], # MEASURED AND OPTIMIZED PARAMETER
-                    'n': [1.293]}, # MEASURED AND OPTIMIZED PARAMETER
+                    'ThetaS': [0.43], # Launiainen et al. 2019
+                    'ThetaR': [0.05], # Launiainen et al. 2019
+                    'alpha': [0.024], # Launiainen et al. 2019
+                    'n': [1.2]}, # # Launiainen et al. 2021
             'saturated_conductivity': [1E-05],
                 },
         'FineTextured':{
             'soil_id': 3.0,
             'z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.443],
-                    'ThetaR': [0.03],
-                    'alpha': [0.054],
-                    'n': [1.293]},
+                    'ThetaS': [0.6],
+                    'ThetaR': [0.07],
+                    'alpha': [0.018],
+                    'n': [1.16]},
             'saturated_conductivity': [1E-05],
                 },
         'Peat':{
             'soil_id': 4.0,
             'z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.88],  # MEASURED AND OPTIMIZED PARAMETER
-                    'ThetaR': [0.196], # MEASURED AND OPTIMIZED PARAMETER
-                    'alpha': [0.072],  # MEASURED AND OPTIMIZED PARAMETER
-                    'n': [1.255]}, # MEASURED AND OPTIMIZED PARAMETER
+                    'ThetaS': [0.88],  # MEASURED
+                    'ThetaR': [0.196], # MEASURED 
+                    'alpha': [0.072],  # MEASURED 
+                    'n': [1.255]}, # MEASURED
             'saturated_conductivity': [1E-05], # MEASURED
                 }
         }
@@ -319,7 +329,7 @@ def rootproperties():
     n, alpha, Ksat, beta
     """
     psoil = {
-            'CoarseTextured':
+            'CoarseTextured': # Launiainen et al. 2019
                  {'root_airentry': 20.8,
                   'root_alpha': 0.024,
                   'root_beta': 3.1,
@@ -331,41 +341,41 @@ def rootproperties():
                   'root_wp': 0.10,
                   'root_wr': 0.05,
                  },
-             'MediumTextured':
+             'MediumTextured': # Launiainen et al. 2019
                  {'root_airentry': 20.8,
                   'root_alpha': 0.024,
                   'root_beta': 4.7,
                   'root_fc': 0.33,
                   'root_ksat': 1E-05,
                   'root_n': 1.2,
-                  'root_poros': 0.448,
+                  'root_poros': 0.43,
                   'soil_id': 2.0,
                   'root_wp': 0.13,
                   'root_wr': 0.05,
                  },
-             'FineTextured':
+             'FineTextured': # Launiainen et al. 2019
                  {'root_airentry': 34.2,
-                  'root_alpha': 0.018, # van genuchten parameter
+                  'root_alpha': 0.018,
                   'root_beta': 7.9,
                   'root_fc': 0.34,
-                  'root_ksat': 1E-05, # saturated hydraulic conductivity
-                  'root_n': 1.16, # van genuchten parameter
-                  'root_poros': 0.443, # porosity (-)
+                  'root_ksat': 1E-06, 
+                  'root_n': 1.16, 
+                  'root_poros': 0.5, 
                   'soil_id': 3.0,
-                  'root_wp': 0.25, # wilting point (-)
+                  'root_wp': 0.25,
                   'root_wr': 0.07,
                  },
              'Peat':
-                 {'root_airentry': 29.2,
-                  'root_alpha': 0.08, # Menbery et al. 2021
-                  'root_beta': 6.0,
-                  'root_fc': 0.53, # MEASURED
-                  'root_ksat': 3E-04, # MEASURED
+                 {'root_airentry': 29.2, # Launiainen et al. 2019
+                  'root_alpha': 0.08, # Menberu et al. 2021
+                  'root_beta': 6.0, # Launiainen et al. 2019
+                  'root_fc': 0.53, # Menberu et al. 2021
+                  'root_ksat': 3E-04, # MEASURED BY Autio et al. 2023
                   'root_n': 1.75, # Menbery et al. 2021
-                  'root_poros': 0.888, # MEASURED
-                  'soil_id': 4.0,
+                  'root_poros': 0.888, # Autio et al. 2023 or Muhic et al. 2023
+                  'soil_id': 4.0, 
                   'root_wp': 0.36, # Menbery et al. 2021
-                  'root_wr': 0.0,
+                  'root_wr': 0.0, # Launiainen et al. 2019
                  },
               'Humus':
                  {'root_airentry': 29.2,

@@ -114,7 +114,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # tree height [m]
-    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'hc_aurela.dat')) # average
+    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'hc_average.dat')) # average / aurela
 
     # canopy closure [-]
     cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cf_average.dat')) # average
@@ -126,14 +126,14 @@ def read_cpy_gisdata(fpath, plotgrids=False):
         LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))
         LAI_conif = LAI_pine + LAI_spruce
     except:
-        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif_aurela.dat')) # average
+        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif_average.dat')) # average / aurela
     try:
-        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub_aurela.dat')) # average
-        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass_aurela.dat')) # average
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_aurela.dat')) # average
+        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub_average.dat')) # average / aurela
+        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass_average.dat')) # average / aurela
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_average.dat')) # average / aurela
         #LAI_decid = LAI_decid + LAI_grass + LAI_shrub
     except:
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_aurela.dat')) # average
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_average.dat')) # average / aurela
 
 
     # for stability, lets replace zeros with eps
@@ -338,6 +338,8 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
             data['org_rw'][yx] = value['org_rw']
+            data['org_ksat'][yx] = value['org_ksat']
+            data['org_beta'][yx] = value['org_beta']
 
     if spatial == True:
         for key, value in rootp.items():
