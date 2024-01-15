@@ -80,7 +80,7 @@ class SpaFHy():
         self.simtype = pgen['simtype']
 
         """--- initialize BucketGrid ---"""
-        self.bu = BucketGrid(psoil)
+        self.bu = BucketGrid(psoil, pgen['org_drain'])
 
         """--- initialize CanopyGrid ---"""
         self.cpy = CanopyGrid(pcpy, pcpy['state'], dist_rad_file=pgen['spatial_radiation_file'])

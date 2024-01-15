@@ -60,41 +60,6 @@ class CanopyGrid():
         # canopy parameters and state
         self.hc = state['hc'] + eps
         self.cf = state['cf'] + eps
-
-        '''
-        state['lai_decid'] = state['lai_decid_max']
-
-        ptypes = {}
-        LAI = 0.0
-
-        for pt in list(spec_para.keys()):
-            ptypes[pt] = spec_para[pt]
-            ptypes[pt]['LAImax'] = state['lai_' + pt]
-
-        self.ptypes = ptypes
-
-        # compute gridcell average LAI and photosynthesis-stomatal conductance parameters:
-        LAI = 0.0
-        Amax = 0.0
-        q50 = 0.0
-        g1 = 0.0
-        for pt in self.ptypes.keys():
-            if self.ptypes[pt]['lai_cycle']:
-                pt_lai = self.ptypes[pt]['LAImax'] * self.phenopara['lai_decid_min']
-            else:
-                pt_lai = self.ptypes[pt]['LAImax']
-
-            LAI += pt_lai
-            Amax += pt_lai * ptypes[pt]['amax']
-            q50 += pt_lai * ptypes[pt]['q50']
-            g1 += pt_lai * ptypes[pt]['g1']
-
-        self.LAI = LAI + eps
-        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
-
-        del Amax, q50, g1, pt, LAI, pt_lai
-        '''
-
         self._LAIconif = np.maximum(state['lai_conif'], eps)  # m2m-2
         self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
         self._LAIgrass_max = state['lai_grass']
@@ -113,12 +78,10 @@ class CanopyGrid():
             dl = daylength(lat, doy)
             ix = np.max(np.where(dl > self.phenopara['sdl']))
             self.phenopara['sso'][self.latitude == lat] = doy[ix]  # this is onset date for senescence
-#            print(lat, doy[ix])
             del ix
+            
         self.phenopara['sso'] = self.phenopara['sso'] * cmask
 
-        # self.cpara = cpara  # added new parameters self.cpara['kmt'],
-        # self.cpara['kmr'] here for testing radiation-based snow melt model
         self.wmax = cpara['interc']['wmax']
         self.wmaxsnow = cpara['interc']['wmaxsnow']
         self.Kmelt = cpara['snow']['kmelt']

@@ -82,6 +82,13 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
             print('*** TOPMODEL run')
     elif pgen['simtype'] == '1D':
             print('*** 1D run')
+            
+    if pgen['org_drain'] == True:
+            print('*** Bucket organic layer drains according to Campbell 1985')
+    else:
+            print('*** Bucket organic layer as in Launiainen et al., 2019')
+            
+
 
 
 
@@ -151,13 +158,16 @@ def preprocess_parameters(folder=''):
     topsoil = topsoil()
     gisdata = {}
     ptopmodel = ptopmodel()
+    
+    if pgen['simtype'] == '2D':
+        pgen['mask_streams'] = False # to make sure streams are not masked with 2D
 
     if pgen['spatial_soil']:
-        gisdata.update(read_soil_gisdata(pgen['gis_folder']))
+        gisdata.update(read_soil_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
     if pgen['spatial_cpy']:
-        gisdata.update(read_cpy_gisdata(pgen['gis_folder']))
+        gisdata.update(read_cpy_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
     if pgen['spatial_forcing']:
-        gisdata.update(read_forcing_gisdata(pgen['gis_folder']))
+        gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
         pgen.update({'forcing_id': gisdata['forcing_id']})
     if (pgen['spatial_cpy'] == False and
         pgen['spatial_soil'] == False and
@@ -169,7 +179,7 @@ def preprocess_parameters(folder=''):
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
     if pgen['simtype'] == 'TOP':
-        gisdata.update(read_top_gisdata(pgen['gis_folder']))
+        gisdata.update(read_top_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
         ptopmodel = preprocess_topdata(ptopmodel, gisdata, spatial=True)
 
 

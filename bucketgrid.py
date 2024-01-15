@@ -12,7 +12,7 @@ class BucketGrid(object):
     """
     Two-layer soil water bucket model for gridded use in SpaFHy.
     """
-    def __init__(self, spara):
+    def __init__(self, spara, org_drain):
         """
         Initializes BucketGrid:
         Args:
@@ -37,20 +37,30 @@ class BucketGrid(object):
         """
 
         """ set object properties. All will be 1d or 2d arrays of same shape """
+        # organic layer drainage True/False
+        self.org_drain = org_drain
+        
         # above-ground pond storage [m]
         self.MaxPond = spara['maxpond']
 
         # top layer is interception storage, which capacity depends on its depth [m]
-        # and field capacity
+        # and field capacity/porosity
         self.D_top = spara['org_depth']     # depth, m3 m-3
         self.poros_top = spara['org_poros'] # porosity, m3 m-3
         self.Fc_top = spara['org_fc']       # field capacity m3 m-3
-        self.Ksat_top = spara['org_ksat']       # sat. hydr. cond., m s-1
-        self.beta_top = spara['org_beta']           # hyd. cond. exponent, -
         self.rw_top = spara['org_rw']       # ree parameter m3 m-3
-        self.MaxStoTop = self.poros_top * self.D_top # maximum storage m
-        self.MaxStoTopInt = self.Fc_top * self.D_top # maximum storage for interception m
-
+        
+        # top layer maximum storage depends on org_drain option:
+        if self.org_drain == True: # different maximum for interception and total storages
+            self.MaxStoTop = self.poros_top * self.D_top # maximum storage, m
+            self.Ksat_top = spara['org_ksat']       # sat. hydr. cond., m s-1
+            self.beta_top = spara['org_beta']       # hyd. cond. exponent, -
+        elif self.org_drain == False: # same maximum for interception and total storages
+            self.MaxStoTop = self.Fc_top * self.D_top # maximum storage, m
+            
+        # maximum interception storage
+        self.MaxStoTopInt = self.Fc_top * self.D_top # maximum storage for interception, m
+        
         # root-zone layer is a bucket, receives infiltration and returnflow, outflows
         # are transpiration and drainage
         self.D_root = spara['root_depth']             # depth, m
@@ -73,7 +83,7 @@ class BucketGrid(object):
         except:
             pass
 
-        self.Wliq_top = self.poros_top *self.WatStoTop / (self.MaxStoTop + eps)
+        self.Wliq_top = (self.MaxStoTop / self.D_top) * self.WatStoTop / (self.MaxStoTop + eps)
         self.Ree = np.maximum(0.0, np.minimum(
                 0.98*self.Wliq_top / self.rw_top, 1.0)) # relative evaporation rate (-)
 
@@ -90,8 +100,9 @@ class BucketGrid(object):
         self.Rew = np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0)
 
         # drainage to rootzone
-        self.drain_top = np.full_like(self.Wliq_top, 0.0)
-        self.drain_top[np.isnan(self.Wliq_top)] = np.nan
+        if self.org_drain == True:
+            self.drain_top = np.full_like(self.Wliq_top, 0.0)
+            self.drain_top[np.isnan(self.Wliq_top)] = np.nan
         
         # grid total drainage to ground water [m]
         self._drainage_to_gw = 0.0
@@ -148,17 +159,13 @@ class BucketGrid(object):
         evap = np.minimum(evap, self.WatStoTop)
         self.WatStoTop -= evap
         
-        # J-P 9.1.2024
-        hydr_cond = True
-        if hydr_cond == True:
-            self.Wliq_top = self.poros_top * self.WatStoTop / (self.MaxStoTop + eps)
+        if self.org_drain == True: # drainage according to Campbell 1985
+            self.Wliq_top = (self.MaxStoTop / self.D_top) * self.WatStoTop / (self.MaxStoTop + eps)
             self.drain_top = np.minimum(self.hydrCond_top() * dt, np.maximum(0.0, (self.Wliq_top - self.Fc_top))*self.D_top)
-            rr = rr - interc + self.drain_top
+            rr = rr - interc + self.drain_top # infiltration/drainage to rootzone
             self.WatStoTop -= self.drain_top
-        else:
-            # infiltration to rootzone
-            rr = rr - interc
-
+        elif self.org_drain == False: # organic layer as in Launiainen et al., 2019
+            rr = rr - interc # infiltration to rootzone
 
         # ********* compute bottom layer (root zone) water balance ***********
 
@@ -239,13 +246,9 @@ class BucketGrid(object):
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
 
         # organic top layer; maximum that can be hold is Fc or poros
-        self.Wliq_top = self.poros_top * self.WatStoTop / (self.MaxStoTop + eps)
+        self.Wliq_top = (self.MaxStoTop / self.D_top) * self.WatStoTop / (self.MaxStoTop + eps) 
         self.Sat_top = self.Wliq_top / self.poros_top
-        #self.Wliq_top = np.where(self.PondSto > 0, self.poros_top * self.WatStoTop / (self.MaxStoTop + eps), self.Fc_top * self.WatStoTop / (self.MaxStoTop + eps))
-        
         self.Ree = self.relative_evaporation()
-
-        # J-P! Jos ditch-soluissa ei ole juuristokerrosta niin lisää tämä jotta konsistentti canopyn kanssa:
         self.Wliq_top[self.D_top == 0] = np.NaN
         self.Ree[self.D_top == 0] = eps # vie canopyn Efloor'in nollaan (mass-balance consistency)
 

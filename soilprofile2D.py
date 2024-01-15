@@ -18,8 +18,7 @@ apply_vectorized = np.vectorize(lambda f, x: f(x))
 class SoilGrid_2Dflow(object):
     """
     2D soil water flow model based on Ari Lauren SUSI2D
-    Simulates moss/organic layer with interception and evaporation,
-    soil water storage, and drainage to ditches.
+    Simulates deep soil water storage, and drainage to ditches.
     """
     def __init__(self, spara):
         """
@@ -35,14 +34,8 @@ class SoilGrid_2Dflow(object):
                 'gwl_to_Tr'
                 'gwl_to_C'
                 'gwl_to_rootmoist'
-                # organic (moss) layer
-                'org_depth': depth of organic top layer (m)
-                'org_poros': porosity (-)
-                'org_fc': field capacity (-)
-                'org_rw': critical vol. moisture content (-) for decreasing phase in Ef
                 # initial states
                 'ground_water_level': groundwater depth [m]
-                'org_sat': organic top layer saturation ratio (-)
         """
 
         """ deep soil """
@@ -90,8 +83,6 @@ class SoilGrid_2Dflow(object):
             self.deep_fc0[self.soiltype == key] = value(-0.7 - 0.1)
             self.deep_fc1[self.soiltype == key] = value(-1.2 - 0.1)
             self.deep_wp[self.soiltype == key] = value(-150.0 - 0.1)
-
-        #self.Rew = 1.0
 
         """ parameters for 2D solution """
         # parameters for solving
@@ -162,36 +153,6 @@ class SoilGrid_2Dflow(object):
         """
         self.tmstep += 1
 
-        '''
-        # for computing mass balance later
-        state0 = self.Wsto + self.Wsto_top + rr
-
-        # moss/organic layer interception & water balance
-        interc = np.maximum(0.0, (self.Wsto_top_max - self.Wsto_top))\
-                    * (1.0 - np.exp(-(rr / (self.Wsto_top_max + eps))))
-        rr -= interc  # to soil profile
-        self.Wsto_top += interc
-        evap = np.minimum(evap, self.Wsto_top)
-        self.Wsto_top -= evap
-
-        # source/sink during dt [m]
-        S = rr - tr
-        # air volume [m]
-        airv = np.maximum(0.0, self.Wsto_max - self.Wsto)
-        # remove water that cannot fit into soil
-        S = np.minimum(S, airv)
-
-        # replace nans (values outside catchment area)
-        S[np.isnan(S)] = 0.0
-
-        # inflow excess - either into moss or surface runoff
-        exfil = rr - (S + tr)
-        # water that can fit in top layer
-        to_top_layer = np.minimum(exfil, self.Wsto_top_max - self.Wsto_top)
-        self.Wsto_top += to_top_layer
-        # route remaining to surface runoff
-        surface_runoff = exfil - to_top_layer
-        '''
         # for computing mass balance later, RR: drainage from bucketgrid
         S = RR
         S[np.isnan(S)] = 0.0
@@ -416,13 +377,6 @@ class SoilGrid_2Dflow(object):
         for key, value in self.gwl_to_rootmoist.items():
             self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
             
-        # This is limit transpiration when gwl < -0.7 which is not what we want here.
-        # # Koivusalo et al. 2008 HESS without wet side limit
-        # self.Rew = np.where(self.rootmoist > self.root_fc1,
-        #                     np.minimum(1.0, 0.5*(1 + (self.rootmoist - self.root_fc1)/(self.root_fc0 - self.root_fc1))),
-        #                     np.maximum(0.0, 0.5*(self.rootmoist - self.root_wp)/(self.root_fc1 - self.root_wp))
-        #                     )
-
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
         netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow - self.qr)
@@ -438,14 +392,9 @@ class SoilGrid_2Dflow(object):
         
         results = {
                 'ground_water_level': self.h,  # [m]
-                #'infiltration': (S - tr) * 1e3,  # [mm d-1]
-                #'surface_runoff': surface_runoff * 1e3,  # [mm d-1]
-                #'evaporation': evap * 1e3,  # [mm d-1]
                 'lateral_netflow': -lateral_flow * 1e3,  # [mm d-1]
                 'netflow_to_ditch': netflow_to_ditch * 1e3,  # [mm d-1]
-                #'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'water_closure': mbe * 1e3,  # [mm d-1]
-                #'transpiration_limitation': self.Rew,  # [-]
                 'moisture_deep': self.deepmoist,  # [m3 m-3]
                 'water_storage': (self.Wsto_deep) * 1e3, # [mm]
                 }
@@ -603,7 +552,3 @@ def transmissivity(dz, Ksat, gwl):
             Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
             Tr = sum(Trans[ix])
     return Tr
-
-nan_function = interp1d(np.array([np.nan, np.nan]),
-                        np.array([np.nan, np.nan]),
-                        fill_value='extrapolate')

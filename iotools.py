@@ -17,7 +17,7 @@ import re
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
 
-def read_soil_gisdata(fpath, plotgrids=False):
+def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -79,7 +79,11 @@ def read_soil_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
+            if mask_streams == True:
+                gis[key] *= cmask * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
+            elif mask_streams == False:
+                gis[key] *= cmask
+                
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -95,7 +99,7 @@ def read_soil_gisdata(fpath, plotgrids=False):
                 'yllcorner': yllcorner})
     return gis
 
-def read_cpy_gisdata(fpath, plotgrids=False):
+def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -161,7 +165,11 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask * ditch_mask
+            if mask_streams == True:
+                gis[key] *= cmask * ditch_mask
+            elif mask_streams == False:
+                gis[key] *= cmask
+                
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
@@ -178,7 +186,7 @@ def read_cpy_gisdata(fpath, plotgrids=False):
 
     return gis
 
-def read_top_gisdata(fpath, plotgrids=False):
+def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -230,7 +238,11 @@ def read_top_gisdata(fpath, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            gis[key] *= cmask * ditch_mask
+            if mask_streams == True:
+                gis[key] *= cmask * ditch_mask
+            elif mask_streams == False:
+                gis[key] *= cmask
+                
         elif key == 'ditches':
             gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
