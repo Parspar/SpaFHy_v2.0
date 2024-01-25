@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 """
 PARAMETERS
@@ -11,11 +10,11 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2020-10-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2021-08-01', # 2021-09-01,
+            'simtype': 'TOP', # 1D, TOP, 2D,
+            'start_date': '1980-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'end_date': '2021-12-31', # 2021-09-01,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2020-10-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '1980-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -24,14 +23,14 @@ def parameters(folder=''):
             'topmodel': True,
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
-            'spatial_radiation_file': r'C:\SpaFHy_v1_Pallas_2D\obs\rad_ds.nc', # if spatial radiation file, otherwise None
+            'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(folder+r'/parameters')),
-            'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING_KENTTAROVA_final.csv')),
+            'gis_folder': str(pathlib.Path(folder+r'/hyytiala')),
+            'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
-            'mask_streams': True,
-            'results_folder': r'F:\SpaFHy_2D_2021/',
+            'mask_streams': False,
+            'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
@@ -49,21 +48,22 @@ def parameters(folder=''):
                     ['parameters_sitetype', 'sitetype'],
                     ['parameters_twi', 'twi'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
+                    ['forcing_relative_humidity', 'relative humidity [%]'],
                     ['forcing_precipitation', 'precipitation [mm d-1]'],
                     ['forcing_vapor_pressure_deficit', 'vapor pressure deficit [kPa]'],
                     ['forcing_global_radiation', 'global radiation [Wm-2]'],
                     ['forcing_wind_speed','wind speed [m s-1]'],
-                    ['bucket_pond_storage', 'pond storage [m]'],
+                    #['bucket_pond_storage', 'pond storage [m]'],
                     ['bucket_moisture_top', 'volumetric water content of moss layer [m3 m-3]'],
                     ['bucket_moisture_root', 'volumetric water content of rootzone [m3 m-3]'],
-                    ['bucket_potential_infiltration', 'potential infiltration [mm d-1]'],
+                    #['bucket_potential_infiltration', 'potential infiltration [mm d-1]'],
                     ['bucket_surface_runoff', 'surface runoff [mm d-1]'],
                     ['bucket_evaporation', 'evaporation from soil surface [mm d-1]'],
-                    ['bucket_drainage', 'drainage from root layer [mm d-1]'],
-                    ['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
-                    ['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
-                    ['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
-                    ['bucket_storage_change', 'bucket water storage change (top and root) [mm d-1]'],
+                    #['bucket_drainage', 'drainage from root layer [mm d-1]'],
+                    #['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
+                    #['bucket_water_storage_top', 'bucket water storage (top) [mm d-1]'],
+                    #['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
+                    #['bucket_storage_change', 'bucket water storage change (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
                     ['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],
                     ['soil_water_storage', 'soil water storage (deeplayer) [m]'],
@@ -80,22 +80,21 @@ def parameters(folder=''):
                     #['canopy_throughfall', 'throughfall to moss or snow [mm d-1]'],
                     ['canopy_snow_water_equivalent', 'snow water equivalent [mm]'],
                     ['canopy_water_closure', 'canopy water balance error [mm d-1]'],
-                    ['canopy_phenostate', 'canopy phenological state [-]'],
-                    ['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
+                    #['canopy_phenostate', 'canopy phenological state [-]'],
+                    #['canopy_leaf_area_index', 'canopy leaf area index [m2 m-2]'],
                     #['canopy_degree_day_sum', 'sum of degree days [degC]'],
-                    ['canopy_fLAI', 'state of LAI'],
-                    ['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
-                    ['canopy_snowfall', 'canopy snowfall'],
+                    #['canopy_fLAI', 'state of LAI'],
+                    #['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
+                    #['canopy_snowfall', 'canopy snowfall'],
                     ['top_baseflow', 'topmodel baseflow [mm d-1]'],
                     ['top_water_closure', 'topmodel water balance error [mm d-1]'],
                     ['top_returnflow', 'topmodel returnflow [mm d-1]'],
-                    ['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
-                    ['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
-                    ['top_saturation_deficit', 'topmodel saturation deficit [m]'],
-                    ['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
-                    ['top_saturated_area', 'topmodel saturated area [-]'],
-                    ['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
-
+                    #['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
+                    #['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
+                    #['top_saturation_deficit', 'topmodel saturation deficit [m]'],
+                    #['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
+                    #['top_saturated_area', 'topmodel saturated area [-]'],
+                    #['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
                     ]
              }
 

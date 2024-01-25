@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile2D import gwl_Wsto, nan_function
+from soilprofile2D import gwl_Wsto
 from koordinaattimuunnos import koordTG
 from topmodel import twi as twicalc
 import re
@@ -33,16 +33,16 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # soil classification
-    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'soil_id_peatsoils.dat')) # soil_id_peatsoils.dat
+    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc')) # soil_id_peatsoils.dat
 
     # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat')) # ditches.dat
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
     ditches[ditches == np.nan] = 0.0
     ditches = np.where(ditches == 0, np.nan, -1)
     
     # site type
     try:
-        sitetype, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'sitetype.dat'))
+        sitetype, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'site_main_class.asc'))
     except:
         print('Constant sitetype')
         sitetype = np.full_like(soilclass, 1.0)
@@ -50,14 +50,14 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     # dem
     try:
-        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem_d8_filled.dat')) # dem_d8_filled.dat
+        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc')) # dem_d8_filled.dat
     except:
         print('Constant elevation')
         dem = np.full_like(soilclass, 0.0)
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
-    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat')) # cmask.dat
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc')) # cmask.dat
     else:
         cmask = np.ones(np.shape(soilclass))
     
@@ -81,11 +81,11 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
                 gis[key] *= cmask * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
-            elif mask_streams == False:
-                gis[key] *= cmask
+            #elif mask_streams == False:
+                #gis[key] *= cmask
                 
         elif key == 'ditches':
-            gis[key] *= cmask
+            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -118,28 +118,29 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # tree height [m]
-    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'hc_average.dat')) # average / aurela
+    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_height.asc')) # average / aurela
 
     # canopy closure [-]
-    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cf_average.dat')) # average
+    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_fraction.asc')) # average
 
 
     # leaf area indices
     try:
-        LAI_pine, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_pine.dat'))
-        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.dat'))
+        LAI_pine, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_pine.asc'))
+        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.asc'))
         LAI_conif = LAI_pine + LAI_spruce
     except:
-        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif_average.dat')) # average / aurela
+        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.asc')) # average / aurela
     try:
-        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub_average.dat')) # average / aurela
-        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass_average.dat')) # average / aurela
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_average.dat')) # average / aurela
+        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.asc')) # average / aurela
+        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.asc')) # average / aurela
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.asc')) # average / aurela
         #LAI_decid = LAI_decid + LAI_grass + LAI_shrub
     except:
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid_average.dat')) # average / aurela
+        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.asc')) # average / aurela
 
-
+    LAI_grass = 0.5 * LAI_decid # NOTE THESE!
+    LAI_shrub = 0.1 * LAI_conif
     # for stability, lets replace zeros with eps
     #LAI_decid[LAI_decid == 0.0] = eps
     #LAI_conif[LAI_conif == 0.0] = eps
@@ -147,12 +148,12 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
         cmask = np.ones(np.shape(hc))
 
     # ditches, no stand in ditch cells
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat')) # ditches.dat / ditches_edit.dat
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat / ditches_edit.dat
     ditches = np.where(ditches == 0, np.nan, -1)
 
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
@@ -167,11 +168,11 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
                 gis[key] *= cmask * ditch_mask
-            elif mask_streams == False:
-                gis[key] *= cmask
+            #elif mask_streams == False:
+                #gis[key] *= cmask
                 
         elif key == 'ditches':
-            gis[key] *= cmask
+            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -203,25 +204,25 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # flow accumulation
-    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flowacc_p.dat')) # flowacc_p.dat
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flow_accumulation.asc')) # flowacc_p.dat
     flowacc = flowacc #+ eps
     # slope
-    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope_old.dat')) # slope_old
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope.asc')) # slope_old
     slope = slope #+ eps
 
-    twi = np.ones(np.shape(slope))
-    twi = twicalc(flowacc=flowacc, dxy=cellsize, slope_rad=np.radians(slope), twi_method='twi') 
+    #twi = np.ones(np.shape(slope))
+    #twi = twicalc(flowacc=flowacc, dxy=cellsize, slope_rad=np.radians(slope), twi_method='twi') 
 
     # twi
-    #twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.dat'))
+    twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.asc'))
 
     # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'ditches.dat')) # ditches.dat / ditches_edit.dat
+    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat / ditches_edit.dat
     ditches = np.where(ditches == 0, np.nan, -1)
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
     if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.dat'))
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
         cmask = np.ones(np.shape(slope))
 
@@ -240,11 +241,11 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
                 gis[key] *= cmask * ditch_mask
-            elif mask_streams == False:
-                gis[key] *= cmask
+            #elif mask_streams == False:
+                #gis[key] *= cmask
                 
         elif key == 'ditches':
-            gis[key] *= cmask
+            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -445,22 +446,22 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
         ptopmodel['loc']['lat'] = gisdata['lat']
         ptopmodel['loc']['lon'] = gisdata['lon']
     
-    bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
-                         np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))     
-    n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='raw')
+    #bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
+    #                     np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))     
+    #n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='raw')
     #cutting the twi tail according to parameter twi_cutoff
-    twi_clim = np.percentile(ptopmodel['twi'][ptopmodel['twi'] > 0], ptopmodel['twi_cutoff'])
+    #twi_clim = np.percentile(ptopmodel['twi'][ptopmodel['twi'] > 0], ptopmodel['twi_cutoff'])
     #cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
-    ptopmodel['twi'][ptopmodel['twi'] > twi_clim] = twi_clim
-    bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
-                         np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))      
-    n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='cut')
-    plt.legend()
+    #ptopmodel['twi'][ptopmodel['twi'] > twi_clim] = twi_clim
+    #bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
+    #                     np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))      
+    #n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='cut')
+    #plt.legend()
     return ptopmodel
 
 
 '''
-def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
+def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0): # THIS ONE WITH HESS SAMULI FORCING
     """
     reads FMI interpolated daily weather data from file
     IN:
@@ -578,7 +579,8 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     return forcing
 '''
 
-def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
+'''
+def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0): # THIS ONE WITH OULU LAPTOP FORCING
     """
     reads FMI OBSERVED daily weather data from file
     IN:
@@ -656,17 +658,72 @@ def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0):
     fmi['CO2'] = float(CO2)
 
 
-    '''
-    dates = pd.date_range(start_date, end_date).tolist()
-    if len(dates) != len(fmi):
-        print(str(len(dates) - len(fmi)) + ' days missing from forcing file, interpolated')
-    forcing = pd.DataFrame(index=dates, columns=[])
-    forcing = forcing.merge(fmi, how='outer', left_index=True, right_index=True)
-    forcing = forcing.fillna(method='ffill')
-    '''
+    
+    #dates = pd.date_range(start_date, end_date).tolist()
+    #if len(dates) != len(fmi):
+    #    print(str(len(dates) - len(fmi)) + ' days missing from forcing file, interpolated')
+    #forcing = pd.DataFrame(index=dates, columns=[])
+    #forcing = forcing.merge(fmi, how='outer', left_index=True, right_index=True)
+    #forcing = forcing.fillna(method='ffill')
+    
     return fmi
+'''
+def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0): # THIS ONE WITH THE LATES OPA FORCING
+    """
+    reads FMI OBSERVED daily weather data from file
+    IN:
+        ID - sve catchment ID. set ID=0 if all data wanted
+        start_date - 'yyyy-mm-dd'
+        end_date - 'yyyy-mm-dd'
+        sourcefile - optional
+        CO2 - atm. CO2 concentration (float), optional
+    OUT:
+        fmi - pd.dataframe with datetimeindex
+            fmi columns:['ID','Kunta','aika','lon','lat','T','Tmax','Tmin',
+                         'Prec','Rg','h2o','dds','Prec_a','Par',
+                         'RH','esa','VPD','doy']
+            units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa],
+            Prec, Prec_a[mm], Rg,Par[Wm-2],lon,lat[deg]
+    """
 
+    # OmaTunniste;OmaItä;OmaPohjoinen;Kunta;siteid;vuosi;kk;paiva;longitude;latitude;t_mean;t_max;t_min;
+    # rainfall;radiation;hpa;lamposumma_v;rainfall_v;lamposumma;lamposumma_cum
+    # -site number
+    # -date (yyyy mm dd)
+    # -latitude (in KKJ coordinates, metres)
+    # -longitude (in KKJ coordinates, metres)
+    # -T_mean (degrees celcius)
+    # -T_max (degrees celcius)
+    # -T_min (degrees celcius)
+    # -rainfall (mm)
+    # -global radiation (per day in kJ/m2)
+    # -H2O partial pressure (hPa)
 
+    sourcefile = os.path.join(sourcefile)
+    print('*** Simulation forced with:', sourcefile)
+    ID = int(ID)
+
+    # import forcing data
+    fmi = pd.read_csv(sourcefile, sep=';', header='infer', index_col=0,
+                      parse_dates=True ,encoding="ISO-8859-1")
+    fmi = fmi.rename(columns={'t_mean': 'air_temperature', 't_max': 'Tmax',
+                              't_min': 'Tmin', 'rainfall': 'precipitation',
+                              'radiation': 'global_radiation', 'lamposumma_v': 'dds', 
+                              'rh': 'relative_humidity', 'vpd': 'vapor_pressure_deficit', 'PAR':'par'})
+    fmi.index.names = ['date']
+
+    # get desired period and catchment
+    fmi = fmi[(fmi.index >= start_date) & (fmi.index <= end_date)]
+
+    fmi['doy'] = fmi.index.dayofyear
+    # replace nan's in prec with 0.0
+    #fmi.loc[fmi['precipitation'].isna(), 'Prec'] = 0.0
+    if 'wind_speed' not in fmi:
+        fmi['wind_speed'] = float(U)
+    # add CO2 concentration to dataframe
+    fmi['CO2'] = float(CO2)
+    
+    return fmi
 
 def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     """
@@ -693,7 +750,7 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
     ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
     ycoords = np.flip(ycoords)
-
+    
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 

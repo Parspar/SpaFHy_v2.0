@@ -69,8 +69,8 @@ class BucketGrid(object):
         self.Wp_root = spara['root_wp']               # wilting point, m3 m-3
         self.Ksat_root = spara['root_ksat']           # sat. hydr. cond., m s-1
         self.beta_root = spara['root_beta']           # hyd. cond. exponent, -
-        self.MaxStoRoot = self.D_root*self.poros_root  # maximum soil water storage, m
-
+        self.MaxStoRoot = self.D_root*self.poros_root  # maximum soil water storage, mi
+        
         """
         set buckets initial state
         """
@@ -275,3 +275,4 @@ class BucketGrid(object):
         """
         f = np.maximum(0.0, np.minimum(0.98*self.Wliq_top / self.rw_top, 1.0))
         return f
+

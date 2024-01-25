@@ -49,6 +49,7 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
 
     # save parameters to results
     results = _append_results('parameters', pcpy['state'], results)
+    results = _append_results('parameters', psoil, results)    
     results = _append_results('parameters', pcpy['loc'], results)
     if pgen['simtype'] == '2D':
         results = _append_results('parameters', psoil, results)
@@ -223,6 +224,7 @@ def preprocess_forcing(pgen):
                  'par',
                  'precipitation',
                  'CO2',
+                 'relative_humidity',
                  'wind_speed']
 
     dims = ['date','i','j']

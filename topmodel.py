@@ -60,6 +60,7 @@ class Topmodel_Homogenous():
         self.CellArea = dxy**2
         self.CatchmentArea = np.size(cmask[cmask == 1])*self.CellArea
         self.qr = np.full_like(cmask, 0.0)
+        
 
         """
         local and catchment average hydrologic similarity indices (xi=twi, X).
@@ -69,7 +70,7 @@ class Topmodel_Homogenous():
         """
 
         # twi
-        twi = twi*cmask
+        #twi = twi*cmask
         #bina = len(np.arange(np.sort(twi.flatten()[~np.isnan(twi.flatten())])[0], np.sort(twi.flatten()[~np.isnan(twi.flatten())])[-1], 0.5))     
         #n, bins, patches = plt.hist((twi).flatten(), bins=bina, alpha=0.5, label='raw')
         # calculates twi-value corresponding to twi_cutoff percentile
@@ -83,9 +84,14 @@ class Topmodel_Homogenous():
         #n, bins, patches = plt.hist((twi).flatten(), bins=bina, alpha=0.5, label='cut')
         #plt.legend()
         #plt.title('TWI')
-
+        
         # local indices
         self.xi = twi
+
+        # apply cutoff
+        clim = np.percentile(self.xi[self.xi > 0], pp['twi_cutoff'])
+        self.xi[self.xi > clim] = clim
+        #self.xi = xi
 
         # catchment average indice
         self.X = 1.0 / self.CatchmentArea*np.nansum(self.xi*self.CellArea)
@@ -184,7 +190,7 @@ def twi(flowacc, dxy, slope_rad, twi_method):
     from scipy.ndimage import maximum_filter
     import numpy as np
     eps = np.finfo(float).eps  # machine epsilon
-
+    
     if twi_method == 'twi':
         xi = np.log(flowacc / dxy / (np.tan(slope_rad) + eps))
     elif twi_method == 'swi':
