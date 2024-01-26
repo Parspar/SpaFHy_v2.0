@@ -53,6 +53,7 @@ def parameters(folder=''):
                     ['forcing_vapor_pressure_deficit', 'vapor pressure deficit [kPa]'],
                     ['forcing_global_radiation', 'global radiation [Wm-2]'],
                     ['forcing_wind_speed','wind speed [m s-1]'],
+                    ['forcing_wind_direction','wind direction [degrees]'],                
                     #['bucket_pond_storage', 'pond storage [m]'],
                     ['bucket_moisture_top', 'volumetric water content of moss layer [m3 m-3]'],
                     ['bucket_moisture_root', 'volumetric water content of rootzone [m3 m-3]'],

@@ -720,6 +720,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0): 
     #fmi.loc[fmi['precipitation'].isna(), 'Prec'] = 0.0
     if 'wind_speed' not in fmi:
         fmi['wind_speed'] = float(U)
+    fmi['wind_speed'] = fmi['wind_speed'].fillna(float(U))
     # add CO2 concentration to dataframe
     fmi['CO2'] = float(CO2)
     

@@ -225,6 +225,7 @@ def preprocess_forcing(pgen):
                  'precipitation',
                  'CO2',
                  'relative_humidity',
+                 'wind_direction',
                  'wind_speed']
 
     dims = ['date','i','j']
