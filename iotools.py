@@ -60,7 +60,9 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
         cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc')) # cmask.dat
     else:
         cmask = np.ones(np.shape(soilclass))
-    
+
+    cmask[cmask >= 0] = 1
+
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
     cmask = cmask
 
@@ -81,8 +83,8 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
                 gis[key] *= cmask * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
-            #elif mask_streams == False:
-                #gis[key] *= cmask
+            elif mask_streams == False:
+                gis[key] *= cmask
                 
         elif key == 'ditches':
             #gis[key] *= cmask
@@ -147,7 +149,7 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     #hc[hc == 0.0] = eps
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
-    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
         cmask = np.ones(np.shape(hc))
@@ -157,7 +159,8 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     ditches = np.where(ditches == 0, np.nan, -1)
 
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    cmask = cmask
+    
+    cmask[cmask >= 0] = 1
 
     # dict of all rasters
     gis = {'cmask': cmask,
@@ -168,8 +171,8 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
                 gis[key] *= cmask * ditch_mask
-            #elif mask_streams == False:
-                #gis[key] *= cmask
+            elif mask_streams == False:
+                gis[key] *= cmask
                 
         elif key == 'ditches':
             #gis[key] *= cmask
@@ -221,13 +224,14 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
     ditches = np.where(ditches == 0, np.nan, -1)
 
     # catchment mask cmask[i,j] == 1, np.NaN outside
-    if os.path.isfile(os.path.join(fpath, 'cmask.dat')):
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
         cmask = np.ones(np.shape(slope))
 
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    cmask = cmask
+    
+    cmask[cmask >= 0] = 1
 
     # dict of all rasters
     gis = {'cmask': cmask,
@@ -241,8 +245,8 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
                 gis[key] *= cmask * ditch_mask
-            #elif mask_streams == False:
-                #gis[key] *= cmask
+            elif mask_streams == False:
+                gis[key] *= cmask
                 
         elif key == 'ditches':
             #gis[key] *= cmask

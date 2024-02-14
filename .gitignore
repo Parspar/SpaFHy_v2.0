@@ -117,7 +117,7 @@ rad_ds.npy
 /calibration
 /obs
 /olds
-
+/testcase_input
 
 # sandbucket, sandbox
 sand*.py
