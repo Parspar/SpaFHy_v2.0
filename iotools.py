@@ -33,8 +33,9 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # soil classification
-    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc')) # soil_id_peatsoils.dat
-
+    #soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc')) # soil_id_peatsoils.dat
+    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_type_combined.asc')) # soil_id_peatsoils.dat
+    
     # ditches
     ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
     ditches[ditches == np.nan] = 0.0
@@ -46,7 +47,6 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
     except:
         print('Constant sitetype')
         sitetype = np.full_like(soilclass, 1.0)
-
 
     # dem
     try:
@@ -65,8 +65,6 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
     cmask = cmask
-
-    #plt.imshow(cmask)
     
     # dict of all rasters
     gis = {'cmask': cmask,

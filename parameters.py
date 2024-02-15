@@ -29,7 +29,7 @@ def parameters(folder=''):
             'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
-            'mask_streams': True,
+            'mask_streams': False,
             'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
@@ -393,3 +393,213 @@ def rootproperties():
                  },
             }
     return psoil
+
+
+def rootproperties_from_sitetype():
+    """
+    1:5 based on Launiainen et al. 2022 Forests
+    6:10 based on ...
+    11:16 based on ...
+    """
+    psoil = {
+            'herb-rich': 
+                {
+                 'soil_id': 1,
+                 'root_poros': 0.58,
+                 'root_fc': 0.30, # 0.34,
+                 'root_wp': 0.13, # 0.11,
+                 'root_alpha': 4.06,
+                 'root_beta': 4.0,                    
+                 'root_n': 1.17,
+                 'root_wr': 0.0,
+                 'root_ksat': 1e-6, #1e-06,
+                 },
+            'herb-rich_heath':
+                {
+                 'soil_id': 2,
+                 'root_poros': 0.58,
+                 'root_fc': 0.30, # 0.34,
+                 'root_wp': 0.13, # 0.11,
+                 'root_alpha': 4.06,
+                 'root_beta': 4.0,                    
+                 'root_n': 1.17,
+                 'root_wr': 0.0,
+                 'root_ksat': 1e-6, #1e-06,
+                 },        
+            'mesic':
+                {
+                 'soil_id': 3,
+                 'root_poros': 0.55,
+                 'root_fc': 0.26, #0.28, # 0.26 from pF-curve
+                 'root_wp': 0.09, #0.08,
+                 'root_alpha': 4.48,
+                 'root_beta': 4.0,                    
+                 'root_n': 1.20,
+                 'root_wr': 0.0,
+                 'root_ksat': 1e-5, #1e-5,1e-6
+                 },
+            'sub-xeric':
+                {'soil_id': 4,
+                 'root_poros': 0.53,
+                 'root_fc': 0.22, #0.24,
+                 'root_wp': 0.06, #0.08,
+                 'root_alpha': 3.7,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.24,
+                 'root_wr': 0.0,
+                 'root_ksat': 5e-5, #5e-5,5e-6
+                 },
+            'xeric':
+                {'soil_id': 5,
+                 'root_poros': 0.48,
+                 'root_fc': 0.14,
+                 'root_wp': 0.04,
+                 'root_alpha': 3.8,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.42,
+                 'root_wr': 0.03,
+                 'root_ksat': 1e-4,
+                },
+            'barren': # NEEDS PARAMETERS
+                {
+                 'soil_id': 6,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'rocky': # NEEDS PARAMETERS
+                {
+                 'soil_id': 7,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'fjeld_conif': # NEEDS PARAMETERS
+                {
+                 'soil_id': 8,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'fjeld_birch': # NEEDS PARAMETERS
+                {
+                 'soil_id': 9,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'fjeld_open': # NEEDS PARAMETERS
+                {
+                 'soil_id': 10,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'fen': # GENERAL PEATLAND PARAMETERS
+                {'soil_id': 11,
+                 'root_poros': 0.9,
+                 'root_fc': 0.41,
+                 'root_wp': 0.11,
+                 'root_alpha': 1.23,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.28,
+                 'root_wr': 0.00,
+                 'root_ksat': 1e-5,
+                },
+            'mesothropic_mire': # GENERAL PEATLAND PARAMETERS
+                {'soil_id': 12,
+                 'root_poros': 0.9,
+                 'root_fc': 0.41,
+                 'root_wp': 0.11,
+                 'root_alpha': 1.23,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.28,
+                 'root_wr': 0.00,
+                 'root_ksat': 1e-5,
+                },
+            'meso-oligothropic_mire': # GENERAL PEATLAND PARAMETERS
+                {'soil_id': 13,
+                 'root_poros': 0.9,
+                 'root_fc': 0.41,
+                 'root_wp': 0.11,
+                 'root_alpha': 1.23,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.28,
+                 'root_wr': 0.00,
+                 'root_ksat': 1e-5,
+                },
+            'oligothropic_mire': # GENERAL PEATLAND PARAMETERS
+                {'soil_id': 14,
+                 'root_poros': 0.9,
+                 'root_fc': 0.41,
+                 'root_wp': 0.11,
+                 'root_alpha': 1.23,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.28,
+                 'root_wr': 0.00,
+                 'root_ksat': 1e-5,
+                },
+            'oligothropic_mire': # GENERAL PEATLAND PARAMETERS
+                {'soil_id': 15,
+                 'root_poros': 0.9,
+                 'root_fc': 0.41,
+                 'root_wp': 0.11,
+                 'root_alpha': 1.23,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.28,
+                 'root_wr': 0.00,
+                 'root_ksat': 1e-5,
+                },
+            'sphagnum_mire': # GENERAL PEATLAND PARAMETERS
+                {'soil_id': 16,
+                 'root_poros': 0.9,
+                 'root_fc': 0.41,
+                 'root_wp': 0.11,
+                 'root_alpha': 1.23,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.28,
+                 'root_wr': 0.00,
+                 'root_ksat': 1e-5,
+                },
+            'no_forest': # VMI DATA NO FOREST LAND (FIELDS, ROADS etc.) ASSIGNED
+                { # CURRENTLY MESIC PARAMETERS
+                 'soil_id': 0,
+                 'root_poros': 0.55,
+                 'root_fc': 0.26, #0.28, # 0.26 from pF-curve
+                 'root_wp': 0.09, #0.08,
+                 'root_alpha': 4.48,
+                 'root_beta': 4.0,                    
+                 'root_n': 1.20,
+                 'root_wr': 0.0,
+                 'root_ksat': 1e-5, #1e-5,1e-6
+                 },
+            }
+
+    return psoil
+
+

@@ -151,11 +151,11 @@ def preprocess_parameters(folder=''):
 
     from iotools import read_soil_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata
     from iotools import preprocess_soildata, preprocess_cpydata, preprocess_topdata
-    from parameters import soilprofiles, topsoil, parameters, rootproperties, ptopmodel
+    from parameters import soilprofiles, topsoil, parameters, rootproperties_from_sitetype, ptopmodel
 
     pgen, pcpy, psp= parameters(folder)
     soilp = soilprofiles()
-    rootp = rootproperties()
+    rootp = rootproperties_from_sitetype()
     topsoil = topsoil()
     gisdata = {}
     ptopmodel = ptopmodel()
