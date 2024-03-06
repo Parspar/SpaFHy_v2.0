@@ -17,7 +17,7 @@ import re
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
 
-def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
+def read_bu_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -26,52 +26,43 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
     Returns:
         gis - dict of gis-data rasters
             cmask
-            soil_id
-            ditch_depth
-            ditch_spacing
+            orgsoil
+            rootsoil
+            ditches
     """
     fpath = os.path.join(workdir, fpath)
 
-    # soil classification
-    #soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc')) # soil_id_peatsoils.dat
-    soilclass, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_type_combined.asc')) # soil_id_peatsoils.dat
-    
-    # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
-    ditches[ditches == np.nan] = 0.0
-    ditches = np.where(ditches == 0, np.nan, -1)
-    
-    # site type
-    try:
-        sitetype, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'site_main_class.asc'))
-    except:
-        print('Constant sitetype')
-        sitetype = np.full_like(soilclass, 1.0)
-
-    # dem
-    try:
-        dem, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc')) # dem_d8_filled.dat
-    except:
-        print('Constant elevation')
-        dem = np.full_like(soilclass, 0.0)
-
-    # catchment mask cmask[i,j] == 1, np.NaN outside
+    # catchment mask
     if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc')) # cmask.dat
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
         cmask = np.ones(np.shape(soilclass))
 
-    cmask[cmask >= 0] = 1
-
+    # keeping the original cmask as it is and creating a binary copy
+    cmask_bi = cmask.copy()
+    cmask_bi[np.isfinite(cmask_bi)] = 1
+    
+    # soil classification
+    # organis moss-humus layer
+    orgsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_main_class.asc')) 
+    rootsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_type_combined.asc'))
+    
+    # ditches
+    try:
+        ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
+        ditches[ditches == np.nan] = 0.0
+        ditches = np.where(ditches == 0, np.nan, -1)
+    except:
+        print('No ditch file')
+        ditches = np.full_like(soilclass, 0.0)
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    cmask = cmask
     
     # dict of all rasters
     gis = {'cmask': cmask,
-           'soilclass': soilclass,
+            'cmask_bi': cmask_bi,
+           'orgsoil': orgsoil,
+           'rootsoil': rootsoil,
            'ditches': ditches,
-           'dem': dem,
-           'sitetype': sitetype
            }
 
     xllcorner = int(re.findall(r'\d+', info[2])[0])
@@ -80,9 +71,9 @@ def read_soil_gisdata(fpath, mask_streams=True, plotgrids=False):
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
-                gis[key] *= cmask * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
+                gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
             elif mask_streams == False:
-                gis[key] *= cmask
+                gis[key] *= cmask_bi
                 
         elif key == 'ditches':
             #gis[key] *= cmask
@@ -117,12 +108,21 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
+    # catchment mask
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
+    else:
+        cmask = np.ones(np.shape(hc))
+    
+    # keeping the original cmask as it is and creating a binary copy
+    cmask_bi = cmask.copy()
+    cmask_bi[np.isfinite(cmask_bi)] = 1
+    
     # tree height [m]
-    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_height.asc')) # average / aurela
+    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_height.asc'))
 
     # canopy closure [-]
-    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_fraction.asc')) # average
-
+    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_fraction.asc'))
 
     # leaf area indices
     try:
@@ -130,47 +130,45 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
         LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.asc'))
         LAI_conif = LAI_pine + LAI_spruce
     except:
-        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.asc')) # average / aurela
-    try:
-        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.asc')) # average / aurela
-        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.asc')) # average / aurela
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.asc')) # average / aurela
-        #LAI_decid = LAI_decid + LAI_grass + LAI_shrub
-    except:
-        LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.asc')) # average / aurela
+        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.asc'))
 
-    LAI_grass = 0.5 * LAI_decid # NOTE THESE!
-    LAI_shrub = 0.1 * LAI_conif
-    # for stability, lets replace zeros with eps
-    #LAI_decid[LAI_decid == 0.0] = eps
-    #LAI_conif[LAI_conif == 0.0] = eps
-    #hc[hc == 0.0] = eps
-
-    # catchment mask cmask[i,j] == 1, np.NaN outside
-    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
-    else:
-        cmask = np.ones(np.shape(hc))
-
-    # ditches, no stand in ditch cells
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat / ditches_edit.dat
-    ditches = np.where(ditches == 0, np.nan, -1)
-
-    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.asc'))
     
-    cmask[cmask >= 0] = 1
+    try:
+        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.asc'))
+        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.asc'))
+    except:
+        print('Understory LAI assigned from LAI_decid and LAI_conif')
+        LAI_grass = 0.5 * LAI_decid
+        LAI_shrub = 0.1 * LAI_conif
+
+    # ditches
+    try:
+        ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
+        ditches[ditches == np.nan] = 0.0
+        ditches = np.where(ditches == 0, np.nan, -1)
+    except:
+        print('No ditch file')
+        ditches = np.full_like(soilclass, 0.0)
+    ditch_mask = np.where(ditches < -eps, np.nan, 1)
 
     # dict of all rasters
     gis = {'cmask': cmask,
-           'LAI_conif': LAI_conif, 'LAI_decid': LAI_decid, 'LAI_shrub': LAI_shrub, 'LAI_grass': LAI_grass,
-           'hc': hc, 'cf': cf}
+           'cmask_bi': cmask_bi,
+           'LAI_conif': LAI_conif, 
+           'LAI_decid': LAI_decid, 
+           'LAI_shrub': LAI_shrub, 
+           'LAI_grass': LAI_grass,
+           'hc': hc, 
+           'cf': cf, 
+           'ditches': ditches}
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
-                gis[key] *= cmask * ditch_mask
+                gis[key] *= cmask_bi * ditch_mask
             elif mask_streams == False:
-                gis[key] *= cmask
+                gis[key] *= cmask_bi
                 
         elif key == 'ditches':
             #gis[key] *= cmask
@@ -188,6 +186,85 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     return gis
 
+def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
+    """
+    reads gis-data grids and returns numpy 2d-arrays
+    Args:
+        fpath - relative path to data folder (str)
+        plotgrids - True plots
+    Returns:
+        gis - dict of gis-data rasters
+            cmask
+            soil_id
+            ditch_depth
+            ditch_spacing
+    """
+    fpath = os.path.join(workdir, fpath)
+
+    # catchment mask
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
+    else:
+        cmask = np.ones(np.shape(soilclass))
+
+    # keeping the original cmask as it is and creating a binary copy
+    cmask_bi = cmask.copy()
+    cmask_bi[np.isfinite(cmask_bi)] = 1
+    
+    # deep soil layer
+    deepsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc'))
+
+    # dem
+    dem, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc'))
+
+    # dem
+    bedrock, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc'))
+    bedrock = bedrock - 5.0
+    
+    # ditches
+    try:
+        ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
+        ditches[ditches == np.nan] = 0.0
+        ditches = np.where(ditches == 0, np.nan, -1)
+    except:
+        print('No ditch file')
+        ditches = np.full_like(soilclass, 0.0)
+    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    
+    # dict of all rasters
+    gis = {'cmask': cmask,
+           'cmask_bi': cmask_bi,           
+           'deepsoil': deepsoil,
+           'ditches': ditches,
+           'dem': dem,
+           'bedrock': bedrock,
+           }
+
+    xllcorner = int(re.findall(r'\d+', info[2])[0])
+    yllcorner = int(re.findall(r'\d+', info[3])[0])
+
+    for key in gis.keys():
+        if (key != 'ditches') & (key != 'cmask'):
+            if mask_streams == True:
+                gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
+            elif mask_streams == False:
+                gis[key] *= cmask_bi
+                
+        elif key == 'ditches':
+            #gis[key] *= cmask
+            gis[key] = np.where(gis[key] == -1, -1, np.nan)
+
+    if plotgrids is True:
+        plt.figure()
+        plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
+        plt.subplot(312); plt.imshow(dem); plt.colorbar(); plt.title('dem')
+        plt.subplot(313); plt.imshow(dem); plt.colorbar(); plt.title('ditches')
+
+    gis.update({'dxy': cellsize})
+    gis.update({'xllcorner': xllcorner,
+                'yllcorner': yllcorner})
+    return gis
+
 def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
@@ -203,36 +280,40 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     """
     fpath = os.path.join(workdir, fpath)
-
+    
+    # catchment mask
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
+        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
+    else:
+        cmask = np.ones(np.shape(hc))
+    
+    # keeping the original cmask as it is and creating a binary copy
+    cmask_bi = cmask.copy()
+    cmask_bi[np.isfinite(cmask_bi)] = 1
+    
     # flow accumulation
-    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flow_accumulation.asc')) # flowacc_p.dat
-    flowacc = flowacc #+ eps
-    # slope
-    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope.asc')) # slope_old
-    slope = slope #+ eps
+    flowacc, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'flow_accumulation.asc'))
 
-    #twi = np.ones(np.shape(slope))
-    #twi = twicalc(flowacc=flowacc, dxy=cellsize, slope_rad=np.radians(slope), twi_method='twi') 
+    # slope
+    slope, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'slope.asc'))
 
     # twi
     twi, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'twi.asc'))
 
     # ditches
-    ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat / ditches_edit.dat
-    ditches = np.where(ditches == 0, np.nan, -1)
-
-    # catchment mask cmask[i,j] == 1, np.NaN outside
-    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
-    else:
-        cmask = np.ones(np.shape(slope))
-
+    # ditches
+    try:
+        ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
+        ditches[ditches == np.nan] = 0.0
+        ditches = np.where(ditches == 0, np.nan, -1)
+    except:
+        print('No ditch file')
+        ditches = np.full_like(soilclass, 0.0)
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
     
-    cmask[cmask >= 0] = 1
-
     # dict of all rasters
     gis = {'cmask': cmask,
+           'cmask_bi': cmask_bi,
            'flowacc': flowacc,
            'slope': slope,
            'twi': twi,
@@ -242,9 +323,9 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
             if mask_streams == True:
-                gis[key] *= cmask * ditch_mask
+                gis[key] *= cmask_bi * ditch_mask
             elif mask_streams == False:
-                gis[key] *= cmask
+                gis[key] *= cmask_bi
                 
         elif key == 'ditches':
             #gis[key] *= cmask
@@ -296,7 +377,7 @@ def read_forcing_gisdata(fpath):
 
     return gis
 
-def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
+def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
     """
     creates input dictionary for initializing SoilGrid
     Args:
@@ -310,45 +391,49 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
     # create dict for initializing soil profile.
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = psp.copy()
-    data.update((x, y * gisdata['cmask']) for x, y in data.items())
+    data.update((x, y * gisdata['cmask_bi']) for x, y in data.items())
 
-    data.update({'soiltype': np.empty(np.shape(gisdata['cmask']),dtype=object)})
+    data.update({'org_id': np.empty(np.shape(gisdata['cmask']),dtype=object)})
+    data.update({'root_id': np.empty(np.shape(gisdata['cmask']),dtype=object)})
 
     if spatial == False:
-        data['soilclass'] = psp['soil_id'] * gisdata['cmask']
+        data['org_id'] = psp['org_id'] * gisdata['cmask']
+        data['root_id'] = psp['root_id'] * gisdata['cmask']
     else:
-        data['soilclass'] = gisdata['soilclass']
-        data['elevation'] = gisdata['dem']
+        data['org_id'] = gisdata['orgsoil']
+        data['root_id'] = gisdata['rootsoil']
         data['ditches'] = gisdata['ditches']
-        data['sitetype'] = gisdata['sitetype']
 
-    soil_ids = []
-    for key, value in soilp.items():
-        soil_ids.append(value['soil_id'])
+    root_ids = []
+    for key, value in rootp.items():
+        if ~np.isnan(value['root_id']):
+            root_ids.append(value['root_id'])
 
-    if set(soil_ids) >= set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()):
+    org_ids = []
+    for key, value in orgp.items():
+        if ~np.isnan(value['org_id']):
+            org_ids.append(value['org_id'])
+    
+    if set(root_ids) >= set(np.unique(data['root_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()):
         # no problems
-        print('*** Defined soil IDs:',set(soil_ids), 'Used soil IDs:',
-              set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()))
+        print('*** Defined root soil IDs:',set(root_ids), 'Used soil IDs:',
+              set(np.unique(data['rootsoil'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
     else:
-        print(set(soil_ids),set(np.unique(data['soilclass'][np.isfinite(gisdata['cmask'])]).tolist()))
-        #raise ValueError("Soil id in inputs not specified in parameters.py")
+        print(set(root_ids),set(np.unique(data['root_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+    #    raise ValueError("Root soil id in inputs not specified in parameters.py")
 
-
-    for key, value in soilp.items():
-        c = value['soil_id']
-        ix = np.where(data['soilclass'] == c)
-        data['soiltype'][ix] = key
-        # interpolation function between wsto and gwl
-        value.update(gwl_Wsto(value['z'], value['pF'], value['saturated_conductivity']))
-        # interpolation function between root_wsto and gwl
-        value.update(gwl_Wsto(value['z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
+    if set(org_ids) >= set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()):
+        # no problems
+        print('*** Defined org soil IDs:',set(org_ids), 'Used soil IDs:',
+              set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+    else:
+        print(set(org_ids),set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+    #    raise ValueError("Org soil id in inputs not specified in parameters.py")
 
     if spatial == True:
-        for key, value in topsoil.items():
-            t = value['topsoil_id']
-            yx = np.where(data['sitetype'] == t)
-            #data['sitetype'][yx] = key
+        for key, value in orgp.items():
+            t = value['org_id']
+            yx = np.where(data['org_id'] == t)
             data['org_depth'][yx] = value['org_depth']
             data['org_poros'][yx] = value['org_poros']
             data['org_fc'][yx] = value['org_fc']
@@ -358,30 +443,77 @@ def preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, spatial=True):
 
     if spatial == True:
         for key, value in rootp.items():
-            t = value['soil_id']
-            yx = np.where(data['soilclass'] == t)
-            #data['sitetype'][yx] = key
+            t = value['root_id']
+            yx = np.where(data['root_id'] == t)
             data['root_fc'][yx] = value['root_fc']
             data['root_ksat'][yx] = value['root_ksat']
             data['root_poros'][yx] = value['root_poros']
             data['root_wp'][yx] = value['root_wp']
             data['root_beta'][yx] = value['root_beta']
+            data['root_alpha'][yx] = value['root_alpha']
+            data['root_wr'][yx] = value['root_wr']
+
+    data['dxy'] = gisdata['dxy']
+    data['cmask'] = gisdata['cmask']
+
+    return data
+
+def preprocess_dsdata(pspd, deepp, gisdata, spatial=True):
+    """
+    creates input dictionary for initializing SoilGrid
+    Args:
+        soil parameters
+        soiltype parameters
+        gisdata
+            cmask
+            soilclass
+        spatial
+    """
+    # create dict for initializing soil profile.
+    # copy pbu into sdata and make each value np.array(np.shape(cmask))
+    data = pspd.copy()
+    data.update((x, y * gisdata['cmask_bi']) for x, y in data.items())
+
+    data.update({'soiltype': np.empty(np.shape(gisdata['cmask_bi']),dtype=object)})
+
+    if spatial == False:
+        data['deep_id'] = pspd['deep_id'] * gisdata['cmask_bi']
+    else:
+        data['deep_id'] = gisdata['deepsoil']
+        data['elevation'] = gisdata['dem']
+        data['bedrock'] = gisdata['bedrock']        
+        data['ditches'] = gisdata['ditches']
+
+    deep_ids = []
+    for key, value in deepp.items():
+        deep_ids.append(value['deep_id'])
+        
+    if set(deep_ids) >= set(np.unique(data['deep_id'][np.isfinite(gisdata['cmask'])]).tolist()):
+        # no problems
+        print('*** Defined deep soil IDs:',set(deep_ids), 'Used soil IDs:',
+              set(np.unique(data['deep_id'][np.isfinite(gisdata['cmask'])]).tolist()))
+    else:
+        print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['cmask'])]).tolist()))
+        #raise ValueError("Deep soil id in inputs not specified in parameters.py")
+
+    for key, value in deepp.items():
+        c = value['deep_id']
+        ix = np.where(data['deep_id'] == c)
+        data['soiltype'][ix] = key
+        # interpolation function between wsto and gwl
+        value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
+        # interpolation function between root_wsto and gwl
+        value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
 
     # ditch depth corresponding to assigned parameter
-    data['ditches'] = np.where(data['ditches'] < -eps, psp['ditch_depth'], 0)
-    data['ditches'] = data['ditches'] * gisdata['cmask']
+    data['ditches'] = np.where(data['ditches'] < -eps, pspd['ditch_depth'], 0)
+    data['ditches'] = data['ditches'] * gisdata['cmask_bi']
 
-#    # SL removed this 26.10.21!
-#    # no organic layer in ditch nodes
-#    ditch_mask = np.where(data['ditches'] < -eps, 0.0, 1)
-#    for key in ['org_depth','org_poros','org_fc', 'org_sat']:
-#        data[key] *= ditch_mask
-
-    data['wtso_to_gwl'] = {soiltype: soilp[soiltype]['to_gwl'] for soiltype in soilp.keys()}
-    data['gwl_to_wsto'] = {soiltype: soilp[soiltype]['to_wsto'] for soiltype in soilp.keys()}
-    data['gwl_to_C'] = {soiltype: soilp[soiltype]['to_C'] for soiltype in soilp.keys()}
-    data['gwl_to_Tr'] = {soiltype: soilp[soiltype]['to_Tr'] for soiltype in soilp.keys()}
-    data['gwl_to_rootmoist'] = {soiltype: soilp[soiltype]['to_rootmoist'] for soiltype in soilp.keys()}
+    data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
+    data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
+    data['gwl_to_C'] = {soiltype: deepp[soiltype]['to_C'] for soiltype in deepp.keys()}
+    data['gwl_to_Tr'] = {soiltype: deepp[soiltype]['to_Tr'] for soiltype in deepp.keys()}
+    data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
     data['dxy'] = gisdata['dxy']
     data['cmask'] = gisdata['cmask']
 
@@ -413,13 +545,13 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
         cstate['cf'] = gisdata['cf']
         cstate['hc'] = gisdata['hc']
         for key in ['w', 'swe']:
-            cstate[key] *= gisdata['cmask']
+            cstate[key] *= gisdata['cmask_bi']
         if {'lat','lon'}.issubset(gisdata.keys()):
             pcpy['loc']['lat'] = gisdata['lat']
             pcpy['loc']['lon'] = gisdata['lon']
     else:
         for key in cstate.keys():
-            cstate[key] *= gisdata['cmask']
+            cstate[key] *= gisdata['cmask_bi']
 
     pcpy['state'] = cstate
 
@@ -448,17 +580,6 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
         ptopmodel['loc']['lat'] = gisdata['lat']
         ptopmodel['loc']['lon'] = gisdata['lon']
     
-    #bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
-    #                     np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))     
-    #n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='raw')
-    #cutting the twi tail according to parameter twi_cutoff
-    #twi_clim = np.percentile(ptopmodel['twi'][ptopmodel['twi'] > 0], ptopmodel['twi_cutoff'])
-    #cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
-    #ptopmodel['twi'][ptopmodel['twi'] > twi_clim] = twi_clim
-    #bina = len(np.arange(np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[0], 
-    #                     np.sort(ptopmodel['twi'].flatten()[~np.isnan(ptopmodel['twi'].flatten())])[-1], 0.5))      
-    #n, bins, patches = plt.hist((ptopmodel['twi']).flatten(), bins=bina, alpha=0.5, label='cut')
-    #plt.legend()
     return ptopmodel
 
 

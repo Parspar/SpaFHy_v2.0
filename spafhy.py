@@ -74,20 +74,20 @@ class SpaFHy():
     """
     SpaFHy model class
     """
-    def __init__(self, pgen, pcpy, psoil, ptopmodel):
+    def __init__(self, pgen, pcpy, pbu, pds, ptopmodel):
 
         self.dt = pgen['dt']  # s
         self.simtype = pgen['simtype']
 
         """--- initialize BucketGrid ---"""
-        self.bu = BucketGrid(psoil, pgen['org_drain'])
+        self.bu = BucketGrid(pbu, pgen['org_drain'])
 
         """--- initialize CanopyGrid ---"""
         self.cpy = CanopyGrid(pcpy, pcpy['state'], dist_rad_file=pgen['spatial_radiation_file'])
 
         if self.simtype == '2D':
             """--- initialize SoilGrid ---"""
-            self.soil = SoilGrid(psoil)
+            self.ds = SoilGrid(pds)
         elif self.simtype == 'TOP':
             """--- initialize Topmodel ---"""
             self.top = Topmodel(ptopmodel)
@@ -118,10 +118,9 @@ class SpaFHy():
         self.timestep += 1
 
         if self.simtype == '2D':
-            # run Soilprofile water balance
+            # run deep soil (2D) water balance
             RR = self.bu.drain
-            #bu_airv = self.bu.Wair_root
-            soil_results = self.soil.run_timestep(
+            deep_results = self.ds.run_timestep(
                 dt=self.dt / 86400.,
                 RR=RR)
 
@@ -136,10 +135,10 @@ class SpaFHy():
                 rr=1e-3*canopy_results['potential_infiltration'],
                 tr=1e-3*canopy_results['transpiration'],
                 evap=1e-3*canopy_results['forestfloor_evaporation'],
-                retflow=self.soil.qr,
-                airv_deep=self.soil.airv_deep) 
+                retflow=self.ds.qr,
+                airv_deep=self.ds.airv_deep) 
 
-            return soil_results, canopy_results, bucket_results
+            return deep_results, canopy_results, bucket_results
 
 
         elif self.simtype == 'TOP':

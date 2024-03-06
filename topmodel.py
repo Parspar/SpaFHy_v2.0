@@ -46,6 +46,7 @@ class Topmodel_Homogenous():
 
         # importing grids from parameters
         cmask = pp['cmask']
+        cmask[np.isfinite(cmask)] = 1.0
         flowacc = pp['flowacc']
         slope = pp['slope']
         twi = pp['twi']

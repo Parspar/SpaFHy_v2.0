@@ -69,7 +69,10 @@ class BucketGrid(object):
         self.Wp_root = spara['root_wp']               # wilting point, m3 m-3
         self.Ksat_root = spara['root_ksat']           # sat. hydr. cond., m s-1
         self.beta_root = spara['root_beta']           # hyd. cond. exponent, -
-        self.MaxStoRoot = self.D_root*self.poros_root  # maximum soil water storage, mi
+        self.alpha_root = spara['root_alpha']         # kPa-1
+        self.n_root = spara['root_n']
+        self.wr_root = spara['root_wr']               # m3m-3
+        self.MaxStoRoot = self.D_root*self.poros_root # maximum soil water storage, mi
         
         """
         set buckets initial state
@@ -203,7 +206,7 @@ class BucketGrid(object):
 
         # compute diagnostic state variables at root zone:
         self.setState()
-        
+
         # update grid total drainage to ground water [m]
         self._drainage_to_gw = np.nansum(self.drain)
 
@@ -224,6 +227,7 @@ class BucketGrid(object):
                 'water_closure': mbe * 1e3,  # [mm d-1]
                 'moisture_top': self.Wliq_top,  # [m3 m-3]
                 'moisture_root': self.Wliq_root,  # [m3 m-3]
+                'psi_root': self.Psi, # MPa
                 'transpiration_limitation': self.Rew,  # [-] !!!
                 'water_storage_root': self.WatStoRoot * 1e3, # [mm]
                 'water_storage_top': self.WatStoTop * 1e3, # [mm]
@@ -251,7 +255,26 @@ class BucketGrid(object):
         self.Ree = self.relative_evaporation()
         self.Wliq_top[self.D_top == 0] = np.NaN
         self.Ree[self.D_top == 0] = eps # vie canopyn Efloor'in nollaan (mass-balance consistency)
+        self.Psi = self.theta_psi() # MPa
 
+    def theta_psi(self):
+        """
+        converts vol. water content (m3m-3) to soil water potential (MPa)
+        """
+        n = self.n_root
+        m = 1 - 1 / n
+        # converts water content (m3m-3) to potential (m)
+        x = np.minimum(self.Wliq_root, self.poros_root)
+        x = np.maximum(x, self.wr_root)  # checks limits
+        
+        s = (self.poros_root - self.wr_root) / ((x - self.wr_root) + eps)
+        
+        Psi = -1 / self.alpha_root*(s**(1.0 / m) - 1.0)**(1.0 / n)  # kPa
+        Psi[Psi==np.NaN] = 0.0
+        Psi = 1e-3*Psi
+        #Psi[Psi<-3.0] = -3.0
+        return Psi
+        
     def hydrCond(self):
         """
         returns hydraulic conductivity [ms-1] based on Campbell -formulation

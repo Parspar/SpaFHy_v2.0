@@ -24,11 +24,11 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
     """ set up model """
     running_time = time.time()
 
-    # load and process parameters parameter
-    pgen, pcpy, psoil, cmask, ptopmodel, gisinfo = preprocess_parameters(folder)
-
+    # load and process parameters
+    pgen, pcpy, pbu, pds, cmask, ptopmodel, gisinfo = preprocess_parameters(folder)
+    
     # initialize SpaFHy
-    spa = SpaFHy(pgen, pcpy, psoil, ptopmodel)
+    spa = SpaFHy(pgen, pcpy, pbu, pds, ptopmodel)
 
     # read forcing data
     forcing = preprocess_forcing(pgen)
@@ -49,10 +49,10 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
 
     # save parameters to results
     results = _append_results('parameters', pcpy['state'], results)
-    results = _append_results('parameters', psoil, results)    
+    results = _append_results('parameters', pbu, results)    
     results = _append_results('parameters', pcpy['loc'], results)
     if pgen['simtype'] == '2D':
-        results = _append_results('parameters', psoil, results)
+        results = _append_results('parameters', pds, results)
     elif pgen['simtype'] == 'TOP':
         results = _append_results('parameters', ptopmodel, results)
 
@@ -88,9 +88,7 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
             print('*** Bucket organic layer drains according to Campbell 1985')
     else:
             print('*** Bucket organic layer as in Launiainen et al., 2019')
-            
-
-
+        
 
 
     interval = 0
@@ -100,7 +98,7 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
 #        print(k)
 
         if pgen['simtype'] == '2D':
-            soil_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
+            deep_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
         elif pgen['simtype'] == 'TOP':
             top_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
         elif pgen['simtype'] == '1D':
@@ -108,7 +106,7 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
 
         if (k >= Nspin):  # save results after spinup done
             if pgen['simtype'] == '2D':
-                results = _append_results('soil', soil_results, results, k - Nsaved - 1)
+                results = _append_results('deep', deep_results, results, k - Nsaved - 1)
             elif pgen['simtype'] == 'TOP':
                 results = _append_results('top', top_results, results, k - Nsaved - 1)
             results = _append_results('canopy', canopy_results, results, k - Nsaved - 1)
@@ -142,40 +140,44 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
     else:
         print('--- Running time %.2f seconds ---' % (time.time() - running_time))
         if output:
-            return results, spa, pcpy, psoil, ptopmodel, cmask
+            return results, spa, pcpy, pbu, ptopmodel, cmask
 
 def preprocess_parameters(folder=''):
     """
     Reading gisdata if applicable and preprocesses parameters
     """
 
-    from iotools import read_soil_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata
-    from iotools import preprocess_soildata, preprocess_cpydata, preprocess_topdata
-    from parameters import soilprofiles, topsoil, parameters, rootproperties_from_sitetype, ptopmodel
+    from iotools import read_bu_gisdata, read_ds_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata
+    from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
+    from parameters import root_properties, org_properties, deep_properties, parameters, root_properties_from_sitetype, ptopmodel
 
-    pgen, pcpy, psp= parameters(folder)
-    soilp = soilprofiles()
-    rootp = rootproperties_from_sitetype()
-    topsoil = topsoil()
+    pgen, pcpy, psp, pspd = parameters(folder)
+    
+    orgp = org_properties()
+    rootp = root_properties_from_sitetype()
+    deepp = deep_properties()
     gisdata = {}
     ptopmodel = ptopmodel()
-    
+   
     if pgen['simtype'] == '2D':
         pgen['mask_streams'] = False # to make sure streams are not masked with 2D
-
+        
     if pgen['spatial_soil']:
-        gisdata.update(read_soil_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+        gisdata.update(read_bu_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+        
     if pgen['spatial_cpy']:
         gisdata.update(read_cpy_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+
     if pgen['spatial_forcing']:
         gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
         pgen.update({'forcing_id': gisdata['forcing_id']})
+        
     if (pgen['spatial_cpy'] == False and
         pgen['spatial_soil'] == False and
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
 
-    soildata = preprocess_soildata(psp, soilp, rootp, topsoil, gisdata, pgen['spatial_soil'])
+    budata = preprocess_budata(psp, orgp, rootp, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
@@ -183,7 +185,12 @@ def preprocess_parameters(folder=''):
         gisdata.update(read_top_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
         ptopmodel = preprocess_topdata(ptopmodel, gisdata, spatial=True)
 
-
+    if pgen['simtype'] == '2D':
+        gisdata.update(read_ds_gisdata(pgen['gis_folder']))
+        dsdata = preprocess_dsdata(pspd, deepp, gisdata, pgen['spatial_soil'])
+    else:
+        dsdata = pspd.copy() # dummy
+        
     gisinfo = {}
     gisinfo['xllcorner'] = gisdata['xllcorner']
     gisinfo['yllcorner'] = gisdata['yllcorner']
@@ -205,7 +212,7 @@ def preprocess_parameters(folder=''):
     except:
         print('*** State variables assigned from parameters.py ***')
 
-    return pgen, cpydata, soildata, gisdata['cmask'], ptopmodel, gisinfo
+    return pgen, cpydata, budata, dsdata, gisdata['cmask'], ptopmodel, gisinfo
 
 def preprocess_forcing(pgen):
     """
