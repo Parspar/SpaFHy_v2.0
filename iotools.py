@@ -32,34 +32,34 @@ def read_bu_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
-    # catchment mask
-    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
-    else:
-        cmask = np.ones(np.shape(soilclass))
-
-    # keeping the original cmask as it is and creating a binary copy
-    cmask_bi = cmask.copy()
-    cmask_bi[np.isfinite(cmask_bi)] = 1
-    
-    # soil classification
+        # soil classification
     # organis moss-humus layer
     orgsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_main_class.asc')) 
     rootsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_type_combined.asc'))
     
-    # ditches
+    # catchment mask if available
+    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
+    else:
+        cmask = np.ones(np.shape(rootsoil))
+
+    # keeping the original cmask as it is and creating a binary copy
+    cmask_bi = cmask.copy()
+    cmask_bi[np.isfinite(cmask_bi)] = 1
+
+    # ditches if available
     try:
         ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
         ditches[ditches == np.nan] = 0.0
         ditches = np.where(ditches == 0, np.nan, -1)
     except:
-        print('No ditch file')
+        print('*** No ditch file ***')
         ditches = np.full_like(soilclass, 0.0)
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
-    
+
     # dict of all rasters
     gis = {'cmask': cmask,
-            'cmask_bi': cmask_bi,
+           'cmask_bi': cmask_bi,
            'orgsoil': orgsoil,
            'rootsoil': rootsoil,
            'ditches': ditches,
@@ -73,10 +73,8 @@ def read_bu_gisdata(fpath, mask_streams=True, plotgrids=False):
             if mask_streams == True:
                 gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
             elif mask_streams == False:
-                gis[key] *= cmask_bi
-                
+                gis[key] *= cmask_bi                
         elif key == 'ditches':
-            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -108,7 +106,13 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
-    # catchment mask
+    # tree height [m]
+    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_height.asc'))
+
+    # canopy closure [-]
+    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_fraction.asc'))
+    
+    # catchment mask if available
     if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
@@ -117,12 +121,6 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
     # keeping the original cmask as it is and creating a binary copy
     cmask_bi = cmask.copy()
     cmask_bi[np.isfinite(cmask_bi)] = 1
-    
-    # tree height [m]
-    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_height.asc'))
-
-    # canopy closure [-]
-    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_fraction.asc'))
 
     # leaf area indices
     try:
@@ -138,7 +136,7 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
         LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.asc'))
         LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.asc'))
     except:
-        print('Understory LAI assigned from LAI_decid and LAI_conif')
+        print('*** Understory LAI assigned from LAI_decid and LAI_conif ***')
         LAI_grass = 0.5 * LAI_decid
         LAI_shrub = 0.1 * LAI_conif
 
@@ -148,7 +146,7 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
         ditches[ditches == np.nan] = 0.0
         ditches = np.where(ditches == 0, np.nan, -1)
     except:
-        print('No ditch file')
+        print('*** No ditch file ***')
         ditches = np.full_like(soilclass, 0.0)
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
 
@@ -171,7 +169,6 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
                 gis[key] *= cmask_bi
                 
         elif key == 'ditches':
-            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -201,18 +198,18 @@ def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
-    # catchment mask
+    # deep soil layer
+    deepsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc'))
+    
+    # catchment mask if available
     if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
         cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
-        cmask = np.ones(np.shape(soilclass))
+        cmask = np.ones(np.shape(deepsoil))
 
     # keeping the original cmask as it is and creating a binary copy
     cmask_bi = cmask.copy()
     cmask_bi[np.isfinite(cmask_bi)] = 1
-    
-    # deep soil layer
-    deepsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc'))
 
     # dem
     dem, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc'))
@@ -227,7 +224,7 @@ def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
         ditches[ditches == np.nan] = 0.0
         ditches = np.where(ditches == 0, np.nan, -1)
     except:
-        print('No ditch file')
+        print('*** No ditch file ***')
         ditches = np.full_like(soilclass, 0.0)
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
     
@@ -251,7 +248,6 @@ def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
                 gis[key] *= cmask_bi
                 
         elif key == 'ditches':
-            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -281,7 +277,7 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
     
-    # catchment mask
+    # catchment mask if available
     if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
         cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
     else:
@@ -307,7 +303,7 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
         ditches[ditches == np.nan] = 0.0
         ditches = np.where(ditches == 0, np.nan, -1)
     except:
-        print('No ditch file')
+        print('*** No ditch file ***')
         ditches = np.full_like(soilclass, 0.0)
     ditch_mask = np.where(ditches < -eps, np.nan, 1)
     
@@ -328,7 +324,6 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
                 gis[key] *= cmask_bi
                 
         elif key == 'ditches':
-            #gis[key] *= cmask
             gis[key] = np.where(gis[key] == -1, -1, np.nan)
 
     if plotgrids is True:
@@ -416,18 +411,20 @@ def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
     
     if set(root_ids) >= set(np.unique(data['root_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()):
         # no problems
-        print('*** Defined root soil IDs:',set(root_ids), 'Used soil IDs:',
-              set(np.unique(data['rootsoil'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+        print('*** Defined root soil IDs:',set(root_ids), 'Used root soil IDs:',
+              set(np.unique(data['rootsoil'][np.isfinite(gisdata['cmask_bi'])]).tolist()), '***')
     else:
-        print(set(root_ids),set(np.unique(data['root_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+        print('*** Defined root soil IDs:', set(root_ids),  'Used root soil IDs:',
+              set(np.unique(data['root_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()), '***')
     #    raise ValueError("Root soil id in inputs not specified in parameters.py")
 
     if set(org_ids) >= set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()):
         # no problems
-        print('*** Defined org soil IDs:',set(org_ids), 'Used soil IDs:',
-              set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+        print('*** Defined organic soil IDs:',set(org_ids), 'Used organic soil IDs:',
+              set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()), '***')
     else:
-        print(set(org_ids),set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()))
+        print('*** Defined organic soil IDs:', set(org_ids), 'Used organic soil IDs:',
+              set(np.unique(data['org_id'][np.isfinite(gisdata['cmask_bi'])]).tolist()), '***')
     #    raise ValueError("Org soil id in inputs not specified in parameters.py")
 
     if spatial == True:
@@ -583,8 +580,7 @@ def preprocess_topdata(ptopmodel, gisdata, spatial=True):
     return ptopmodel
 
 
-'''
-def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0): # THIS ONE WITH HESS SAMULI FORCING
+def read_HESS2019_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0):
     """
     reads FMI interpolated daily weather data from file
     IN:
@@ -700,98 +696,9 @@ def read_FMI_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID=0): 
     forcing = forcing.fillna(method='ffill')
 
     return forcing
-'''
-
-'''
-def read_FMI_weather(start_date, end_date, sourcefile, ID=1, CO2=380.0): # THIS ONE WITH OULU LAPTOP FORCING
-    """
-    reads FMI OBSERVED daily weather data from file
-    IN:
-        ID - sve catchment ID. set ID=0 if all data wanted
-        start_date - 'yyyy-mm-dd'
-        end_date - 'yyyy-mm-dd'
-        sourcefile - optional
-        CO2 - atm. CO2 concentration (float), optional
-    OUT:
-        fmi - pd.dataframe with datetimeindex
-            fmi columns:['ID','Kunta','aika','lon','lat','T','Tmax','Tmin',
-                         'Prec','Rg','h2o','dds','Prec_a','Par',
-                         'RH','esa','VPD','doy']
-            units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa],
-            Prec, Prec_a[mm], Rg,Par[Wm-2],lon,lat[deg]
-    """
-
-    # OmaTunniste;OmaItä;OmaPohjoinen;Kunta;siteid;vuosi;kk;paiva;longitude;latitude;t_mean;t_max;t_min;
-    # rainfall;radiation;hpa;lamposumma_v;rainfall_v;lamposumma;lamposumma_cum
-    # -site number
-    # -date (yyyy mm dd)
-    # -latitude (in KKJ coordinates, metres)
-    # -longitude (in KKJ coordinates, metres)
-    # -T_mean (degrees celcius)
-    # -T_max (degrees celcius)
-    # -T_min (degrees celcius)
-    # -rainfall (mm)
-    # -global radiation (per day in kJ/m2)
-    # -H2O partial pressure (hPa)
-
-    sourcefile = os.path.join(sourcefile)
-    print('*** Simulation forced with:', sourcefile)
-    ID = int(ID)
-
-    # import forcing data
-    fmi = pd.read_csv(sourcefile, sep=';', header='infer',
-                      parse_dates=['time'],encoding="ISO-8859-1")
-
-    time = pd.to_datetime(fmi['time'], format='%Y%m%d')
-
-    fmi.index = time
-    fmi = fmi.rename(columns={'time': 'date', 't_mean': 'air_temperature', 't_max': 'Tmax',
-                              't_min': 'Tmin', 'rainfall': 'precipitation',
-                              'radiation': 'global_radiation', 'hpa': 'h2o', 'lamposumma_v': 'dds',
-                              'rainfall_v': 'Prec_a', 'rh': 'RH'})
-
-    # get desired period and catchment
-    fmi = fmi[(fmi.index >= start_date) & (fmi.index <= end_date)]
-    if ID > 0:
-        fmi = fmi[fmi['ID'] == ID]
-
-    fmi['h2o'] = 1e-3*fmi['h2o']  # -> kPa
-    #fmi['global_radiation'] = 1e3 / 86400.0*fmi['global_radiation']  # kJ/m2/d-1 to Wm-2
-    fmi['par'] = 0.5*fmi['global_radiation']
-
-    # saturated vapor pressure
-    esa = 0.6112*np.exp((17.67*fmi['air_temperature']) / (fmi['air_temperature'] + 273.16 - 29.66))  # kPa
-    vpd = esa - fmi['h2o']  # kPa
-    vpd[vpd < 0] = 0.0
-    #rh = 100.0*fmi['h2o'] / esa
-    #rh[rh < 0] = 0.0
-    #rh[rh > 100] = 100.0
-
-    #fmi['RH'] = rh
-    fmi['esa'] = esa
-    fmi['vapor_pressure_deficit'] = vpd
-
-    fmi['doy'] = fmi.index.dayofyear
-    fmi = fmi.drop(['date'], axis=1)
-    # replace nan's in prec with 0.0
-    fmi.loc[fmi['precipitation'].isna(), 'Prec'] = 0.0
 
 
-    # add CO2 concentration to dataframe
-    fmi['CO2'] = float(CO2)
-
-
-    
-    #dates = pd.date_range(start_date, end_date).tolist()
-    #if len(dates) != len(fmi):
-    #    print(str(len(dates) - len(fmi)) + ' days missing from forcing file, interpolated')
-    #forcing = pd.DataFrame(index=dates, columns=[])
-    #forcing = forcing.merge(fmi, how='outer', left_index=True, right_index=True)
-    #forcing = forcing.fillna(method='ffill')
-    
-    return fmi
-'''
-def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0): # THIS ONE WITH THE LATES OPA FORCING
+def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
     """
     reads FMI OBSERVED daily weather data from file
     IN:
