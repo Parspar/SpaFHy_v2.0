@@ -115,7 +115,6 @@ class CanopyGrid():
         else:
             self.distributed_radiation = False
 
-
     def run_timestep(self, doy, dt, Ta, Prec, Rg, Par, VPD, U=2.0, CO2=380.0, Rew=1.0, beta=1.0, P=101300.0):
         """
         Runs CanopyGrid instance for one timestep
@@ -167,7 +166,7 @@ class CanopyGrid():
         Transpi = Transpi * dt
         Efloor = Efloor * dt
         #ET = Transpi + Efloor
-
+        
         results = {
                 'potential_infiltration': PotInf,  # [mm d-1]
                 'interception': Interc,  # [mm d-1]
@@ -373,7 +372,7 @@ class CanopyGrid():
         # canopy conductance
         Gc = gs * fQ * fRew * fCO2 * fPheno
         Gc[np.isnan(Gc)] = eps
-
+        
         """ --- transpiration rate --- """
         Tr = penman_monteith((1.-tau)*AE, 1e3*D, Ta, Gc, 1./Ra, units='mm')
         Tr[Tr < 0] = 0.0
@@ -386,7 +385,7 @@ class CanopyGrid():
 
         Efloor = beta * penman_monteith(tau * AE, 1e3*D, Ta, Gcs, 1./Ras, units='mm')
         Efloor[self.SWE > 0] = 0.0  # no evaporation from floor if snow on ground or beta == 0
-
+        
         return Tr, Efloor, Gc
 
 

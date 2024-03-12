@@ -95,8 +95,6 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
     Nsaved = Nspin - 1
 
     for k in range(0, Nsteps):
-#        print(k)
-
         if pgen['simtype'] == '2D':
             deep_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
         elif pgen['simtype'] == 'TOP':
@@ -160,16 +158,19 @@ def preprocess_parameters(folder=''):
     ptopmodel = ptopmodel()
    
     if pgen['simtype'] == '2D':
-        pgen['mask_streams'] = False # to make sure streams are not masked with 2D
+        if pgen['mask'] == 'stream': # to make sure streams are not masked with 2D
+            pgen['mask'] = None
+        elif pgen['mask'] == 'cmask/stream':
+            pgen['mask'] = 'cmask'            
         
     if pgen['spatial_soil']:
-        gisdata.update(read_bu_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+        gisdata.update(read_bu_gisdata(pgen['gis_folder'], mask=pgen['mask']))
         
     if pgen['spatial_cpy']:
-        gisdata.update(read_cpy_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+        gisdata.update(read_cpy_gisdata(pgen['gis_folder'], mask=pgen['mask']))
 
     if pgen['spatial_forcing']:
-        gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+        gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask=pgen['mask']))
         pgen.update({'forcing_id': gisdata['forcing_id']})
         
     if (pgen['spatial_cpy'] == False and
@@ -182,7 +183,7 @@ def preprocess_parameters(folder=''):
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
     if pgen['simtype'] == 'TOP':
-        gisdata.update(read_top_gisdata(pgen['gis_folder'], mask_streams=pgen['mask_streams']))
+        gisdata.update(read_top_gisdata(pgen['gis_folder'], mask=pgen['mask']))
         ptopmodel = preprocess_topdata(ptopmodel, gisdata, spatial=True)
 
     if pgen['simtype'] == '2D':

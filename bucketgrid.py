@@ -101,7 +101,7 @@ class BucketGrid(object):
         self.Sat_root = self.Wliq_root/self.poros_root
         self.Sat_top = self.Wliq_top/self.poros_top
         self.Rew = np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0)
-
+        
         # drainage to rootzone
         if self.org_drain == True:
             self.drain_top = np.full_like(self.Wliq_top, 0.0)

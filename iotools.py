@@ -17,7 +17,7 @@ import re
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
 
-def read_bu_gisdata(fpath, mask_streams=True, plotgrids=False):
+def read_bu_gisdata(fpath, mask=None, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -32,7 +32,7 @@ def read_bu_gisdata(fpath, mask_streams=True, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
-        # soil classification
+    # soil classification
     # organis moss-humus layer
     orgsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_main_class.asc')) 
     rootsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_type_combined.asc'))
@@ -70,25 +70,26 @@ def read_bu_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            if mask_streams == True:
+            if mask == 'cmask/streams':
                 gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
-            elif mask_streams == False:
-                gis[key] *= cmask_bi                
-        elif key == 'ditches':
-            gis[key] = np.where(gis[key] == -1, -1, np.nan)
+            elif mask == 'cmask':
+                gis[key] *= cmask_bi
+            elif mask == 'streams':
+                gis[key] *= ditch_mask
+
 
     if plotgrids is True:
         plt.figure()
-        plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
-        plt.subplot(312); plt.imshow(dem); plt.colorbar(); plt.title('dem')
-        plt.subplot(313); plt.imshow(dem); plt.colorbar(); plt.title('ditches')
+        plt.subplot(311); plt.imshow(rootsoil); plt.colorbar(); plt.title('rootsoil')
+        plt.subplot(312); plt.imshow(orgsoil); plt.colorbar(); plt.title('orgsoil')
+        plt.subplot(313); plt.imshow(ditches); plt.colorbar(); plt.title('ditches')
 
     gis.update({'dxy': cellsize})
     gis.update({'xllcorner': xllcorner,
                 'yllcorner': yllcorner})
     return gis
 
-def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
+def read_cpy_gisdata(fpath, mask=None, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -163,13 +164,12 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            if mask_streams == True:
+            if mask == 'cmask/streams':
                 gis[key] *= cmask_bi * ditch_mask
-            elif mask_streams == False:
+            elif mask == 'cmask':
                 gis[key] *= cmask_bi
-                
-        elif key == 'ditches':
-            gis[key] = np.where(gis[key] == -1, -1, np.nan)
+            elif mask == 'streams':
+                gis[key] *= ditch_mask
 
     if plotgrids is True:
 
@@ -183,7 +183,7 @@ def read_cpy_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     return gis
 
-def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
+def read_ds_gisdata(fpath, mask=None, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -242,13 +242,12 @@ def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            if mask_streams == True:
+            if mask == 'cmask/streams':
                 gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
-            elif mask_streams == False:
+            elif mask == 'cmask':
                 gis[key] *= cmask_bi
-                
-        elif key == 'ditches':
-            gis[key] = np.where(gis[key] == -1, -1, np.nan)
+            elif mask == 'streams':
+                gis[key] *= ditch_mask
 
     if plotgrids is True:
         plt.figure()
@@ -261,7 +260,7 @@ def read_ds_gisdata(fpath, mask_streams=False, plotgrids=False):
                 'yllcorner': yllcorner})
     return gis
 
-def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
+def read_top_gisdata(fpath, mask=None, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -318,13 +317,12 @@ def read_top_gisdata(fpath, mask_streams=True, plotgrids=False):
 
     for key in gis.keys():
         if (key != 'ditches') & (key != 'cmask'):
-            if mask_streams == True:
-                gis[key] *= cmask_bi * ditch_mask
-            elif mask_streams == False:
+            if mask == 'cmask/streams':
+                gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
+            elif mask == 'cmask':
                 gis[key] *= cmask_bi
-                
-        elif key == 'ditches':
-            gis[key] = np.where(gis[key] == -1, -1, np.nan)
+            elif mask == 'streams':
+                gis[key] *= ditch_mask
 
     if plotgrids is True:
         plt.figure()
@@ -386,7 +384,8 @@ def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
     # create dict for initializing soil profile.
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = psp.copy()
-    data.update((x, y * gisdata['cmask_bi']) for x, y in data.items())
+    gridshape = np.ones(shape=gisdata['cmask_bi'].shape)
+    data.update((x, y * gridshape) for x, y in data.items())
 
     data.update({'org_id': np.empty(np.shape(gisdata['cmask']),dtype=object)})
     data.update({'root_id': np.empty(np.shape(gisdata['cmask']),dtype=object)})
@@ -469,8 +468,9 @@ def preprocess_dsdata(pspd, deepp, gisdata, spatial=True):
     # create dict for initializing soil profile.
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = pspd.copy()
-    data.update((x, y * gisdata['cmask_bi']) for x, y in data.items())
-
+    gridshape = np.ones(shape=gisdata['cmask_bi'].shape)
+    data.update((x, y * gridshape) for x, y in data.items())
+    
     data.update({'soiltype': np.empty(np.shape(gisdata['cmask_bi']),dtype=object)})
 
     if spatial == False:
@@ -504,7 +504,6 @@ def preprocess_dsdata(pspd, deepp, gisdata, spatial=True):
 
     # ditch depth corresponding to assigned parameter
     data['ditches'] = np.where(data['ditches'] < -eps, pspd['ditch_depth'], 0)
-    data['ditches'] = data['ditches'] * gisdata['cmask_bi']
 
     data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
     data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
@@ -533,6 +532,7 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
     """
     # inputs for CanopyGrid initialization: update pcpy using spatial data
     cstate = pcpy['state'].copy()
+    gridshape = np.ones(shape=gisdata['cmask_bi'].shape)
 
     if spatial:
         cstate['lai_conif'] = gisdata['LAI_conif']
@@ -542,13 +542,13 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
         cstate['cf'] = gisdata['cf']
         cstate['hc'] = gisdata['hc']
         for key in ['w', 'swe']:
-            cstate[key] *= gisdata['cmask_bi']
+            cstate[key] *= gridshape
         if {'lat','lon'}.issubset(gisdata.keys()):
             pcpy['loc']['lat'] = gisdata['lat']
             pcpy['loc']['lon'] = gisdata['lon']
     else:
         for key in cstate.keys():
-            cstate[key] *= gisdata['cmask_bi']
+            cstate[key] *= gridshape
 
     pcpy['state'] = cstate
 
