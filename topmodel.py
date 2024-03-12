@@ -59,7 +59,7 @@ class Topmodel_Homogenous():
 
         # area of a given cell
         self.CellArea = dxy**2
-        self.CatchmentArea = np.size(cmask[cmask == 1])*self.CellArea
+        self.CatchmentArea = np.size(cmask[np.isfinite(cmask)])*self.CellArea
         self.qr = np.full_like(cmask, 0.0)
         
 

@@ -46,6 +46,7 @@ def parameters(folder=''):
                     ['parameters_lat', 'latitude [deg]'],
                     ['parameters_lon', 'longitude [deg]'],
                     ['parameters_ditches', 'ditches'],
+                    ['parameters_lakes', 'lakes'],
                     ['parameters_cmask', 'cmask'],
                     ['parameters_twi', 'twi'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
