@@ -12,25 +12,29 @@ def parameters(folder=''):
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '1D', # 1D, TOP, 2D,
             'start_date': '1980-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2021-12-31', # 2021-12-31,
+            'end_date': '1980-01-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '1980-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '1980-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
             'spatial_soil': True,  # if False uses soil_id, ditch_depth, ditch_spacing from psp
+            'spatial_deep': True,
             'org_drain': True, # organic layer drainage True/False            
             'topmodel': True,
             # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(folder+r'/hyytiala_32_pristine')),
-            'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
+            'gis_folder': str(pathlib.Path(folder+r'/hyytiala_32')),
+            #'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
+            'forcing_file': r'/Users/jpnousu/SpaFHy_v2.0/testcase_input/forcing/HYYTIALA_FORCING_1980_2021.csv',
             'forcing_id': 0,  # used if spatial_forcing == False
-            'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
+            'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
+            'cmask' : 'catchment_mask_all.asc',
             'mask': None, # 'cmask/streams', 'cmask', 'streams', None
-            'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
+            #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
+            'results_folder': r'/Users/jpnousu/SpaFHy_v2.0/results',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
@@ -105,7 +109,8 @@ def parameters(folder=''):
     f=1.0
 
     # canopygrid
-    pcpy = {'flow' : {  # flow field
+    pcpy = {
+            'flow' : {  # flow field
                      'zmeas': 10.0,
                      'zground': 0.5,
                      'zo_ground': 0.01
@@ -133,25 +138,25 @@ def parameters(folder=''):
                         'gsoil': 1e-2 # soil surface conductance if soil is fully wet (m/s)
                         },
             'spec_para': {
-                        'conif': {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                        'conif': {  'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
                                     'g1': 2.1, # stomatal parameter
                                     'q50': 50.0, # light response parameter (Wm-2)
                                     'lai_cycle': False,
                                      },
-                        'decid': {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
-                                     'g1': 3.5, # stomatal parameter
-                                     'q50': 50.0, # light response parameter (Wm-2)
-                                     'lai_cycle': True,
+                        'decid': {  'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                    'g1': 3.5, # stomatal parameter
+                                    'q50': 50.0, # light response parameter (Wm-2)
+                                    'lai_cycle': True,
                                      },
-                        'shrub':    {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
-                                     'g1': 3.0, # stomatal parameter
-                                     'q50': 50.0, # light response parameter (Wm-2)
-                                     'lai_cycle': False,
+                        'shrub': {  'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                    'g1': 3.0, # stomatal parameter
+                                    'q50': 50.0, # light response parameter (Wm-2)
+                                    'lai_cycle': False,
                                      },
-                        'grass':    {'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
-                                     'g1': 5.0, # stomatal parameter
-                                     'q50': 50.0, # light response parameter (Wm-2)
-                                     'lai_cycle': True,
+                        'grass': {  'amax': 10.0, # maximum photosynthetic rate (umolm-2(leaf)s-1)
+                                    'g1': 5.0, # stomatal parameter
+                                    'q50': 50.0, # light response parameter (Wm-2)
+                                    'lai_cycle': True,
                                      },
                         },
             'phenopara': {
@@ -167,13 +172,13 @@ def parameters(folder=''):
                         'sdl': 9.0, # daylength for senescence start (h)
                         'sdur': 30.0, # duration of leaf senescence (days),
                          },
-            'state': {  # following properties are used if spatial_cpy == False
-                       'lai_conif': 3.5, # conifer 1-sided LAI (m2 m-2)
-                       'lai_decid_max': 0.5, # maximum annual deciduous 1-sided LAI (m2 m-2)
+            'state': {  # spatial_cpy = False -> floats | spatial_cpy = True -> filenames in gispath
+                       'lai_conif': 'LAI_conif.asc', # conifer 1-sided LAI (m2 m-2)
+                       'lai_decid_max': 'LAI_decid.asc',  # 0.5, # maximum annual deciduous 1-sided LAI (m2 m-2)
                        'lai_shrub': 0.1,
                        'lai_grass': 0.2,
-                       'hc': 16.0, # canopy height (m)
-                       'cf': 0.6, # canopy closure fraction (-)
+                       'hc': 'canopy_height.asc', # canopy height (m)
+                       'cf': 'canopy_fraction.asc', # canopy closure fraction (-)
                        # initial state of canopy storage [mm] and snow water equivalent [mm]
                        'w': 0.0, # canopy storage mm
                        'swe': 0.0, # snow water equivalent mm
@@ -185,19 +190,19 @@ def parameters(folder=''):
             }
 
     # soil profile (bucket)
-    psp = {
+    pbu = {
             # soil profile, following properties are used if spatial_soil = False
-            'org_id': 2.0,
             # organic moss-humus layer
+            'org_id': 'site_main_class.asc', # uniform (float) OR path to grid in gispath (str)       
             'org_depth': 0.05, # depth of organic top layer (m)
             'org_poros': 0.448, # porosity (-)
             'org_fc': 0.33, # field capacity (-)
             'org_rw': 0.15, # critical vol. moisture content (-) for decreasing phase in Ef
             'org_ksat': 1E-04, # root zone hydraulic conductivity
             'org_beta': 6.0, # 
-            'maxpond': 0.02,
+            'maxpond': 0.02, # max ponding depth (m)
             # rootzone layer
-            'root_id': 2.0,
+            'root_id': 'site_type_combined.asc', # uniform (float) OR path to grid in gispath (str)     
             'root_depth': 0.3, # depth of rootzone layer (m)
             'root_sat': 0.6, # saturation ratio (-)
             'root_fc': 0.33, # field capacity
@@ -209,14 +214,16 @@ def parameters(folder=''):
             'root_n': 1.20, # 
             'root_wr': 0.0, #
             # initial states
-            #'ground_water_level': -0.5,  # groundwater depth [m]
             'org_sat': 1.0, # organic top layer saturation ratio (-)
             'pond_storage': 0.0,  # initial pond depth at surface [m]
             }
 
     # soil profile (2D, deep)
-    pspd = {'deep_id': 2.0,
-            'deep_z': -5.0,
+    pspd = {
+            # deep soil profile, following properties are used if spatial_deep = False
+            'deep_id': 'low_soil.asc', # uniform (float) OR path to grid in gispath (str)
+            'elevation': 'dem.asc', # uniform (float) OR path to grid in gispath (str)               
+            'deep_z': -5.0, # THIS NEEDS WORK!
             'deep_poros': 0.41,
             'deep_wr': 0.05,
             'deep_alpha': 0.024,
@@ -228,14 +235,19 @@ def parameters(folder=''):
             }
         
 
-    return pgen, pcpy, psp, pspd
+    return pgen, pcpy, pbu, pspd
 
 
 def ptopmodel():
     """
     parameters of topmodel submodel
     """
-    ptopmodel = {'dt': 86400.0, # timestep (s)
+    ptopmodel = {
+            'dem': 'dem.asc',
+            'flow_accumulation': 'flow_accumulation.asc',
+            'slope': 'slope.asc',
+            'twi': 'twi.asc',
+            'dt': 86400.0, # timestep (s)
             'm': 0.025, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
             'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
@@ -243,6 +255,15 @@ def ptopmodel():
            }
     return ptopmodel
 
+def auxiliary_grids():
+    """
+    paths to auxiliary grids such as cmask, lakes, streams
+    """
+    grids = {
+            'cmask':    'catchment_mask_all.asc',
+            'streams':  'stream_mask.asc',
+            'lakes':    'lake_mask.asc'
+            }
 
 def org_properties():
     """
@@ -358,59 +379,6 @@ def deep_properties():
                 },
         }
     return deepp
-
-'''
-# one layer
-def soilprofiles():
-    """
-    Properties of soil profiles.
-    Note z is elevation of lower boundary of layer (soil surface at 0.0),
-    e.g. z = [-0.05, -0.15] means first layer tickness is 5 cm and second 10 cm.
-    """
-    soilp = {
-        'CoarseTextured':{ # Launiainen et al. 2021
-            'soil_id': 1.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.41], # Launiainen et al. 2021
-                    'ThetaR': [0.05], # Launiainen et al. 2021
-                    'alpha': [0.024], # Launiainen et al. 2021
-                    'n': [1.2]}, # Launiainen et al. 2021
-            'saturated_conductivity': [1E-05],
-                },
-        'MediumTextured':{
-            'soil_id': 2.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.43], # Launiainen et al. 2019
-                    'ThetaR': [0.05], # Launiainen et al. 2019
-                    'alpha': [0.024], # Launiainen et al. 2019
-                    'n': [1.2]}, # # Launiainen et al. 2021
-            'saturated_conductivity': [1E-05],
-                },
-        'FineTextured':{
-            'soil_id': 3.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.6],
-                    'ThetaR': [0.07],
-                    'alpha': [0.018],
-                    'n': [1.16]},
-            'saturated_conductivity': [1E-05],
-                },
-        'Peat':{
-            'soil_id': 4.0,
-            'z': [-5.0],
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.88],  # MEASURED
-                    'ThetaR': [0.196], # MEASURED 
-                    'alpha': [0.072],  # MEASURED 
-                    'n': [1.255]}, # MEASURED
-            'saturated_conductivity': [1E-05], # MEASURED
-                }
-        }
-    return soilp
-'''
 
 def root_properties():
     """

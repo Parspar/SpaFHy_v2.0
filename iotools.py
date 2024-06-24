@@ -13,11 +13,14 @@ from soilprofile2D import gwl_Wsto
 from koordinaattimuunnos import koordTG
 from topmodel import twi as twicalc
 import re
+from parameters import parameters, auxiliary_grids
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
 
-def read_bu_gisdata(fpath, mask=None, plotgrids=False):
+pgen, pcpy, pbu, pspd = parameters(folder='testcase_input')
+
+def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):    
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -30,65 +33,22 @@ def read_bu_gisdata(fpath, mask=None, plotgrids=False):
             rootsoil
             ditches
     """
+    
     fpath = os.path.join(workdir, fpath)
 
     # soil classification
-    # organis moss-humus layer
-    orgsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_main_class.asc')) 
-    rootsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'site_type_combined.asc'))
-    
-    # catchment mask if available
-    try:
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
-    except:
-        cmask = np.ones(np.shape(rootsoil))
-
-    # keeping the original cmask as it is and creating a binary copy
-    cmask_bi = cmask.copy()
-    cmask_bi[np.isfinite(cmask_bi)] = 1
-
-    # ditches if available
-    try:
-        ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
-        ditches[ditches == np.nan] = 0.0
-        ditches = np.where(ditches == 0, np.nan, -1)
-    except:
-        print('*** No ditch file ***')
-        ditches = np.full_like(orgsoil, 0.0)
-    ditch_mask = np.where(ditches < -eps, np.nan, 1)
-
-    # lakes if available
-    try:
-        lakes, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'lake_mask.asc')) # ditches.dat
-        lakes[lakes == np.nan] = 0.0
-        lakes = np.where(lakes == 0, np.nan, -1)
-    except:
-        print('*** No lakes file ***')
-        lakes = np.full_like(orgsoil, 0.0)
-    lake_mask = np.where(lakes < -eps, np.nan, 1)
-
+    if spatial_pbu['org'] == True:
+        orgsoil, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['org_id']))
+    if spatial_pbu['root'] == True:
+        rootsoil, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['root_id']))
 
     # dict of all rasters
-    gis = {'cmask': cmask,
-           'cmask_bi': cmask_bi,
-           'orgsoil': orgsoil,
-           'rootsoil': rootsoil,
-           'ditches': ditches,
-           'lakes': lakes,                      
+    gis = {'orgsoil': orgsoil,
+           'rootsoil': rootsoil,                  
            }
 
     xllcorner = int(re.findall(r'\d+', info[2])[0])
     yllcorner = int(re.findall(r'\d+', info[3])[0])
-
-    for key in gis.keys():
-        if (key != 'ditches') & (key != 'cmask') & (key != 'cmask_bi') & (key != 'lakes'):
-            if mask == 'cmask/streams':
-                gis[key] *= cmask_bi * ditch_mask * lake_mask
-            elif mask == 'cmask':
-                gis[key] *= cmask_bi
-            elif mask == 'streams':
-                gis[key] *= ditch_mask
-
 
     if plotgrids is True:
         plt.figure()
@@ -101,7 +61,7 @@ def read_bu_gisdata(fpath, mask=None, plotgrids=False):
                 'yllcorner': yllcorner})
     return gis
 
-def read_cpy_gisdata(fpath, mask=None, plotgrids=False):
+def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -117,83 +77,39 @@ def read_cpy_gisdata(fpath, mask=None, plotgrids=False):
             hc - mean stand height (m)
 
     """
+
     fpath = os.path.join(workdir, fpath)
 
     # tree height [m]
-    hc, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_height.asc'))
+    if spatial_pcpy['hc'] == True:
+        hc, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['hc']))
 
     # canopy closure [-]
-    cf, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'canopy_fraction.asc'))
-    
-    # catchment mask if available
-    try:
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
-    except:
-        cmask = np.ones(np.shape(hc))
-    
-    # keeping the original cmask as it is and creating a binary copy
-    cmask_bi = cmask.copy()
-    cmask_bi[np.isfinite(cmask_bi)] = 1
+    if spatial_pcpy['cf'] == True:
+        cf, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['cf']))
 
-    # leaf area indices
-    try:
-        LAI_pine, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_pine.asc'))
-        LAI_spruce, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_spruce.asc'))
-        LAI_conif = LAI_pine + LAI_spruce
-    except:
-        LAI_conif, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_conif.asc'))
-
-    LAI_decid, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'LAI_decid.asc'))
-    
-    try:
-        LAI_shrub, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_shrub.asc'))
-        LAI_grass, _, _, _, _ = read_AsciiGrid(os.path.join(fpath,'LAI_grass.asc'))
-    except:
-        print('*** Understory LAI assigned from LAI_decid and LAI_conif ***')
-        LAI_grass = 0.5 * LAI_decid
+    if spatial_pcpy['lai_conif'] == True:
+        LAI_conif, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['lai_conif']))
         LAI_shrub = 0.1 * LAI_conif
 
-    # ditches
-    try:
-        ditches, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'stream_mask.asc')) # ditches.dat
-        ditches[ditches == np.nan] = 0.0
-        ditches = np.where(ditches == 0, np.nan, -1)
-    except:
-        print('*** No ditch file ***')
-        ditches = np.full_like(hc, 0.0)
-    ditch_mask = np.where(ditches < -eps, np.nan, 1)
+    if spatial_pcpy['lai_decid'] == True:
+        LAI_decid, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['lai_decid_max']))
+        LAI_grass = 0.5 * LAI_decid
 
-    # lakes if available
-    try:
-        lakes, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'lake_mask.asc')) # ditches.dat
-        lakes[lakes == np.nan] = 0.0
-        lakes = np.where(lakes == 0, np.nan, -1)
-    except:
-        print('*** No lakes file ***')
-        lakes = np.full_like(orgsoil, 0.0)
-    lake_mask = np.where(lakes < -eps, np.nan, 1)
+    if spatial_pcpy['lai_shrub'] == True:
+        LAI_shrub, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['lai_shrub']))
+
+    if spatial_pcpy['lai_grass'] == True:
+        LAI_grass, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['lai_grass']))
     
     # dict of all rasters
-    gis = {'cmask': cmask,
-           'cmask_bi': cmask_bi,
-           'LAI_conif': LAI_conif, 
+    gis = {'LAI_conif': LAI_conif, 
            'LAI_decid': LAI_decid, 
            'LAI_shrub': LAI_shrub, 
            'LAI_grass': LAI_grass,
            'hc': hc, 
            'cf': cf, 
-           'ditches': ditches,
-           'lakes': lakes,           
           }
-
-    for key in gis.keys():
-        if (key != 'ditches') & (key != 'cmask') & (key != 'cmask_bi') & (key != 'lakes'):
-            if mask == 'cmask/streams':
-                gis[key] *= cmask_bi * ditch_mask
-            elif mask == 'cmask':
-                gis[key] *= cmask_bi
-            elif mask == 'streams':
-                gis[key] *= ditch_mask
 
     if plotgrids is True:
 
@@ -207,7 +123,7 @@ def read_cpy_gisdata(fpath, mask=None, plotgrids=False):
 
     return gis
 
-def read_ds_gisdata(fpath, mask=None, plotgrids=False):
+def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -223,24 +139,13 @@ def read_ds_gisdata(fpath, mask=None, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
 
     # deep soil layer
-    deepsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc'))
-    
-    # catchment mask if available
-    try:
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
-    except:
-        cmask = np.ones(np.shape(deepsoil))
-
-    # keeping the original cmask as it is and creating a binary copy
-    cmask_bi = cmask.copy()
-    cmask_bi[np.isfinite(cmask_bi)] = 1
+    spatial_pspd['deep'] == True:
+        deepsoil, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
 
     # dem
-    dem, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc'))
-
-    # dem
-    bedrock, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'dem.asc'))
-    bedrock = bedrock - 5.0
+    spatial_pspd['elevation'] == True:
+        dem, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
+        bedrock = dem - 5.0
     
     # ditches
     try:
@@ -263,9 +168,7 @@ def read_ds_gisdata(fpath, mask=None, plotgrids=False):
     lake_mask = np.where(lakes < -eps, np.nan, 1)
     
     # dict of all rasters
-    gis = {'cmask': cmask,
-           'cmask_bi': cmask_bi,           
-           'deepsoil': deepsoil,
+    gis = {'deepsoil': deepsoil,
            'ditches': ditches,
            'lakes': lakes,                      
            'dem': dem,
@@ -274,15 +177,6 @@ def read_ds_gisdata(fpath, mask=None, plotgrids=False):
 
     xllcorner = int(re.findall(r'\d+', info[2])[0])
     yllcorner = int(re.findall(r'\d+', info[3])[0])
-
-    for key in gis.keys():
-        if (key != 'ditches') & (key != 'cmask') & (key != 'cmask_bi') & (key != 'lakes'):
-            if mask == 'cmask/streams':
-                gis[key] *= cmask_bi * ditch_mask # for 1D and TOP run * ditch_mask, for 2D no!
-            elif mask == 'cmask':
-                gis[key] *= cmask_bi
-            elif mask == 'streams':
-                gis[key] *= ditch_mask
 
     if plotgrids is True:
         plt.figure()
@@ -417,7 +311,7 @@ def read_forcing_gisdata(fpath):
 
     return gis
 
-def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
+def preprocess_budata(pbu, orgp, rootp, gisdata, spatial=True):
     """
     creates input dictionary for initializing SoilGrid
     Args:
@@ -430,7 +324,7 @@ def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
     """
     # create dict for initializing soil profile.
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
-    data = psp.copy()
+    data = pbu.copy()
     gridshape = np.ones(shape=gisdata['cmask_bi'].shape)
     data.update((x, y * gridshape) for x, y in data.items())
 
@@ -438,8 +332,8 @@ def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
     data.update({'root_id': np.empty(np.shape(gisdata['cmask']),dtype=object)})
 
     if spatial == False:
-        data['org_id'] = psp['org_id'] * gisdata['cmask']
-        data['root_id'] = psp['root_id'] * gisdata['cmask']
+        data['org_id'] = pbu['org_id'] * gisdata['cmask']
+        data['root_id'] = pbu['root_id'] * gisdata['cmask']
     else:
         data['org_id'] = gisdata['orgsoil']
         data['root_id'] = gisdata['rootsoil']
@@ -1097,7 +991,7 @@ def read_AsciiGrid(fname, setnans=True):
     Samuli Launiainen Luke 7.9.2016
     """
     import numpy as np
-
+    print(fname)
     fid = open(fname, 'r')
     info = fid.readlines()[0:6]
     fid.close()

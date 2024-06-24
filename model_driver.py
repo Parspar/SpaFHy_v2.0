@@ -149,8 +149,59 @@ def preprocess_parameters(folder=''):
     from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
     from parameters import root_properties, org_properties, deep_properties, parameters, root_properties_from_sitetype, ptopmodel
 
-    pgen, pcpy, psp, pspd = parameters(folder)
+    pgen, pcpy, pbu, pspd = parameters(folder)
     
+    spatial_pbu = {}
+    if isinstance(pbu['org_id'], float): # org
+        spatial_pbu['org'] = False
+    if isinstance(pbu['org_id'], str):
+        spatial_pbu['org'] = True
+    if isinstance(pbu['root_id'], float): # root
+        spatial_pbu['root'] = False
+    if isinstance(pbu['root_id'], str):
+        spatial_pbu['root'] = True
+
+    spatial_pcpy = {}
+    if isinstance(pcpy['state']['lai_conif'], float): # LAI_conif
+        spatial_pcpy['lai_conif'] = False
+    if isinstance(pcpy['state']['lai_conif'], str):
+        spatial_pcpy['lai_conif'] = True
+    if isinstance(pcpy['state']['lai_decid_max'], float): # LAI_decid
+        spatial_pcpy['lai_decid'] = False
+    if isinstance(pcpy['state']['lai_decid_max'], str):
+        spatial_pcpy['lai_decid'] = True
+    if isinstance(pcpy['state']['lai_grass'], float): # LAI_grass
+        spatial_pcpy['lai_grass'] = False
+    if isinstance(pcpy['state']['lai_grass'], str):
+        spatial_pcpy['lai_grass'] = True
+    if isinstance(pcpy['state']['lai_shrub'], float): # LAI_shrub
+        spatial_pcpy['lai_shrub'] = False
+    if isinstance(pcpy['state']['lai_shrub'], str):
+        spatial_pcpy['lai_shrub'] = True              
+    if isinstance(pcpy['state']['hc'], float): # canopy_height
+        spatial_pcpy['hc'] = False
+    if isinstance(pcpy['state']['hc'], str):
+        spatial_pcpy['hc'] = True    
+    if isinstance(pcpy['state']['cf'], float): # canopy_fraction
+        spatial_pcpy['cf'] = False
+    if isinstance(pcpy['state']['cf'], str):
+        spatial_pcpy['cf'] = True
+
+    spatial_pspd = {}
+    if isinstance(pspd['deep_id'], float): # deep
+        spatial_pspd['deep_id'] = False
+    if isinstance(pspd['deep_id'], str):
+        spatial_pspd['deep_id'] = True
+    if isinstance(pspd['elevation'], float): # elevation
+        spatial_pspd['elevation'] = False
+    if isinstance(pspd['elevation'], str):
+        spatial_pspd['elevation'] = True
+
+
+    print('spatial_pcpy', spatial_pcpy)
+    print('spatial_pbu', spatial_pbu)
+    print('spatial_pspd', spatial_pspd)
+
     orgp = org_properties()
     rootp = root_properties_from_sitetype()
     deepp = deep_properties()
@@ -164,10 +215,10 @@ def preprocess_parameters(folder=''):
             pgen['mask'] = 'cmask'            
         
     if pgen['spatial_soil']:
-        gisdata.update(read_bu_gisdata(pgen['gis_folder'], mask=pgen['mask']))
+        gisdata.update(read_bu_gisdata(pgen['gis_folder'], spatial_pbu=spatial_pbu, mask=pgen['mask']))
         
     if pgen['spatial_cpy']:
-        gisdata.update(read_cpy_gisdata(pgen['gis_folder'], mask=pgen['mask']))
+        gisdata.update(read_cpy_gisdata(pgen['gis_folder'], spatial_pcpy=spatial_pcpy, mask=pgen['mask']))
 
     if pgen['spatial_forcing']:
         gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask=pgen['mask']))
@@ -178,7 +229,7 @@ def preprocess_parameters(folder=''):
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
 
-    budata = preprocess_budata(psp, orgp, rootp, gisdata, pgen['spatial_soil'])
+    budata = preprocess_budata(pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, gisdata, pgen['spatial_cpy'])
 
