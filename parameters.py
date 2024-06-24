@@ -12,7 +12,7 @@ def parameters(folder=''):
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '1D', # 1D, TOP, 2D,
             'start_date': '1980-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '1981-12-31', # 2021-09-01,
+            'end_date': '2021-12-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '1980-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
@@ -25,7 +25,7 @@ def parameters(folder=''):
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(folder+r'/hyytiala_32')),
+            'gis_folder': str(pathlib.Path(folder+r'/hyytiala_32_pristine')),
             'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # added timestamp to result file name to avoid saving problem when running repeatedly
@@ -61,7 +61,7 @@ def parameters(folder=''):
                     ['bucket_moisture_root', 'volumetric water content of rootzone [m3 m-3]'],
                     ['bucket_psi_root', 'soil water potential of rootzone [MPa]'],                    
                     #['bucket_potential_infiltration', 'potential infiltration [mm d-1]'],
-                    ['bucket_surface_runoff', 'surface runoff [mm d-1]'],
+                    #['bucket_surface_runoff', 'surface runoff [mm d-1]'],
                     ['bucket_evaporation', 'evaporation from soil surface [mm d-1]'],
                     #['bucket_drainage', 'drainage from root layer [mm d-1]'],
                     #['bucket_water_storage', 'bucket water storage (top and root) [mm d-1]'],
@@ -69,7 +69,7 @@ def parameters(folder=''):
                     #['bucket_water_storage_root', 'bucket water storage (root) [mm d-1]'],
                     #['bucket_storage_change', 'bucket water storage change (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
-                    ['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],
+                    #['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],
                     ['deep_water_storage', 'soil water storage (deeplayer) [m]'],
                     ['deep_ground_water_level', 'ground water level [m]'],
                     ['deep_lateral_netflow', 'subsurface lateral netflow [mm d-1]'],
@@ -106,7 +106,7 @@ def parameters(folder=''):
 
     # canopygrid
     pcpy = {'flow' : {  # flow field
-                     'zmeas': 2.0,
+                     'zmeas': 10.0,
                      'zground': 0.5,
                      'zo_ground': 0.01
                      },
@@ -613,9 +613,9 @@ def root_properties_from_sitetype():
             'fen': # Leppä et al. carex
                 {'root_id': 11,
                  'root_poros': 0.88,
-                 'root_fc': 0.41,
-                 'root_wp': 0.11,
-                 'root_alpha': 0.04,
+                 'root_fc': 0.54, # Leppä et al. Spaghnum -10 kPa (-1m)
+                 'root_wp': 0.22, # Leppä et al. Spaghnum -1500 kPa (-150m)
+                 'root_alpha': 0.4, # per kPa
                  'root_beta': 4.0,                 
                  'root_n': 1.46,
                  'root_wr': 0.178,
@@ -624,9 +624,9 @@ def root_properties_from_sitetype():
             'mesothropic_mire': # Leppä et al. Spaghnum
                 {'root_id': 12,
                  'root_poros': 0.92,
-                 'root_fc': 0.41,
-                 'root_wp': 0.11,
-                 'root_alpha': 0.07,
+                 'root_fc': 0.49, # Leppä et al. Spaghnum -10 kPa (-1m)
+                 'root_wp': 0.16, # Leppä et al. Spaghnum -1500 kPa (-150m)
+                 'root_alpha': 0.7,
                  'root_beta': 4.0,                 
                  'root_n': 1.37,
                  'root_wr': 0.098,
@@ -635,9 +635,9 @@ def root_properties_from_sitetype():
             'meso-oligothropic_mire': # Leppä et al. Spaghnum
                 {'root_id': 13,
                  'root_poros': 0.92,
-                 'root_fc': 0.41,
-                 'root_wp': 0.11,
-                 'root_alpha': 0.07,
+                 'root_fc': 0.49,
+                 'root_wp': 0.16,
+                 'root_alpha': 0.7,
                  'root_beta': 4.0,                 
                  'root_n': 1.37,
                  'root_wr': 0.098,
@@ -646,9 +646,9 @@ def root_properties_from_sitetype():
             'oligothropic_mire': # Leppä et al. Spaghnum
                 {'root_id': 14,
                  'root_poros': 0.92,
-                 'root_fc': 0.41,
-                 'root_wp': 0.11,
-                 'root_alpha': 0.07,
+                 'root_fc': 0.49, 
+                 'root_wp': 0.16, 
+                 'root_alpha': 0.7,
                  'root_beta': 4.0,                 
                  'root_n': 1.37,
                  'root_wr': 0.098,
@@ -657,9 +657,9 @@ def root_properties_from_sitetype():
             'oligo-ombothropic_mire': # Leppä et al. Spaghnum
                 {'root_id': 15,
                  'root_poros': 0.92,
-                 'root_fc': 0.41,
-                 'root_wp': 0.11,
-                 'root_alpha': 0.07,
+                 'root_fc': 0.49,
+                 'root_wp': 0.16,
+                 'root_alpha': 0.7,
                  'root_beta': 4.0,                 
                  'root_n': 1.37,
                  'root_wr': 0.098,
@@ -668,9 +668,9 @@ def root_properties_from_sitetype():
             'sphagnum_mire': # Leppä et al. Spaghnum
                 {'root_id': 16,
                  'root_poros': 0.92,
-                 'root_fc': 0.41,
-                 'root_wp': 0.11,
-                 'root_alpha': 0.07,
+                 'root_fc': 0.49,
+                 'root_wp': 0.16,
+                 'root_alpha': 0.7,
                  'root_beta': 4.0,                 
                  'root_n': 1.37,
                  'root_wr': 0.098,

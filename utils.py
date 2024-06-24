@@ -1,6 +1,8 @@
 from scipy.ndimage import maximum_filter
 import numpy as np
 eps = np.finfo(float).eps  # machine epsilon
+from typing import List, Dict, Tuple
+import matplotlib.pyplot as plt
 
 def twi(flowacc, dx, slope_rad, twi_method):
     """
@@ -49,7 +51,7 @@ def wrc(pF: Dict, theta: np.ndarray=None, psi: np.ndarray=None, draw_pF: bool=Fa
         # converts water content [m3 m-3] to potential [m]]
         x = np.minimum(x, Ts)
         x = np.maximum(x, Tr)  # checks limits
-        s = (Ts - Tr) / ((x - Tr) + EPS)
+        s = (Ts - Tr) / ((x - Tr) + eps)
         Psi = -1e-2 / alfa*(s**(1.0 / m) - 1.0)**(1.0 / n)  # m
         Psi[np.isnan(Psi)] = 0.0
         return Psi
@@ -68,7 +70,10 @@ def wrc(pF: Dict, theta: np.ndarray=None, psi: np.ndarray=None, draw_pF: bool=Fa
 
     # draws pf-curve
     if draw_pF:
-        Ts = Ts[0]; Tr = Tr[0]; alpha = alpha[0]; n = n[0]  
+        Ts = Ts[0]
+        Tr = Tr[0]
+        alfa = alfa[0]
+        n = n[0]  
         xx = -np.logspace(-4, 5, 100)  # cm
         yy = psi_theta(xx)
 

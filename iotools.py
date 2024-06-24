@@ -39,7 +39,7 @@ def read_bu_gisdata(fpath, mask=None, plotgrids=False):
     
     # catchment mask if available
     try:
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_d8.asc'))
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
     except:
         cmask = np.ones(np.shape(rootsoil))
 
@@ -127,7 +127,7 @@ def read_cpy_gisdata(fpath, mask=None, plotgrids=False):
     
     # catchment mask if available
     try:
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
     except:
         cmask = np.ones(np.shape(hc))
     
@@ -226,9 +226,8 @@ def read_ds_gisdata(fpath, mask=None, plotgrids=False):
     deepsoil, _, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'top_soil.asc'))
     
     # catchment mask if available
-    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
     try:
-        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
     except:
         cmask = np.ones(np.shape(deepsoil))
 
@@ -313,10 +312,10 @@ def read_top_gisdata(fpath, mask=None, plotgrids=False):
     fpath = os.path.join(workdir, fpath)
     
     # catchment mask if available
-    if os.path.isfile(os.path.join(fpath, 'catchment_mask.asc')):
-        cmask, _, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask.asc'))
-    else:
-        cmask = np.ones(np.shape(hc))
+    try:
+        cmask, info, _, _, _ = read_AsciiGrid(os.path.join(fpath, 'catchment_mask_all.asc'))
+    except:
+        cmask = np.ones(np.shape(deepsoil))
     
     # keeping the original cmask as it is and creating a binary copy
     cmask_bi = cmask.copy()
@@ -496,6 +495,7 @@ def preprocess_budata(psp, orgp, rootp, gisdata, spatial=True):
             data['root_wp'][yx] = value['root_wp']
             data['root_beta'][yx] = value['root_beta']
             data['root_alpha'][yx] = value['root_alpha']
+            data['root_n'][yx] = value['root_n']            
             data['root_wr'][yx] = value['root_wr']
 
     data['dxy'] = gisdata['dxy']
@@ -601,6 +601,7 @@ def preprocess_cpydata(pcpy, gisdata, spatial=True):
             cstate[key] *= gridshape
 
     pcpy['state'] = cstate
+    pcpy['cmask'] = gisdata['cmask']
 
     return pcpy
 

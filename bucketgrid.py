@@ -7,6 +7,8 @@ Created on Wed Aug 11 10:38:59 2021
 
 import numpy as np
 eps = np.finfo(float).eps
+import matplotlib.pyplot as plt
+import sys
 
 class BucketGrid(object):
     """
@@ -263,16 +265,22 @@ class BucketGrid(object):
         """
         n = self.n_root
         m = 1 - 1 / n
-        # converts water content (m3m-3) to potential (m)
+        # converts water content (m3m-3) to potential
         x = np.minimum(self.Wliq_root, self.poros_root)
         x = np.maximum(x, self.wr_root)  # checks limits
+
+        #print('n', self.n_root[160,345])
+        #print('poros', self.poros_root[160,345])
+        #print('wr', self.wr_root[160,345])
+        #print('alpha', self.alpha_root[160,345])
         
         s = (self.poros_root - self.wr_root) / ((x - self.wr_root) + eps)
         
-        Psi = -1 / self.alpha_root*(s**(1.0 / m) - 1.0)**(1.0 / n)  # kPa
+        Psi = -1 / self.alpha_root*(s**(1.0 / m) - 1.0)**(1.0 / n)  # alpha defines the unit (kPa)
         Psi[Psi==np.NaN] = 0.0
-        Psi = 1e-3*Psi
+        Psi = 1e-3*Psi # kPa to MPa
         #Psi[Psi<-3.0] = -3.0
+        
         return Psi
         
     def hydrCond(self):

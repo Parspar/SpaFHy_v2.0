@@ -74,10 +74,30 @@ class SpaFHy():
     """
     SpaFHy model class
     """
-    def __init__(self, pgen, pcpy, pbu, pds, ptopmodel):
+    def __init__(self, pgen, pcpy, pbu, pds, ptopmodel, flatten=True):
 
         self.dt = pgen['dt']  # s
         self.simtype = pgen['simtype']
+
+        if self.simtype == '2D':
+            flatten = False
+
+        cmask = pcpy['cmask']
+        
+        """
+        flatten=True omits cells outside catchment
+        
+        if flatten:
+            ix = np.where(np.isfinite(cmask))
+    
+            for key in pcpy['state']:
+                pcpy['state'][key] = pcpy['state'][key][ix].copy()
+                        
+            for key in pbu['state']:
+                pbu['state'][key] = pbu['state'][key][ix].copy()
+                
+            self.ix = ix  # indices to locate back to 2d grid
+        """
 
         """--- initialize BucketGrid ---"""
         self.bu = BucketGrid(pbu, pgen['org_drain'])
