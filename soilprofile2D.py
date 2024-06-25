@@ -26,7 +26,7 @@ class SoilGrid_2Dflow(object):
         Args:
             spara (dict):
                 'elevation': elevation [m]
-                'ditches': ditch water level [m], < 0 for ditches otherwise 0
+                'streams': ditch water level [m], < 0 for ditches otherwise 0
                 'dxy': cell horizontal length
                 # scipy interpolation functions describing soil behavior
                 'wtso_to_gwl'
@@ -51,7 +51,7 @@ class SoilGrid_2Dflow(object):
         self.gwl_to_rootmoist = spara['gwl_to_rootmoist']
 
         # initial h (= gwl) and boundaries [m]
-        self.ditch_h = spara['ditches']
+        self.ditch_h = spara['streams']
         self.h = spara['ground_water_level']
         # soil surface elevation and hydraulic head [m]
         self.ele = spara['elevation']

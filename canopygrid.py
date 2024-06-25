@@ -58,15 +58,15 @@ class CanopyGrid():
         #spec_para = cpara['spec_para']
 
         # canopy parameters and state
-        self.hc = state['hc'] + eps
-        self.cf = state['cf'] + eps
-        self._LAIconif = np.maximum(state['lai_conif'], eps)  # m2m-2
-        self._LAIdecid = state['lai_decid_max'] * self.phenopara['lai_decid_min']
-        self._LAIgrass_max = state['lai_grass']
-        self._LAIgrass = state['lai_grass'] * self.phenopara['lai_decid_min']
-        self._LAIshrub = np.maximum(state['lai_shrub'], eps)
+        self.hc = state['canopy_height'] + eps
+        self.cf = state['canopy_fraction'] + eps
+        self._LAIconif = np.maximum(state['LAI_conif'], eps)  # m2m-2
+        self._LAIdecid = state['LAI_decid'] * self.phenopara['LAI_decid_min']
+        self._LAIgrass_max = state['LAI_grass']
+        self._LAIgrass = state['LAI_grass'] * self.phenopara['LAI_decid_min']
+        self._LAIshrub = np.maximum(state['LAI_shrub'], eps)
         self.LAI = self._LAIconif + self._LAIdecid + self._LAIshrub + self._LAIgrass
-        self._LAIdecid_max = state['lai_decid_max']  # m2m-2
+        self._LAIdecid_max = state['LAI_decid']  # m2m-2
 
         # senescence starts at first doy when daylength < self.phenopara['sdl']
         self.phenopara['sso'] = np.ones(np.shape(self.latitude))*np.nan
@@ -334,8 +334,8 @@ class CanopyGrid():
         rhoa = 101300.0 / (8.31 * (Ta + 273.15)) # mol m-3
         Amax = 1./self.LAI * (self._LAIconif * self.physpara['amax']
                 + self._LAIdecid *self.physpara['amax']
-                             + self._LAIgrass *self.physpara['amax']
-                             + self._LAIshrub *self.physpara['amax']) # umolm-2s-1
+                             + self._LAIgrass * self.physpara['amax']
+                             + self._LAIshrub * self.physpara['amax']) # umolm-2s-1
 
         g1 = 1./self.LAI * (self._LAIconif * self.physpara['g1_conif']
                 + self._LAIdecid *self.physpara['g1_decid']
@@ -639,7 +639,7 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
 #    Ga = 1.0 / ra  # ms-1
 #    return Ga
 
-def aerodynamics(LAI, hc, Uo, w=0.01, zm=2.0, zg=0.5, zos=0.01):
+def aerodynamics(LAI, canopy_height, Uo, w=0.01, zm=2.0, zg=0.5, zos=0.01):
     """
     computes wind speed at ground and canopy + boundary layer conductances
     Computes wind speed at ground height assuming logarithmic profile above and

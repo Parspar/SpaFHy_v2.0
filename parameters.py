@@ -166,19 +166,19 @@ def parameters(folder=''):
                         'xo': -4.0, # degC
                         'fmin': 0.05, # minimum photosynthetic capacity in winter (-)
                         # deciduos phenology
-                        'lai_decid_min': 0.1, # minimum relative LAI (-)
+                        'LAI_decid_min': 0.1, # minimum relative LAI (-)
                         'ddo': 45.0, # degree-days for bud-burst (5degC threshold)
                         'ddur': 23.0, # duration of leaf development (days)
                         'sdl': 9.0, # daylength for senescence start (h)
                         'sdur': 30.0, # duration of leaf senescence (days),
                          },
             'state': {  # spatial_cpy = False -> floats | spatial_cpy = True -> filenames in gispath
-                       'lai_conif': 'LAI_conif.asc', # conifer 1-sided LAI (m2 m-2)
-                       'lai_decid_max': 'LAI_decid.asc',  # 0.5, # maximum annual deciduous 1-sided LAI (m2 m-2)
-                       'lai_shrub': 0.1,
-                       'lai_grass': 0.2,
-                       'hc': 'canopy_height.asc', # canopy height (m)
-                       'cf': 'canopy_fraction.asc', # canopy closure fraction (-)
+                       'LAI_conif': 'LAI_conif.asc', # conifer 1-sided LAI (m2 m-2)
+                       'LAI_decid': 'LAI_decid.asc',  # 0.5, # maximum annual deciduous 1-sided LAI (m2 m-2)
+                       'LAI_shrub': 0.1,
+                       'LAI_grass': 0.2,
+                       'canopy_height': 'canopy_height.asc', # canopy height (m)
+                       'canopy_fraction': 'canopy_fraction.asc', # canopy closure fraction (-)
                        # initial state of canopy storage [mm] and snow water equivalent [mm]
                        'w': 0.0, # canopy storage mm
                        'swe': 0.0, # snow water equivalent mm
@@ -222,7 +222,9 @@ def parameters(folder=''):
     pspd = {
             # deep soil profile, following properties are used if spatial_deep = False
             'deep_id': 'low_soil.asc', # uniform (float) OR path to grid in gispath (str)
-            'elevation': 'dem.asc', # uniform (float) OR path to grid in gispath (str)               
+            'elevation': 'dem.asc', # uniform (float) OR path to grid in gispath (str) 
+            'ditch_nodes': 'stream_mask.asc',
+            'lake_nodes': 'lake_mask.asc',     
             'deep_z': -5.0, # THIS NEEDS WORK!
             'deep_poros': 0.41,
             'deep_wr': 0.05,
@@ -264,6 +266,7 @@ def auxiliary_grids():
             'streams':  'stream_mask.asc',
             'lakes':    'lake_mask.asc'
             }
+    return grids
 
 def org_properties():
     """

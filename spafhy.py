@@ -74,7 +74,7 @@ class SpaFHy():
     """
     SpaFHy model class
     """
-    def __init__(self, pgen, pcpy, pbu, pds, ptopmodel, flatten=True):
+    def __init__(self, pgen, pcpy, pbu, pds, ptop, flatten=True):
 
         self.dt = pgen['dt']  # s
         self.simtype = pgen['simtype']
@@ -110,7 +110,7 @@ class SpaFHy():
             self.ds = SoilGrid(pds)
         elif self.simtype == 'TOP':
             """--- initialize Topmodel ---"""
-            self.top = Topmodel(ptopmodel)
+            self.top = Topmodel(ptop)
 
         self.timestep = 1
 
