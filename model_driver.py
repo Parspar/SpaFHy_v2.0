@@ -152,7 +152,6 @@ def preprocess_parameters(folder=''):
     pgen, pcpy, pbu, pspd = parameters(folder)
     ptop = ptopmodel()
     aux = auxiliary_grids()
-    print(aux)
     
     # Checking which of the parameters are given as .asc grids
     spatial_pbu = {}
@@ -190,26 +189,13 @@ def preprocess_parameters(folder=''):
         if isinstance(aux[key], str):
             spatial_aux[key] = True
 
-    print('spatial_pcpy', spatial_pcpy)
-    print('spatial_pbu', spatial_pbu)
-    print('spatial_pspd', spatial_pspd)
-    print('spatial_ptop', spatial_ptop)
-    print('spatial_aux', spatial_aux)
-
     orgp = org_properties()
     rootp = root_properties_from_sitetype()
     deepp = deep_properties()
     gisdata = {}
-   
-    if pgen['simtype'] == '2D':
-        if pgen['mask'] == 'stream': # to make sure streams are not masked with 2D
-            pgen['mask'] = None
-        elif pgen['mask'] == 'cmask/stream':
-            pgen['mask'] = 'cmask'            
+
 
     gisdata.update(read_aux_gisdata(pgen['gis_folder'], spatial_aux))
-
-    print(gisdata)
 
     if pgen['spatial_soil']:
         gisdata.update(read_bu_gisdata(pgen['gis_folder'], spatial_pbu=spatial_pbu, mask=pgen['mask']))
@@ -220,22 +206,46 @@ def preprocess_parameters(folder=''):
     if pgen['spatial_forcing']:
         gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask=pgen['mask']))
         pgen.update({'forcing_id': gisdata['forcing_id']})
-        
+
+    if pgen['simtype'] == 'TOP':
+        gisdata.update(read_top_gisdata(pgen['gis_folder'], spatial_ptop, mask=pgen['mask']))
+
+    if pgen['simtype'] == '2D':
+        gisdata.update(read_ds_gisdata(pgen['gis_folder'], spatial_pspd))
+
     if (pgen['spatial_cpy'] == False and
         pgen['spatial_soil'] == False and
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
+
+    # masking the gisdata according to pgen['mask']
+    if pgen['mask'] is not None:
+        for key in gisdata:
+            if key not in ['xllcorner', 'yllcorner', 'dxy', 'cmask', 'cmask_bi', 'streams', 'lakes']:
+                if pgen['mask'] == 'cmask':
+                    mask = gisdata['cmask_bi'].copy()
+                    gisdata[key] = gisdata[key] * mask
+                if pgen['mask'] == 'streams':
+                    if pgen['simtype'] != '2D': # making sure streams are not maksed if 2D run
+                        mask = gisdata['streams'].copy()
+                        mask = np.where(mask == 1.0, np.nan, 1.0)
+                        gisdata[key] = gisdata[key] * mask
+                if pgen['mask'] == 'cmask/streams':
+                    mask1 = gisdata['cmask_bi'].copy()
+                    gisdata[key] = gisdata[key] * mask1
+                    if pgen['simtype'] != '2D': # making sure streams are not maksed if 2D run           
+                        mask2 = gisdata['streams'].copy()
+                        mask2 = np.where(mask2 == 1.0, np.nan, 1.0)
+                        gisdata[key] = gisdata[key] * mask2
 
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, spatial_pcpy, gisdata, pgen['spatial_cpy'])
 
     if pgen['simtype'] == 'TOP':
-        gisdata.update(read_top_gisdata(pgen['gis_folder'], mask=pgen['mask']))
         ptop = preprocess_topdata(ptop, spatial_ptop, gisdata, spatial=True)
 
     if pgen['simtype'] == '2D':
-        gisdata.update(read_ds_gisdata(pgen['gis_folder']))
         dsdata = preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, pgen['spatial_soil'])
     else:
         dsdata = pspd.copy() # dummy
@@ -245,6 +255,7 @@ def preprocess_parameters(folder=''):
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
+    
     # overwrites the state variables with the last timestep of spinup file (if given)
     try:
         spinup = xr.open_dataset(pgen['spinup_file'])

@@ -43,12 +43,11 @@ class CanopyGrid():
         """
         epsi = 0.01
 
-        cmask = state['hc'].copy()
-        cmask[np.isfinite(cmask)] = 1.0
-        self.cmask = cmask
+        self.cmask = np.full_like(state['LAI_conif'], np.nan)
+        self.cmask[np.isfinite(state['LAI_conif'])] = 1.0
 
-        self.latitude = cpara['loc']['lat'] * cmask
-        self.longitude = cpara['loc']['lon']
+        self.latitude = cpara['loc']['lat'] * self.cmask
+        self.longitude = cpara['loc']['lon'] * self.cmask
 
         # physiology: transpi + floor evap
         self.physpara = cpara['physpara']
@@ -80,7 +79,7 @@ class CanopyGrid():
             self.phenopara['sso'][self.latitude == lat] = doy[ix]  # this is onset date for senescence
             del ix
             
-        self.phenopara['sso'] = self.phenopara['sso'] * cmask
+        self.phenopara['sso'] = self.phenopara['sso'] * self.cmask
 
         self.wmax = cpara['interc']['wmax']
         self.wmaxsnow = cpara['interc']['wmaxsnow']
@@ -267,7 +266,7 @@ class CanopyGrid():
             self._senec_stage
         """
 
-        lai_min = self.phenopara['lai_decid_min']
+        lai_min = self.phenopara['LAI_decid_min']
         ddo = self.phenopara['ddo']
         ddur = self.phenopara['ddur']
         sso = self.phenopara['sso']
@@ -639,7 +638,7 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
 #    Ga = 1.0 / ra  # ms-1
 #    return Ga
 
-def aerodynamics(LAI, canopy_height, Uo, w=0.01, zm=2.0, zg=0.5, zos=0.01):
+def aerodynamics(LAI, hc, Uo, w=0.01, zm=2.0, zg=0.5, zos=0.01):
     """
     computes wind speed at ground and canopy + boundary layer conductances
     Computes wind speed at ground height assuming logarithmic profile above and

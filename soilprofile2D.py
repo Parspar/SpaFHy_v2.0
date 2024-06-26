@@ -18,7 +18,7 @@ apply_vectorized = np.vectorize(lambda f, x: f(x))
 class SoilGrid_2Dflow(object):
     """
     2D soil water flow model based on Ari Lauren SUSI2D
-    Simulates deep soil water storage, and drainage to ditches.
+    Simulates deep soil water storage, and drainage to streams.
     """
     def __init__(self, spara):
         """
@@ -26,7 +26,7 @@ class SoilGrid_2Dflow(object):
         Args:
             spara (dict):
                 'elevation': elevation [m]
-                'streams': ditch water level [m], < 0 for ditches otherwise 0
+                'streams': stream water level [m], < 0 for streams otherwise 0
                 'dxy': cell horizontal length
                 # scipy interpolation functions describing soil behavior
                 'wtso_to_gwl'
@@ -42,6 +42,10 @@ class SoilGrid_2Dflow(object):
 
         # soil/peat type
         self.soiltype = spara['soiltype']
+
+        # catchment mask
+        self.cmask = np.full_like(spara['deep_id'], np.nan)
+        self.cmask[np.isfinite(spara['deep_id'])] = 1.0
 
         # interpolated functions for soil column ground water depth vs. water storage, transmissivity etc.
         self.wsto_to_gwl = spara['wtso_to_gwl']
@@ -390,13 +394,20 @@ class SoilGrid_2Dflow(object):
 
         mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
         
+        h_out = self.h.copy() * self.cmask
+        lateral_flow = lateral_flow * self.cmask
+        netflow_to_ditch = netflow_to_ditch * self.cmask
+        mbe = mbe * self.cmask
+        deepmoist_out = self.deepmoist.copy() * self.cmask
+        Wsto_deep_out = self.Wsto_deep.copy() * self.cmask
+
         results = {
-                'ground_water_level': self.h,  # [m]
+                'ground_water_level': h_out,  # [m]
                 'lateral_netflow': -lateral_flow * 1e3,  # [mm d-1]
                 'netflow_to_ditch': netflow_to_ditch * 1e3,  # [mm d-1]
                 'water_closure': mbe * 1e3,  # [mm d-1]
-                'moisture_deep': self.deepmoist,  # [m3 m-3]
-                'water_storage': (self.Wsto_deep) * 1e3, # [mm]
+                'moisture_deep': deepmoist_out,  # [m3 m-3]
+                'water_storage': Wsto_deep_out * 1e3, # [mm]
                 }
 
         return results

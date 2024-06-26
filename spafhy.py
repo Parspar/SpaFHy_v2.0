@@ -82,7 +82,7 @@ class SpaFHy():
         if self.simtype == '2D':
             flatten = False
 
-        cmask = pcpy['cmask']
+        #cmask = pcpy['cmask']
         
         """
         flatten=True omits cells outside catchment

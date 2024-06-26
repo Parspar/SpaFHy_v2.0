@@ -12,17 +12,17 @@ def parameters(folder=''):
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '1D', # 1D, TOP, 2D,
             'start_date': '1980-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '1980-01-31', # 2021-12-31,
+            'end_date': '1980-09-01', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '1980-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
-            'spatial_soil': True,  # if False uses soil_id, ditch_depth, ditch_spacing from psp
+            'spatial_soil': True,  # if False uses soil_id, stream_depth from psp
             'spatial_deep': True,
             'org_drain': True, # organic layer drainage True/False            
             'topmodel': True,
-            # else needs soil_id.dat, ditch_depth.dat, ditch_spacing.dat
+            # else needs soil_id.dat, stream_depth.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
@@ -32,7 +32,7 @@ def parameters(folder=''):
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': folder + '_' + time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
             'cmask' : 'catchment_mask_all.asc',
-            'mask': None, # 'cmask/streams', 'cmask', 'streams', None
+            'mask': 'cmask', # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'results_folder': r'/Users/jpnousu/SpaFHy_v2.0/results',
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
@@ -49,9 +49,10 @@ def parameters(folder=''):
                     ['parameters_elevation', 'elevation from dem [m]'],
                     ['parameters_lat', 'latitude [deg]'],
                     ['parameters_lon', 'longitude [deg]'],
-                    ['parameters_ditches', 'ditches'],
+                    ['parameters_streams', 'streams'],
                     ['parameters_lakes', 'lakes'],
                     ['parameters_cmask', 'cmask'],
+                    ['parameters_cmask_bi', 'cmask'],
                     ['parameters_twi', 'twi'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
                     ['forcing_relative_humidity', 'relative humidity [%]'],
@@ -77,7 +78,7 @@ def parameters(folder=''):
                     ['deep_water_storage', 'soil water storage (deeplayer) [m]'],
                     ['deep_ground_water_level', 'ground water level [m]'],
                     ['deep_lateral_netflow', 'subsurface lateral netflow [mm d-1]'],
-                    ['deep_netflow_to_ditch', 'netflow to ditch [mm d-1]'],
+                    ['deep_netflow_to_ditch', 'netflow to stream [mm d-1]'],
                     ['deep_moisture_deep', 'volumetric water content of deepzone [m3 m-3]'],
                     ['deep_water_closure', 'soil water balance error [mm d-1]'],
                     ['deep_transpiration_limitation', 'transpiration limitation [-]'],
@@ -97,10 +98,10 @@ def parameters(folder=''):
                     ['top_baseflow', 'topmodel baseflow [mm d-1]'],
                     ['top_water_closure', 'topmodel water balance error [mm d-1]'],
                     ['top_returnflow', 'topmodel returnflow [mm d-1]'],
-                    #['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
+                    ['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
                     #['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
                     #['top_saturation_deficit', 'topmodel saturation deficit [m]'],
-                    #['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
+                    ['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
                     #['top_saturated_area', 'topmodel saturated area [-]'],
                     #['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
                     ]
@@ -223,8 +224,8 @@ def parameters(folder=''):
             # deep soil profile, following properties are used if spatial_deep = False
             'deep_id': 'low_soil.asc', # uniform (float) OR path to grid in gispath (str)
             'elevation': 'dem.asc', # uniform (float) OR path to grid in gispath (str) 
-            'ditch_nodes': 'stream_mask.asc',
-            'lake_nodes': 'lake_mask.asc',     
+            'streams': 'stream_mask.asc',
+            'lakes': 'lake_mask.asc',     
             'deep_z': -5.0, # THIS NEEDS WORK!
             'deep_poros': 0.41,
             'deep_wr': 0.05,
@@ -233,7 +234,7 @@ def parameters(folder=''):
             'deep_ksat': 1E-05,
             # initial states
             'ground_water_level': -0.5,  # groundwater depth [m]
-            'ditch_depth': -0.2   # initial ditch water level relative to ground surface (currently not dynamic) [m]
+            'stream_depth': -0.2   # initial stream water level relative to ground surface (currently not dynamic) [m]
             }
         
 
@@ -332,7 +333,7 @@ def deep_properties():
     deepp = {
         'CoarseTextured':{ # Launiainen et al. 2021
             'deep_id': 1.0,
-            'deep_z': [-5.0],
+            'deep_z': [-10.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -342,7 +343,7 @@ def deep_properties():
                 },
         'MediumTextured':{
             'deep_id': 2.0,
-            'deep_z': [-5.0],
+            'deep_z': [-10.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -352,7 +353,7 @@ def deep_properties():
                 },
         'FineTextured':{
             'deep_id': 3.0,
-            'deep_z': [-5.0],
+            'deep_z': [-10.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.6],
                     'ThetaR': [0.07],
@@ -362,7 +363,7 @@ def deep_properties():
                 },
         'Peat':{
             'deep_id': 4.0,
-            'deep_z': [-5.0],
+            'deep_z': [-10.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.88],  # MEASURED
                     'ThetaR': [0.196], # MEASURED 
@@ -372,7 +373,7 @@ def deep_properties():
                 },
         'non_forest':{
             'deep_id': 0.0,
-            'deep_z': [-5.0],
+            'deep_z': [-10.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019

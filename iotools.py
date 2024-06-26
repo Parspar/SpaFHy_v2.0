@@ -30,10 +30,8 @@ def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
         plotgrids - True plots
     Returns:
         gis - dict of gis-data rasters
-            cmask
             org_id
             root_id
-            ditches
     """
     
     fpath = os.path.join(workdir, fpath)
@@ -56,7 +54,6 @@ def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
         plt.figure()
         plt.subplot(311); plt.imshow(root_id); plt.colorbar(); plt.title('root_id')
         plt.subplot(312); plt.imshow(org_id); plt.colorbar(); plt.title('org_id')
-        plt.subplot(313); plt.imshow(ditches); plt.colorbar(); plt.title('ditches')
 
     gis.update({'dxy': cellsize})
     gis.update({'xllcorner': xllcorner,
@@ -71,7 +68,6 @@ def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
         plotgrids - True plots
     Returns:
         gis - dict of gis-data rasters
-            cmask
             LAI_pine, LAI_spruce - pine and spruce LAI (m2m-2)
             LAI_conif - conifer total annual max LAI (m2m-2)
             LAI_dedid - deciduous annual max LAI (m2m-2)
@@ -133,45 +129,45 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
         plotgrids - True plots
     Returns:
         gis - dict of gis-data rasters
-            cmask
-            soil_id
-            ditch_depth
-            ditch_spacing
+            deep_id
+            elevation
+            lakes
+            streams
     """
     fpath = os.path.join(workdir, fpath)
 
     # deep soil layer
     if spatial_pspd['deep_id'] == True:
-        deepsoil, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
+        deep_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
 
     # dem
     if spatial_pspd['elevation'] == True:
-        dem, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
-        bedrock = dem - 5.0
+        elevation, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
+        bedrock = elevation - 5.0
     
-    # ditches
-    if spatial_pspd['ditch_nodes'] == True:
-        ditches, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['ditch_nodes']))
-        ditches[ditches == np.nan] = 0.0
-        ditches = np.where(ditches == 0, np.nan, -1)
+    # streams
+    if spatial_pspd['streams'] == True:
+        streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
+        streams[streams == np.nan] = 0.0
+        streams = np.where(streams == 0, np.nan, -1.0)
     else:
-        print('*** No ditch file ***')
-        ditches = np.full_like(deepsoil, 0.0)
+        print('*** No stream file ***')
+        streams = np.full_like(deepsoil, 0.0)
 
     # lakes if available
-    if spatial_pspd['lake_nodes'] == True:
-        lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['lake_nodes']))
+    if spatial_pspd['lakes'] == True:
+        lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['lakes']))
         lakes[lakes == np.nan] = 0.0
-        lakes = np.where(lakes == 0, np.nan, -1)
+        lakes = np.where(lakes == 0, np.nan, -1.0)
     else:
         print('*** No lakes file ***')
         lakes = np.full_like(deep_id, 0.0)
     
     # dict of all rasters
-    gis = {'deepsoil': deepsoil,
+    gis = {'deep_id': deep_id,
            'streams': streams,
            'lakes': lakes,                      
-           'dem': dem,
+           'elevation': elevation,
            'bedrock': bedrock,
            }
 
@@ -181,8 +177,8 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     if plotgrids is True:
         plt.figure()
         plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
-        plt.subplot(312); plt.imshow(dem); plt.colorbar(); plt.title('dem')
-        plt.subplot(313); plt.imshow(dem); plt.colorbar(); plt.title('ditches')
+        plt.subplot(312); plt.imshow(elevation); plt.colorbar(); plt.title('elevation')
+        plt.subplot(313); plt.imshow(elevation); plt.colorbar();
 
     gis.update({'dxy': cellsize})
     gis.update({'xllcorner': xllcorner,
@@ -225,8 +221,8 @@ def read_top_gisdata(fpath, spatial_ptop, mask=None, plotgrids=False):
     if plotgrids is True:
         plt.figure()
         plt.subplot(311); plt.imshow(slope); plt.colorbar(); plt.title('soiltype')
-        plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('dem')
-        plt.subplot(313); plt.imshow(flowacc); plt.colorbar(); plt.title('ditches')
+        plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('elevation')
+        plt.subplot(313); plt.imshow(flowacc); plt.colorbar();
 
     gis.update({'dxy': cellsize})
 
@@ -313,24 +309,11 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
     gridshape = np.ones(shape=gisdata['org_id'].shape) # replace org_id with something generic?
 
     for key in data:
-        print(key)
         if spatial_data[key] == True:
             data[key] = gisdata[key]
         if spatial_data[key] == False:
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
-    
-    #data.update({'org_id': np.empty(np.shape(gisdata['org_id']),dtype=object)})
-    #data.update({'root_id': np.empty(np.shape(gisdata['org_id']),dtype=object)})
-
-    ##if spatial == False:
-    #    data['org_id'] = pbu['org_id']
-    #    data['root_id'] = pbu['root_id']
-    #else:
-    #    data['org_id'] = gisdata['org_id']
-    #    data['root_id'] = gisdata['root_id']
-    #    data['ditches'] = gisdata['ditches']
-    #    data['lakes'] = gisdata['lakes']
 
     root_ids = []
     for key, value in rootp.items():
@@ -404,7 +387,7 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data = pspd.copy()
     spatial_data = spatial_pspd.copy()
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
-
+   
     for key in data:
         if spatial_data[key] == True:
             data[key] = gisdata[key]
@@ -415,10 +398,10 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     if spatial == False:
         data['deep_id'] = pspd['deep_id']
     else:
-        data['deep_id'] = gisdata['deepsoil']
-        data['elevation'] = gisdata['dem']
+        data['deep_id'] = gisdata['deep_id']
+        data['elevation'] = gisdata['elevation']
         data['bedrock'] = gisdata['bedrock']        
-        data['ditches'] = gisdata['ditches']
+        data['streams'] = gisdata['streams']
         data['lakes'] = gisdata['lakes']
 
     deep_ids = []
@@ -433,6 +416,8 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
         #raise ValueError("Deep soil id in inputs not specified in parameters.py")
 
+    data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+
     for key, value in deepp.items():
         c = value['deep_id']
         ix = np.where(data['deep_id'] == c)
@@ -442,8 +427,9 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         # interpolation function between root_wsto and gwl
         value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
 
-    # ditch depth corresponding to assigned parameter
-    data['ditches'] = np.where(data['ditches'] < -eps, pspd['ditch_depth'], 0)
+    # stream depth corresponding to assigned parameter
+    data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
+    #data['streams'] = np.where(data['lakes'] < -eps, pspd['stream_depth'], 0)
 
     data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
     data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
@@ -481,25 +467,9 @@ def preprocess_cpydata(pcpy, spatial_pcpy, gisdata, spatial=True):
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
 
-    #if spatial:
-    #    cstate['lai_conif'] = gisdata['LAI_conif']
-    #    cstate['lai_decid_max'] = gisdata['LAI_decid']
-    #    cstate['lai_shrub'] = gisdata['LAI_shrub']
-    #    cstate['lai_grass'] = gisdata['LAI_grass']
-    #    cstate['cf'] = gisdata['cf']
-    #    cstate['hc'] = gisdata['hc']
-    #    for key in ['w', 'swe']:
-    #        cstate[key] *= gridshape
-    #    if {'lat','lon'}.issubset(gisdata.keys()):
-    #        pcpy['loc']['lat'] = gisdata['lat']
-    #        pcpy['loc']['lon'] = gisdata['lon']
-    #else:
-    #    for key in cstate.keys():
-    #        cstate[key] *= gridshape
+    pcpy['state'] = data
 
-    #pcpy['state'] = cstate
-
-    return data
+    return pcpy
 
 def preprocess_topdata(ptop, spatial_ptop, gisdata, spatial=True):
     """
@@ -514,6 +484,7 @@ def preprocess_topdata(ptop, spatial_ptop, gisdata, spatial=True):
             (lat, lon)
     """
     # inputs for topmodel initialization: update ptop using spatial data
+    
     ptop['slope'] = gisdata['slope']
     ptop['flowacc'] = gisdata['flowacc']
     ptop['twi'] = gisdata['twi']
