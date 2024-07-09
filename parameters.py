@@ -584,7 +584,7 @@ def root_properties_from_sitetype():
                  },
             'fen': # Leppä et al. carex
                 {'root_id': 11,
-                 'root_poros': 0.88,
+                 'root_poros': 0.89,
                  'root_fc': 0.54, # Leppä et al. Spaghnum -10 kPa (-1m)
                  'root_wp': 0.22, # Leppä et al. Spaghnum -1500 kPa (-150m)
                  'root_alpha': 0.4, # per kPa
@@ -659,6 +659,133 @@ def root_properties_from_sitetype():
                  'root_n': 1.20,
                  'root_wr': 0.0,
                  'root_ksat': 1e-5, #1e-5,1e-6
+                 },
+            }
+
+    return rootp
+
+
+def swedish_soilmap():
+    """
+    """
+    rootp = {
+            'Postglacial_sand': 
+                {
+                 'root_id': 31,
+                 'root_poros': 0.58,
+                 'root_fc': 0.30, # 0.34,
+                 'root_wp': 0.13, # 0.11,
+                 'root_alpha': 4.06,
+                 'root_beta': 4.0,                    
+                 'root_n': 1.17,
+                 'root_wr': 0.0,
+                 'root_ksat': 1e-6, #1e-06,
+                 },
+            'Glaciofluvial_sediment':
+                {
+                 'root_id': 50,
+                 'root_poros': 0.58,
+                 'root_fc': 0.30, # 0.34,
+                 'root_wp': 0.13, # 0.11,
+                 'root_alpha': 4.06,
+                 'root_beta': 4.0,                    
+                 'root_n': 1.17,
+                 'root_wr': 0.0,
+                 'root_ksat': 1e-6, #1e-06,
+                 },        
+            'Peat': # SAME AS FINNISH PEAT
+                {
+                 'root_id': 75,
+                 'root_poros': 0.89,
+                 'root_fc': 0.54, # Leppä et al. Spaghnum -10 kPa (-1m)
+                 'root_wp': 0.22, # Leppä et al. Spaghnum -1500 kPa (-150m)
+                 'root_alpha': 0.4, # per kPa
+                 'root_beta': 4.0,                 
+                 'root_n': 1.46,
+                 'root_wr': 0.178,
+                 'root_ksat': 1e-5,
+                 },
+            'Postglacial_sand_gravel':
+                {'root_id': 84,
+                 'root_poros': 0.53,
+                 'root_fc': 0.22, #0.24,
+                 'root_wp': 0.06, #0.08,
+                 'root_alpha': 3.7,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.24,
+                 'root_wr': 0.0,
+                 'root_ksat': 5e-5, #5e-5,5e-6
+                 },
+            'Clay--silt':
+                {'root_id': 86,
+                 'root_poros': 0.48,
+                 'root_fc': 0.14,
+                 'root_wp': 0.04,
+                 'root_alpha': 3.8,
+                 'root_beta': 4.0,                 
+                 'root_n': 1.42,
+                 'root_wr': 0.03,
+                 'root_ksat': 1e-4,
+                },
+            'Washed_sediment_gravel_boulders': 
+                {
+                 'root_id': 89,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'Moraine': # MEDIUM TEXTURED GTK
+                {
+                  'root_id': 100,
+                  'root_poros': 0.43,
+                  'root_fc': 0.33,
+                  'root_wp': 0.13,
+                  'root_ksat': 1E-05,
+                  'root_beta': 4.7,
+                  'root_alpha': 0.024,
+                  'root_n': 1.2,
+                  'root_wr': 0.05,
+                 },
+            'Fill':
+                {
+                 'root_id': 200,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'Bedrock': # NEEDS PARAMETERS
+                {
+                 'root_id': 888,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
+                 },
+            'Fluvial_sedimend_sand': # NEEDS PARAMETERS
+                {
+                 'root_id': 8809,
+                 'root_poros': 0.9,
+                 'root_fc': 0.31,
+                 'root_wp': 0.11,
+                 'root_ksat': 1e-06,
+                 'root_beta': 4.0,
+                 'root_alpha': 8.54,
+                 'root_n': 1.32,
+                 'root_wr': 0.10,
                  },
             }
 
