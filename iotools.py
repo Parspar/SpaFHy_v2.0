@@ -13,7 +13,7 @@ from soilprofile2D import gwl_Wsto
 from koordinaattimuunnos import koordTG
 from topmodel import twi as twicalc
 import re
-from parameters import parameters, auxiliary_grids, ptopmodel
+from parameters_hyytiala import parameters, auxiliary_grids, ptopmodel
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -36,16 +36,18 @@ def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
     
     fpath = os.path.join(workdir, fpath)
 
-    # soil classification
-    if spatial_pbu['org_id'] == True:
-        org_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['org_id']))
-    if spatial_pbu['root_id'] == True:
-        root_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['root_id']))
+    gis = {}
 
-    # dict of all rasters
-    gis = {'org_id': org_id,
-           'root_id': root_id,                  
-           }
+    # soil classification
+    if 'org_id' in spatial_pbu:
+        if spatial_pbu['org_id'] == True:
+            org_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['org_id']))
+            gis['org_id'] = org_id
+    
+    if 'root_id' in spatial_pbu:
+        if spatial_pbu['root_id'] == True:        
+            root_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['root_id']))
+            gis['root_id'] = root_id
 
     xllcorner = int(re.findall(r'\d+', info[2])[0])
     yllcorner = int(re.findall(r'\d+', info[3])[0])
@@ -58,6 +60,7 @@ def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
     gis.update({'dxy': cellsize})
     gis.update({'xllcorner': xllcorner,
                 'yllcorner': yllcorner})
+    
     return gis
 
 def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
@@ -78,37 +81,44 @@ def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
 
     fpath = os.path.join(workdir, fpath)
 
-    # tree height [m]
-    if spatial_pcpy['canopy_height'] == True:
-        canopy_height, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['canopy_height']))
-
-    # canopy closure [-]
-    if spatial_pcpy['canopy_fraction'] == True:
-        canopy_fraction, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['canopy_fraction']))
-
-    if spatial_pcpy['LAI_conif'] == True:
-        LAI_conif, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_conif']))
-        LAI_shrub = 0.1 * LAI_conif
-
-    if spatial_pcpy['LAI_decid'] == True:
-        LAI_decid, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_decid']))
-        LAI_grass = 0.5 * LAI_decid
-
-    if spatial_pcpy['LAI_shrub'] == True:
-        LAI_shrub, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_shrub']))
-
-    if spatial_pcpy['LAI_grass'] == True:
-        LAI_grass, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_grass']))
+    gis = {}
     
-    # dict of all rasters
-    gis = {'LAI_conif': LAI_conif, 
-           'LAI_decid': LAI_decid, 
-           'LAI_shrub': LAI_shrub, 
-           'LAI_grass': LAI_grass,
-           'canopy_height': canopy_height, 
-           'canopy_fraction': canopy_fraction, 
-          }
+    # tree height [m]
+    if 'canopy_height' in spatial_pcpy:
+        if spatial_pcpy['canopy_height'] == True:
+            canopy_height, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['canopy_height']))
+            gis['canopy_height'] = canopy_height
+        
+    # canopy closure [-]
+    if 'canopy_fraction' in spatial_pcpy:
+        if spatial_pcpy['canopy_fraction'] == True:
+            canopy_fraction, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['canopy_fraction']))
+            gis['canopy_fraction'] = canopy_fraction
 
+    if 'LAI_conif' in spatial_pcpy:
+        if spatial_pcpy['LAI_conif'] == True:
+            LAI_conif, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_conif']))
+            LAI_shrub = 0.1 * LAI_conif
+            gis['LAI_conif'] = LAI_conif
+            gis['LAI_shrub'] = LAI_shrub
+
+    if 'LAI_decid' in spatial_pcpy:
+        if spatial_pcpy['LAI_decid'] == True:
+            LAI_decid, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_decid']))
+            LAI_grass = 0.5 * LAI_decid
+            gis['LAI_decid'] = LAI_decid
+            gis['LAI_grass'] = LAI_grass        
+
+    if 'LAI_shrub' in spatial_pcpy:
+        if spatial_pcpy['LAI_shrub'] == True:
+            LAI_shrub, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_shrub']))
+            gis['LAI_shrub'] = LAI_shrub        
+
+    if 'LAI_grass' in spatial_pcpy:
+        if spatial_pcpy['LAI_grass'] == True:
+            LAI_grass, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_grass']))
+            gis['LAI_grass'] = LAI_grass 
+    
     if plotgrids is True:
 
         plt.figure()
@@ -136,40 +146,43 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     """
     fpath = os.path.join(workdir, fpath)
 
+    gis = {}
+    
     # deep soil layer
-    if spatial_pspd['deep_id'] == True:
-        deep_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
+    if 'deep_id' in spatial_pspd:
+        if spatial_pspd['deep_id'] == True:
+            deep_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
+            gis['deep_id'] = deep_id
 
     # dem
-    if spatial_pspd['elevation'] == True:
-        elevation, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
-        bedrock = elevation - 5.0
-    
+    if 'elevation' in spatial_pspd:
+        if spatial_pspd['elevation'] == True:
+            elevation, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
+            bedrock = elevation - 5.0
+            gis['elevation'] = elevation
+            gis['bedrock'] = bedrock
+
     # streams
-    if spatial_pspd['streams'] == True:
-        streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
-        streams[streams == np.nan] = 0.0
-        streams = np.where(streams == 0, np.nan, -1.0)
+    if 'streams' in spatial_pspd:
+        if spatial_pspd['streams'] == True:
+            streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
+            streams[streams == np.nan] = 0.0
+            streams = np.where(streams == 0, np.nan, -1.0)
     else:
         print('*** No stream file ***')
         streams = np.full_like(deepsoil, 0.0)
+    gis['streams'] = streams
 
     # lakes if available
-    if spatial_pspd['lakes'] == True:
-        lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['lakes']))
-        lakes[lakes == np.nan] = 0.0
-        lakes = np.where(lakes == 0, np.nan, -1.0)
+    if 'lakes' in spatial_pspd:
+        if spatial_pspd['lakes'] == True:        
+            lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['lakes']))
+            lakes[lakes == np.nan] = 0.0
+            lakes = np.where(lakes == 0, np.nan, -1.0)
     else:
         print('*** No lakes file ***')
         lakes = np.full_like(deep_id, 0.0)
-    
-    # dict of all rasters
-    gis = {'deep_id': deep_id,
-           'streams': streams,
-           'lakes': lakes,                      
-           'elevation': elevation,
-           'bedrock': bedrock,
-           }
+    gis['lakes'] = lakes
 
     xllcorner = int(re.findall(r'\d+', info[2])[0])
     yllcorner = int(re.findall(r'\d+', info[3])[0])
@@ -200,23 +213,25 @@ def read_top_gisdata(fpath, spatial_ptop, mask=None, plotgrids=False):
 
     """
     fpath = os.path.join(workdir, fpath)
+
+    gis = {}
     
     # flow accumulation
-    if spatial_ptop['flow_accumulation'] == True:
-        flowacc, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['flow_accumulation']))
-
+    if 'flow_accumulation' in spatial_ptop:
+        if spatial_ptop['flow_accumulation'] == True:        
+            flowacc, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['flow_accumulation']))
+            gis['flowacc'] = flowacc
+        
     # slope
-    if spatial_ptop['slope'] == True:
-        slope, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['slope']))
+    if 'slope' in spatial_ptop:
+        if spatial_ptop['slope'] == True:                
+            slope, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['slope']))
+            gis['slope'] = slope
 
-    if spatial_ptop['twi'] == True:
-        twi, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['twi']))
-
-    # dict of all rasters
-    gis = {'flowacc': flowacc,
-           'slope': slope,
-           'twi': twi,
-           }
+    if 'twi' in spatial_ptop:
+        if spatial_ptop['twi'] == True:                        
+            twi, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['twi']))
+            gis['twi'] = twi
     
     if plotgrids is True:
         plt.figure()
@@ -232,23 +247,22 @@ def read_aux_gisdata(fpath, spatial_aux, mask=None):
 
     fpath = os.path.join(workdir, fpath)
 
-    if spatial_aux['cmask'] == True:
+    gis = {}
+    
+    if 'cmask' in spatial_aux:
         cmask, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['cmask']))
         cmask_bi = cmask.copy()
         cmask_bi[np.isfinite(cmask_bi)] = 1
-
-    if spatial_aux['streams'] == True:
+        gis['cmask'] = cmask
+        gis['cmask_bi'] = cmask_bi
+        
+    if 'streams' in spatial_aux:
         streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['streams']))
+        gis['streams'] = streams
 
-    if spatial_aux['lakes'] == True:
+    if 'lakes' in spatial_aux:
         lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['lakes']))
-
-    # dict of all rasters
-    gis = {'cmask': cmask,
-           'cmask_bi': cmask_bi,
-           'streams': streams,
-           'lakes': lakes,
-           }
+        gis['lakes'] = lakes
 
     gis.update({'dxy': cellsize})
 
@@ -428,9 +442,10 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
 
     # stream depth corresponding to assigned parameter
-    data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
+    #data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
+    data['streams'] = np.where(data['streams'] < -eps, pspd['stream_depth'], 0)
     #data['streams'] = np.where(data['lakes'] < -eps, pspd['stream_depth'], 0)
-
+    
     data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
     data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
     data['gwl_to_C'] = {soiltype: deepp[soiltype]['to_C'] for soiltype in deepp.keys()}
@@ -652,6 +667,10 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
     # import forcing data
     fmi = pd.read_csv(sourcefile, sep=';', header='infer', index_col=0,
                       parse_dates=True ,encoding="ISO-8859-1")
+
+    if 'PAR' not in fmi.columns:
+        fmi['PAR'] = 0.5 * fmi['radiation']
+    
     fmi = fmi.rename(columns={'t_mean': 'air_temperature', 't_max': 'Tmax',
                               't_min': 'Tmin', 'rainfall': 'precipitation',
                               'radiation': 'global_radiation', 'lamposumma_v': 'dds', 
@@ -693,8 +712,9 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     xllcorner = gisinfo['xllcorner']
     yllcorner = gisinfo['yllcorner']
     cellsize = gisinfo['dxy']
-
+    
     xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
+    #xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)-cellsize), cellsize) # ?????
     ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
     ycoords = np.flip(ycoords)
     
@@ -702,7 +722,11 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
         os.makedirs(filepath)
 
     ff = os.path.join(filepath, filename)
-
+    
+    print('filepath:', filepath)
+    print('filename:', filename)
+    print('ff:', ff)
+    
     # create dataset and dimensions
     ncf = Dataset(ff, 'w')
     ncf.description = 'SpaFHy results : ' + description

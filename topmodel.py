@@ -16,6 +16,7 @@ Modified by jpnousu
 """
 
 import numpy as np
+import sys
 from scipy.ndimage import maximum_filter
 import matplotlib.pyplot as plt
 eps = np.finfo(float).eps  # machine epsilon
@@ -45,7 +46,7 @@ class Topmodel_Homogenous():
             S_initial = pp['so']
 
         # importing grids from parameters
-        cmask = pp['twi']
+        cmask = pp['twi'].copy()
         cmask[np.isfinite(cmask)] = 1.0
         flowacc = pp['flowacc']
         slope = pp['slope']

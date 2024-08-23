@@ -147,7 +147,7 @@ def preprocess_parameters(folder=''):
 
     from iotools import read_bu_gisdata, read_ds_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata, read_aux_gisdata
     from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
-    from parameters import root_properties, org_properties, deep_properties, parameters, root_properties_from_sitetype, ptopmodel, auxiliary_grids
+    from parameters_hyytiala import root_properties, org_properties, deep_properties, parameters, root_properties, ptopmodel, auxiliary_grids
 
     pgen, pcpy, pbu, pspd = parameters(folder)
     ptop = ptopmodel()
@@ -190,7 +190,7 @@ def preprocess_parameters(folder=''):
             spatial_aux[key] = True
 
     orgp = org_properties()
-    rootp = root_properties_from_sitetype()
+    rootp = root_properties()
     deepp = deep_properties()
     gisdata = {}
 
@@ -226,10 +226,22 @@ def preprocess_parameters(folder=''):
                     mask = gisdata['cmask_bi'].copy()
                     gisdata[key] = gisdata[key] * mask
                 if pgen['mask'] == 'streams':
-                    if pgen['simtype'] != '2D': # making sure streams are not maksed if 2D run
+                    if pgen['simtype'] != '2D': # making sure streams are not masked if 2D run
                         mask = gisdata['streams'].copy()
                         mask = np.where(mask == 1.0, np.nan, 1.0)
                         gisdata[key] = gisdata[key] * mask
+                if pgen['mask'] == 'streams/lakes':
+                    if pgen['simtype'] != '2D': # making sure streams are not masked if 2D run
+                        mask = gisdata['streams'].copy()
+                        mask2 = gisdata['lakes'].copy()
+                        mask = np.where(mask == 1.0, np.nan, 1.0)
+                        mask2 = np.where(mask2 == 1.0, np.nan, 1.0)
+                        mask[~np.isfinite(mask2)] = np.nan
+                        gisdata[key] = gisdata[key] * mask
+                if pgen['mask'] == 'lakes':
+                    mask = gisdata['lakes'].copy()
+                    mask = np.where(mask == 1.0, np.nan, 1.0)
+                    gisdata[key] = gisdata[key] * mask                        
                 if pgen['mask'] == 'cmask/streams':
                     mask1 = gisdata['cmask_bi'].copy()
                     gisdata[key] = gisdata[key] * mask1
@@ -292,7 +304,6 @@ def preprocess_forcing(pgen):
                  'precipitation',
                  'CO2',
                  'relative_humidity',
-                 'wind_direction',
                  'wind_speed']
 
     dims = ['date','i','j']

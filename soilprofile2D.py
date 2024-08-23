@@ -161,7 +161,7 @@ class SoilGrid_2Dflow(object):
         S = RR
         S[np.isnan(S)] = 0.0
 
-        state0 = self.Wsto_deep + S # Wsto_deep ????
+        state0 = self.Wsto_deep + S
 
         # Head in four neighbouring cells
         self.HW[:,1:] = self.H[:,:-1]
@@ -195,14 +195,14 @@ class SoilGrid_2Dflow(object):
             if k-self.cols >= 0 and  ditch_h[k-self.cols] > -eps: # north non-ditch neighbor
                     H_ave += H[k-self.cols]
                     n_neigh += 1
-            if k+self.cols < self.n and ditch_h[k+self.cols] > -eps: # sounth non-ditch neighbor
+            if k+self.cols < self.n and ditch_h[k+self.cols] > -eps: # south non-ditch neighbor
                     H_ave += H[k+self.cols]
                     n_neigh += 1
             if n_neigh > 0:
                 H_neighbours[k] = H_ave / n_neigh  # average of neighboring non-ditch nodes
             else:  # corners or nodes surrounded by ditches dont have neighbors, given its ditch depth
                 H_neighbours[k] = ele[k] + ditch_h[k] + eps
-
+        
         H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
 
         # Transmissivity of previous timestep [m2 d-1]
