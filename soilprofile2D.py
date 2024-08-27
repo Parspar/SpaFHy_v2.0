@@ -42,7 +42,7 @@ class SoilGrid_2Dflow(object):
 
         # soil/peat type
         self.soiltype = spara['soiltype']
-
+        
         # catchment mask
         self.cmask = np.full_like(spara['deep_id'], np.nan)
         self.cmask[np.isfinite(spara['deep_id'])] = 1.0
@@ -56,14 +56,49 @@ class SoilGrid_2Dflow(object):
 
         # initial h (= gwl) and boundaries [m]
         self.ditch_h = spara['streams']
+        self.lake_h = spara['lakes']
         self.h = spara['ground_water_level']
         # soil surface elevation and hydraulic head [m]
         self.ele = spara['elevation']
         self.H = self.ele + self.h
+        # Identify lake interior and boundary cells
+        lake_boundary = np.zeros_like(self.lake_h)
+        self.lake_interior = np.zeros_like(self.lake_h)
+        
+        # grid
+        self.rows = np.shape(self.h)[0]
+        self.cols = np.shape(self.h)[1]
+        self.n = self.rows * self.cols  # length of flattened array
+        self.dxy = spara['dxy']  # horizontal distance between nodes dx=dy [m]
+        
+        '''
+        # Iterate through each cell in lake_h to find if its lake boundary
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if self.lake_h[i, j] < -eps:
+                    # Check if this cell is a boundary
+                    is_boundary = False
+                    # Check all 4 possible neighbors (west, east, north, south)
+                    if (j > 0 and self.lake_h[i,j-1] == 0) or (j < self.cols - 1 and self.lake_h[i,j+1] == 0) or \
+                       (i > 0 and self.lake_h[i-1,j] == 0) or (i < self.rows - 1 and self.lake_h[i+1,j] == 0):
+                        is_boundary = True
+                    if is_boundary:
+                        lake_boundary[i,j] = 1       
+
+    
+        #self.ditch_h[lake_boundary == 1] = self.lake_h[lake_boundary == 1] # bringing the lake boundaries into the ditch array
+        self.ditch_h[self.lake_h < -eps] = self.lake_h[self.lake_h < -eps] # bringing the lakes into the ditch array
+        self.lake_interior[(lake_boundary != 1) & (self.lake_h < -eps)] = 1
+
+        # nan to lake interiors (lake interiors should not be solved)
+        self.soiltype[self.lake_interior == 1] = np.nan
+        self.cmask[self.lake_interior == 1] = np.nan
+        self.H[self.lake_interior == 1] = -999
+        '''
 
         # replace nans (values outside catchment area)
         self.H[np.isnan(self.H)] = -999
-        #self.h[np.isnan(self.h)] = -999
+
         # water storage [m]
         self.Wsto_deep_max = np.full_like(self.h, 0.0)  # storage of fully saturated profile
         for key, value in self.gwl_to_wsto.items():
@@ -93,12 +128,6 @@ class SoilGrid_2Dflow(object):
         # 0.5 seems to work better when gwl is close to impermeable bottom
         # (probably because transmissivity does not switch between 0. and > 0 as much)
         self.implic = 0.5  # solving method: 0-forward Euler, 1-backward Euler, 0.5-Crank-Nicolson
-
-        # grid
-        self.rows = np.shape(self.h)[0]
-        self.cols = np.shape(self.h)[1]
-        self.n = self.rows * self.cols  # length of flattened array
-        self.dxy = spara['dxy']  # horizontal distance between nodes dx=dy [m]
 
         # create arrays needed in computation only once
         # previous time step neighboring hydraylic head H (West, East, North, South)
@@ -205,6 +234,7 @@ class SoilGrid_2Dflow(object):
         
         H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
 
+        
         # Transmissivity of previous timestep [m2 d-1]
         # for ditch nodes that are active, transmissivity calculated based on mean H of
         # neighboring nodes, not ditch depth which would restrict tranmissivity too much
@@ -302,7 +332,7 @@ class SoilGrid_2Dflow(object):
                     if k-self.cols >= 0:  # north node
                         a_n[k-self.cols] = 0
                     if k+self.cols < self.n:  # south node
-                        a_s[k] = 0
+                        a_s[k] = 0 # ONKO OIKEIN?? NÄMÄ INDEKSIT VOISI TARKASTAA
 
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
 
@@ -369,6 +399,7 @@ class SoilGrid_2Dflow(object):
         self.h = np.minimum(0.0, self.h)
         self.H = self.h + self.ele
         self.H[np.isnan(self.H)] = -999
+        #self.H[self.lake_interior == 1] = -999
 
         # Updating the storage according to new head
         for key, value in self.gwl_to_wsto.items():

@@ -13,7 +13,7 @@ from soilprofile2D import gwl_Wsto
 from koordinaattimuunnos import koordTG
 from topmodel import twi as twicalc
 import re
-from parameters_hyytiala import parameters, auxiliary_grids, ptopmodel
+from parameters_krycklan import parameters, auxiliary_grids, ptopmodel
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -166,19 +166,21 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     if 'streams' in spatial_pspd:
         if spatial_pspd['streams'] == True:
             streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
-            streams[streams == np.nan] = 0.0
-            streams = np.where(streams == 0, np.nan, -1.0)
+            streams[np.isfinite(streams)] = -1.0
+            #streams[streams == np.nan] = 0.0
+            #streams = np.where(streams == 0, np.nan, -1.0)
     else:
         print('*** No stream file ***')
         streams = np.full_like(deepsoil, 0.0)
     gis['streams'] = streams
-
+    
     # lakes if available
     if 'lakes' in spatial_pspd:
         if spatial_pspd['lakes'] == True:        
             lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['lakes']))
-            lakes[lakes == np.nan] = 0.0
-            lakes = np.where(lakes == 0, np.nan, -1.0)
+            lakes[np.isfinite(lakes)] = -1.0
+            #akes[lakes == np.nan] = 0.0
+            #lakes = np.where(lakes == 0, np.nan, -1.0)
     else:
         print('*** No lakes file ***')
         lakes = np.full_like(deep_id, 0.0)
@@ -251,11 +253,17 @@ def read_aux_gisdata(fpath, spatial_aux, mask=None):
     
     if 'cmask' in spatial_aux:
         cmask, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['cmask']))
-        cmask_bi = cmask.copy()
-        cmask_bi[np.isfinite(cmask_bi)] = 1
+        uniqs = np.unique(cmask) # check the type of cmask (zeros and ones, multiple masks etc.)
+        if len(uniqs) == 2:
+            cmask[cmask == 0] = np.nan
+            cmask_bi = cmask.copy()
+        elif len(uniqs) > 2:
+            cmask_bi = cmask.copy()
+            cmask_bi[np.isfinite(cmask_bi)] = 1
+        
         gis['cmask'] = cmask
         gis['cmask_bi'] = cmask_bi
-        
+
     if 'streams' in spatial_aux:
         streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['streams']))
         gis['streams'] = streams
@@ -444,6 +452,7 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     # stream depth corresponding to assigned parameter
     #data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
     data['streams'] = np.where(data['streams'] < -eps, pspd['stream_depth'], 0)
+    data['lakes'] = np.where(data['lakes'] < -eps, pspd['lake_depth'], 0)
     #data['streams'] = np.where(data['lakes'] < -eps, pspd['stream_depth'], 0)
     
     data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
@@ -713,8 +722,8 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     yllcorner = gisinfo['yllcorner']
     cellsize = gisinfo['dxy']
     
-    xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
-    #xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)-cellsize), cellsize) # ?????
+    #xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
+    xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)-cellsize), cellsize) # ?????
     ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
     ycoords = np.flip(ycoords)
     
@@ -722,10 +731,6 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
         os.makedirs(filepath)
 
     ff = os.path.join(filepath, filename)
-    
-    print('filepath:', filepath)
-    print('filename:', filename)
-    print('ff:', ff)
     
     # create dataset and dimensions
     ncf = Dataset(ff, 'w')
@@ -986,7 +991,6 @@ def read_AsciiGrid(fname, setnans=True):
     Samuli Launiainen Luke 7.9.2016
     """
     import numpy as np
-    print(fname)
     fid = open(fname, 'r')
     info = fid.readlines()[0:6]
     fid.close()

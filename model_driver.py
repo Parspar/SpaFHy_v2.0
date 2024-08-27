@@ -147,7 +147,7 @@ def preprocess_parameters(folder=''):
 
     from iotools import read_bu_gisdata, read_ds_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata, read_aux_gisdata
     from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
-    from parameters_hyytiala import root_properties, org_properties, deep_properties, parameters, root_properties, ptopmodel, auxiliary_grids
+    from parameters_krycklan import root_properties, org_properties, deep_properties, parameters, root_properties, ptopmodel, auxiliary_grids
 
     pgen, pcpy, pbu, pspd = parameters(folder)
     ptop = ptopmodel()
@@ -225,6 +225,13 @@ def preprocess_parameters(folder=''):
                 if pgen['mask'] == 'cmask':
                     mask = gisdata['cmask_bi'].copy()
                     gisdata[key] = gisdata[key] * mask
+                if isinstance(pgen['mask'], (int, float)):
+                    catchment = pgen['mask']
+                    mask = gisdata['cmask'].copy()
+                    mask[mask != pgen['mask']] = np.nan
+                    mask[mask == pgen['mask']] = 1.0
+                    gisdata[key] = gisdata[key] * mask
+
                 if pgen['mask'] == 'streams':
                     if pgen['simtype'] != '2D': # making sure streams are not masked if 2D run
                         mask = gisdata['streams'].copy()

@@ -234,7 +234,8 @@ def parameters(folder=''):
             'deep_ksat': 1E-05,
             # initial states
             'ground_water_level': -0.5,  # groundwater depth [m]
-            'stream_depth': -0.2   # initial stream water level relative to ground surface (currently not dynamic) [m]
+            'stream_depth': -0.2,   # initial stream water level relative to ground surface (currently not dynamic) [m]
+            'lake_depth': -0.2  # initial lake water level relative to ground surface (currently not dynamic) [m]
             }
         
 
