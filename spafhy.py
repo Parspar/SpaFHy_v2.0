@@ -84,8 +84,8 @@ class SpaFHy():
 
         #cmask = pcpy['cmask']
         
-        """
-        flatten=True omits cells outside catchment
+        
+        # flatten=True omits cells outside catchment
         
         if flatten:
             ix = np.where(np.isfinite(cmask))
@@ -97,7 +97,7 @@ class SpaFHy():
                 pbu['state'][key] = pbu['state'][key][ix].copy()
                 
             self.ix = ix  # indices to locate back to 2d grid
-        """
+        
 
         """--- initialize BucketGrid ---"""
         self.bu = BucketGrid(pbu, pgen['org_drain'])
@@ -199,3 +199,16 @@ class SpaFHy():
                 )
 
             return canopy_results, bucket_results
+        
+
+
+    def _to_grid(self, x):
+        """
+        converts variable x back to original grid
+        """
+        if self.ix:
+            a = np.full(self.gridshape, np.NaN)
+            a[self.ix] = x
+        else: # for non-flattened, return
+            a = x
+        return a

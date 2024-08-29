@@ -11,10 +11,10 @@ def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2010-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2012-01-01', # 2021-12-31,
+            'start_date': '2018-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'end_date': '2018-12-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2010-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2018-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -29,9 +29,10 @@ def parameters(folder=''):
             'gis_folder': str(pathlib.Path(folder+r'/gis')),
             #'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
             'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING.csv')),
+            #'forcing_file': r'/Users/jpnousu/SpaFHy_RUNS/hyytiala/forcing/FORCING.csv',
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': str(pathlib.Path(folder+r'/results')) + '/' + time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
-            'cmask' : 'catchment_mask_bi.asc',
+            'cmask' : 'cmask.dat',
             'mask': 'cmask', # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'results_folder': str(pathlib.Path(folder+r'/results')),
@@ -174,12 +175,12 @@ def parameters(folder=''):
                         'sdur': 30.0, # duration of leaf senescence (days),
                          },
             'state': {  # spatial_cpy = False -> floats | spatial_cpy = True -> filenames in gispath
-                       'LAI_conif': 'LAI_conif.asc', # conifer 1-sided LAI (m2 m-2)
-                       'LAI_decid': 'LAI_decid.asc',  # maximum annual deciduous 1-sided LAI (m2 m-2)
-                       'LAI_shrub': 0.1,
-                       'LAI_grass': 0.2,
-                       'canopy_height': 'canopy_height.asc', # canopy height (m)
-                       'canopy_fraction': 'canopy_fraction.asc', # canopy closure fraction (-)
+                       'LAI_conif': 'LAI_conif.dat', # conifer 1-sided LAI (m2 m-2)
+                       'LAI_decid': 'LAI_decid.dat',  # maximum annual deciduous 1-sided LAI (m2 m-2)
+                       'LAI_shrub': 'LAI_shrub.dat',
+                       'LAI_grass': 'LAI_grass.dat',
+                       'canopy_height': 'hc.dat', # canopy height (m)
+                       'canopy_fraction': 'cf.dat', # canopy closure fraction (-)
                        # initial state of canopy storage [mm] and snow water equivalent [mm]
                        'w': 0.0, # canopy storage mm
                        'swe': 0.0, # snow water equivalent mm
@@ -194,7 +195,7 @@ def parameters(folder=''):
     pbu = {
             # soil profile, following properties are used if spatial_soil = False
             # organic moss-humus layer
-            'org_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)       
+            'org_id': 'sitetype.dat', # uniform (float) OR path to grid in gispath (str)       
             'org_depth': 0.05, # depth of organic top layer (m)
             'org_poros': 0.448, # porosity (-)
             'org_fc': 0.33, # field capacity (-)
@@ -203,7 +204,7 @@ def parameters(folder=''):
             'org_beta': 6.0, # 
             'maxpond': 0.02, # max ponding depth (m)
             # rootzone layer
-            'root_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)     
+            'root_id': 'soil_id_peatsoils.dat', # uniform (float) OR path to grid in gispath (str)     
             'root_depth': 0.3, # depth of rootzone layer (m)
             'root_sat': 0.6, # saturation ratio (-)
             'root_fc': 0.33, # field capacity
@@ -222,10 +223,10 @@ def parameters(folder=''):
     # soil profile (2D, deep)
     pspd = {
             # deep soil profile, following properties are used if spatial_deep = False
-            'deep_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)
-            'elevation': 'dem.asc', # uniform (float) OR path to grid in gispath (str) 
-            'streams': 'stream_mask.asc',
-            'lakes': 'lake_mask.asc',
+            'deep_id': 'soil_id_peatsoils.dat', # uniform (float) OR path to grid in gispath (str)
+            'elevation': 'dem_d8_filled.dat', # uniform (float) OR path to grid in gispath (str) 
+            'streams': 'ditches.dat',
+            #'lakes': 'lake_mask.asc',
             'deep_z': -5.0, # THIS NEEDS WORK!
             'deep_poros': 0.41,
             'deep_wr': 0.05,
@@ -247,10 +248,10 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {
-            'dem': 'dem.asc',
-            'flow_accumulation': 'flow_accumulation.asc',
-            'slope': 'slope.asc',
-            'twi': 'twi.asc',
+            'dem': 'dem_d8_filled.dat',
+            'flow_accumulation': 'flowacc.dat',
+            'slope': 'slope.dat',
+            'twi': 'twi.dat',
             'dt': 86400.0, # timestep (s)
             'm': 0.025, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
@@ -264,9 +265,9 @@ def auxiliary_grids():
     paths to auxiliary grids such as cmask, lakes, streams
     """
     grids = {
-            'cmask':    'catchment_mask_bi.asc',
-            'streams':  'stream_mask.asc',
-            'lakes':    'lake_mask.asc'
+            'cmask':    'cmask.dat',
+            'streams':  'ditches.dat',
+            #'lakes':    'lake_mask.asc'
             }
     return grids
 
@@ -336,7 +337,7 @@ def deep_properties():
     deepp = {
         'CoarseTextured':{ # Launiainen et al. 2021
             'deep_id': 1.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -346,7 +347,7 @@ def deep_properties():
                 },
         'MediumTextured':{
             'deep_id': 2.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -356,7 +357,7 @@ def deep_properties():
                 },
         'FineTextured':{
             'deep_id': 3.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.6],
                     'ThetaR': [0.07],
@@ -366,7 +367,7 @@ def deep_properties():
                 },
         'Peat':{
             'deep_id': 4.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.88],  # MEASURED
                     'ThetaR': [0.196], # MEASURED 
@@ -376,7 +377,7 @@ def deep_properties():
                 },
         'non_forest':{
             'deep_id': 0.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -404,7 +405,7 @@ def root_properties():
                   'root_ksat': 1E-04,
                   'root_n': 1.2,
                   'root_poros': 0.41,
-                  'soil_id': 1.0,
+                  'root_id': 1.0,
                   'root_wp': 0.10,
                   'root_wr': 0.05,
                  },
@@ -416,7 +417,7 @@ def root_properties():
                   'root_ksat': 1E-05,
                   'root_n': 1.2,
                   'root_poros': 0.43,
-                  'soil_id': 2.0,
+                  'root_id': 2.0,
                   'root_wp': 0.13,
                   'root_wr': 0.05,
                  },
@@ -428,7 +429,7 @@ def root_properties():
                   'root_ksat': 1E-06, 
                   'root_n': 1.16, 
                   'root_poros': 0.5, 
-                  'soil_id': 3.0,
+                  'root_id': 3.0,
                   'root_wp': 0.25,
                   'root_wr': 0.07,
                  },
@@ -440,7 +441,7 @@ def root_properties():
                   'root_ksat': 3E-04, # MEASURED BY Autio et al. 2023
                   'root_n': 1.75, # Menbery et al. 2021
                   'root_poros': 0.888, # Autio et al. 2023 or Muhic et al. 2023
-                  'soil_id': 4.0, 
+                  'root_id': 4.0, 
                   'root_wp': 0.36, # Menbery et al. 2021
                   'root_wr': 0.0, # Launiainen et al. 2019
                  },
@@ -452,7 +453,7 @@ def root_properties():
                   'root_ksat': 8e-06,
                   'root_n': 1.28,
                   'root_poros': 0.85,
-                  'soil_id': 5.0,
+                  'root_id': 5.0,
                   'root_wp': 0.15,
                   'root_wr': 0.01,
                  },

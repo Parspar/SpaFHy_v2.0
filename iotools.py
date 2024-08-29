@@ -679,7 +679,18 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
 
     if 'PAR' not in fmi.columns:
         fmi['PAR'] = 0.5 * fmi['radiation']
-    
+
+    if 'hpa' in fmi.columns:
+        fmi['h2o'] = 1e-3*fmi['hpa']  # -> kPa
+
+    if not any(col in fmi.columns for col in ['vpd', 'VPD', 'vapor_pressure_deficit']):    
+        # saturated vapor pressure
+        esa = 0.6112*np.exp((17.67*fmi['t_mean']) / (fmi['t_mean'] + 273.16 - 29.66))  # kPa
+        vpd = esa - fmi['h2o']  # kPa
+        vpd[vpd < 0] = 0.0
+        fmi['vpd'] = vpd
+
+
     fmi = fmi.rename(columns={'t_mean': 'air_temperature', 't_max': 'Tmax',
                               't_min': 'Tmin', 'rainfall': 'precipitation',
                               'radiation': 'global_radiation', 'lamposumma_v': 'dds', 

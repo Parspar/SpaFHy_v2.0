@@ -10,11 +10,11 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': 'TOP', # 1D, TOP, 2D,
+            'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2010-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2012-12-31', # 2021-12-31,
+            'end_date': '2010-12-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2010-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2010-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -344,7 +344,7 @@ def deep_properties():
     deepp = {
         'CoarseTextured':{ # Launiainen et al. 2021
             'deep_id': 1.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -354,7 +354,7 @@ def deep_properties():
                 },
         'MediumTextured':{
             'deep_id': 2.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -364,7 +364,7 @@ def deep_properties():
                 },
         'FineTextured':{
             'deep_id': 3.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.6],
                     'ThetaR': [0.07],
@@ -374,7 +374,7 @@ def deep_properties():
                 },
         'Peat':{
             'deep_id': 4.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.88],  # MEASURED
                     'ThetaR': [0.196], # MEASURED 
@@ -384,7 +384,7 @@ def deep_properties():
                 },
         'non_forest':{
             'deep_id': 0.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -394,7 +394,7 @@ def deep_properties():
                 },
         'water':{
             'deep_id': 5.0,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019

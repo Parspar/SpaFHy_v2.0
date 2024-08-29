@@ -10,9 +10,9 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D,
+            'simtype': '1D', # 1D, TOP, 2D,
             'start_date': '2005-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2005-12-31', # 2021-12-31,
+            'end_date': '2005-01-02', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '2005-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
@@ -31,7 +31,7 @@ def parameters(folder=''):
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': str(pathlib.Path(folder+r'/results')) + '/' + time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
             'cmask' : 'catchment_mask.asc',
-            'mask': 8, # 'cmask/streams', 'cmask', 'streams', None
+            'mask': 14, # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'results_folder': str(pathlib.Path(folder+r'/results')),
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
@@ -40,8 +40,8 @@ def parameters(folder=''):
                     ['parameters_lai_decid_max', 'leaf area index of decidious trees [m2 m-2]'],
                     ['parameters_lai_shrub', 'leaf area index of shrubs [m2 m-2]'],
                     ['parameters_lai_grass', 'leaf area index of grass [m2 m-2]'],
-                    ['parameters_hc', 'canopy height [m]'],
-                    ['parameters_cf', 'canopy closure [-]'],
+                    ['parameters_canopy_height', 'canopy height [m]'],
+                    ['parameters_canopy_fraction', 'canopy closure [-]'],
                     ['parameters_org_id', 'soil class index'],
                     ['parameters_root_id', 'soil class index'],
                     ['parameters_deep_id', 'soil class index'],
@@ -53,6 +53,7 @@ def parameters(folder=''):
                     ['parameters_cmask', 'cmask'],
                     ['parameters_cmask_bi', 'cmask'],
                     ['parameters_twi', 'twi'],
+                    ['parameters_slope', 'slope'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
                     ['forcing_relative_humidity', 'relative humidity [%]'],
                     ['forcing_precipitation', 'precipitation [mm d-1]'],
@@ -231,7 +232,7 @@ def parameters(folder=''):
             'deep_n': 1.2,
             'deep_ksat': 1E-05,
             # initial states
-            'ground_water_level': -0.5,  # groundwater depth [m]
+            'ground_water_level': -4.5,  # groundwater depth [m]
             'stream_depth': -0.2,   # initial stream water level relative to ground surface (currently not dynamic) [m]
             'lake_depth': -0.2  # initial lake water level relative to ground surface (currently not dynamic) [m]
             }
@@ -276,7 +277,7 @@ def deep_properties():
     deepp = {
         'Postglacial_sand':{ # Launiainen et al. 2021
             'deep_id': 1,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -286,7 +287,7 @@ def deep_properties():
                 },
         'Glaciofluvial_sediment':{ # CoarseText
             'deep_id': 2,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -296,7 +297,7 @@ def deep_properties():
                 },
         'Peat':{
             'deep_id': 3,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.89],
                     'ThetaR': [0.196],
@@ -306,7 +307,7 @@ def deep_properties():
                 },
         'Postglacial_sand_gravel':{ # CoarseText
             'deep_id': 4,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -316,7 +317,7 @@ def deep_properties():
                 },
         'Clay_silt':{ # Fine
             'deep_id': 5,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.6],
                     'ThetaR': [0.07],
@@ -326,7 +327,7 @@ def deep_properties():
                 },
         'Washed_sediment_gravel_boulders':{ # CoarseText
             'deep_id': 6,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.41], # Launiainen et al. 2021
                     'ThetaR': [0.05], # Launiainen et al. 2021
@@ -336,7 +337,7 @@ def deep_properties():
                 },
         'Water':{ # Medium
             'deep_id': 7,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -346,7 +347,7 @@ def deep_properties():
                 },        
         'Moraine':{ # Medium
             'deep_id': 8,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -356,7 +357,7 @@ def deep_properties():
                 },        
         'Fill':{ # Medium
             'deep_id': 9,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -366,7 +367,7 @@ def deep_properties():
                 }, 
         'Bedrock':{
             'deep_id': 10,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
                     'ThetaR': [0.05], # Launiainen et al. 2019
@@ -376,7 +377,7 @@ def deep_properties():
                 },         
         'Fluvial_sedimend_sand':{ # Fine
             'deep_id': 11,
-            'deep_z': [-10.0],
+            'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.6],
                     'ThetaR': [0.07],

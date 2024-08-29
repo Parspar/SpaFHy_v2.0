@@ -71,7 +71,6 @@ class SoilGrid_2Dflow(object):
         self.n = self.rows * self.cols  # length of flattened array
         self.dxy = spara['dxy']  # horizontal distance between nodes dx=dy [m]
         
-        '''
         # Iterate through each cell in lake_h to find if its lake boundary
         for i in range(self.rows):
             for j in range(self.cols):
@@ -85,8 +84,6 @@ class SoilGrid_2Dflow(object):
                     if is_boundary:
                         lake_boundary[i,j] = 1       
 
-    
-        #self.ditch_h[lake_boundary == 1] = self.lake_h[lake_boundary == 1] # bringing the lake boundaries into the ditch array
         self.ditch_h[self.lake_h < -eps] = self.lake_h[self.lake_h < -eps] # bringing the lakes into the ditch array
         self.lake_interior[(lake_boundary != 1) & (self.lake_h < -eps)] = 1
 
@@ -94,7 +91,6 @@ class SoilGrid_2Dflow(object):
         self.soiltype[self.lake_interior == 1] = np.nan
         self.cmask[self.lake_interior == 1] = np.nan
         self.H[self.lake_interior == 1] = -999
-        '''
 
         # replace nans (values outside catchment area)
         self.H[np.isnan(self.H)] = -999
@@ -174,7 +170,6 @@ class SoilGrid_2Dflow(object):
             results (dict)
 
         """
-
         #***********REMIND: map of array*******************
         """
         #2D array: indices i row, j col
@@ -234,7 +229,6 @@ class SoilGrid_2Dflow(object):
         
         H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
 
-        
         # Transmissivity of previous timestep [m2 d-1]
         # for ditch nodes that are active, transmissivity calculated based on mean H of
         # neighboring nodes, not ditch depth which would restrict tranmissivity too much
@@ -268,6 +262,10 @@ class SoilGrid_2Dflow(object):
         # hydraulic heads, new iteration and old iteration
         Htmp = self.H.copy()
         Htmp1 = self.H.copy()
+
+        #print('Htmp shape', Htmp.shape)
+        #import sys
+        #sys.exit()
 
         # convergence criteria
         crit = 1e-3  # loosened this criteria from 1e-4, seems mass balance error remains resonable
@@ -367,7 +365,7 @@ class SoilGrid_2Dflow(object):
         if it == 99:
             self.conv99 +=1
         #self.totit += it
-        print('Timestep:', self.tmstep, 'iterations', it, conv1, Htmp[max_index]-self.ele[max_index])
+        print('Timestep:', self.tmstep, ', iterations:', it, ', conv1:', conv1, ', H[max_index]:', Htmp[max_index]-self.ele[max_index])
         
         # lateral flow is calculated in two parts: one depending on previous time step
         # and other on current time step (lateral flowsee 2/2). Their weighting depends
@@ -501,7 +499,7 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto_deep), fill_value='extrapolate')
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
-
+    
     #plt.figure(1)
     #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
     #plt.figure(2)
