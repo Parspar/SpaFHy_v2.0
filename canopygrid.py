@@ -41,7 +41,6 @@ class CanopyGrid():
             and sets self._LAI_decid and self.X equal to minimum values.
             Also leaf-growth & senescence parameters are intialized to zero.
         """
-        epsi = 0.01
 
         self.cmask = np.full_like(state['LAI_conif'], np.nan)
         self.cmask[np.isfinite(state['LAI_conif'])] = 1.0
@@ -756,7 +755,9 @@ def daylength(LAT, DOY):
     # --- compute day length, the period when sun is above horizon
     # i.e. neglects civil twilight conditions
     cosZEN = 0.0
-    dl = 2.0*np.arccos(cosZEN - np.sin(LAT)*np.sin(DECL) / (np.cos(LAT)*np.cos(DECL))) / CF / 15.0  # hours
+    value = cosZEN - np.sin(LAT)*np.sin(DECL) / (np.cos(LAT)*np.cos(DECL))
+    value = np.clip(value, -1, 1)  # Clamp the value to the valid range (otherwise invalid value in np.arccos)  
+    dl = 2.0*np.arccos(value) / CF / 15.0  # hours
 
     return dl
 

@@ -9,13 +9,14 @@ import time
 import numpy as np
 import pandas as pd
 from spafhy import SpaFHy
-from iotools import read_FMI_weather, initialize_netcdf, initialize_netcdf_spinup, write_ncf, write_ncf_spinup
+from iotools import initialize_parameters, read_FMI_weather, initialize_netcdf, initialize_netcdf_spinup, write_ncf, write_ncf_spinup
 import matplotlib.pyplot as plt
 import xarray as xr
+import importlib
 
 eps = np.finfo(float).eps
 
-def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
+def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder=''):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -25,7 +26,7 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
     running_time = time.time()
 
     # load and process parameters
-    pgen, pcpy, pbu, pds, cmask, ptop, gisinfo = preprocess_parameters(folder)
+    pgen, pcpy, pbu, pds, cmask, ptop, gisinfo = preprocess_parameters(catchment, folder)
     
     # initialize SpaFHy
     spa = SpaFHy(pgen, pcpy, pbu, pds, ptop)
@@ -55,7 +56,6 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
         results = _append_results('parameters', pds, results)
     elif pgen['simtype'] == 'TOP':
         results = _append_results('parameters', ptop, results)
-
 
     if create_ncf:
         ncf, outputfile = initialize_netcdf(
@@ -88,8 +88,6 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
             print('*** Bucket organic layer drains according to Campbell 1985')
     else:
             print('*** Bucket organic layer as in Launiainen et al., 2019')
-        
-
 
     interval = 0
     Nsaved = Nspin - 1
@@ -122,7 +120,6 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
         write_ncf_spinup(results=results, pgen=pgen, ncf_spinup=ncf_spinup)
         print('*** Writing spinup to netCDF4-file')
 
-
     if create_ncf:
         interval += 1
         print('*** Writing results to netCDF4-file, subset %.0f/%.0f ***' % (interval, len(Nsaveresults)+1))
@@ -140,14 +137,25 @@ def driver(create_ncf=False, create_spinup=False, output=True, folder=''):
         if output:
             return results, spa, pcpy, pbu, ptop, cmask
 
-def preprocess_parameters(folder=''):
+def preprocess_parameters(catchment, folder=''):
     """
     Reading gisdata if applicable and preprocesses parameters
     """
 
     from iotools import read_bu_gisdata, read_ds_gisdata, read_cpy_gisdata, read_forcing_gisdata, read_top_gisdata, read_aux_gisdata
     from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
-    from parameters_krycklan import root_properties, org_properties, deep_properties, parameters, root_properties, ptopmodel, auxiliary_grids
+
+    parameters_module = importlib.import_module(f'parameters_{catchment}')
+
+    # Initialize parameters based on the catchment
+    initialize_parameters(catchment, folder)
+
+    root_properties = parameters_module.root_properties
+    org_properties = parameters_module.org_properties
+    deep_properties = parameters_module.deep_properties
+    parameters = parameters_module.parameters
+    ptopmodel = parameters_module.ptopmodel
+    auxiliary_grids = parameters_module.auxiliary_grids
 
     pgen, pcpy, pbu, pspd = parameters(folder)
     ptop = ptopmodel()
@@ -231,7 +239,6 @@ def preprocess_parameters(folder=''):
                     mask[mask != pgen['mask']] = np.nan
                     mask[mask == pgen['mask']] = 1.0
                     gisdata[key] = gisdata[key] * mask
-
                 if pgen['mask'] == 'streams':
                     if pgen['simtype'] != '2D': # making sure streams are not masked if 2D run
                         mask = gisdata['streams'].copy()
@@ -250,12 +257,13 @@ def preprocess_parameters(folder=''):
                     mask = np.where(mask == 1.0, np.nan, 1.0)
                     gisdata[key] = gisdata[key] * mask                        
                 if pgen['mask'] == 'cmask/streams':
-                    mask1 = gisdata['cmask_bi'].copy()
-                    gisdata[key] = gisdata[key] * mask1
-                    if pgen['simtype'] != '2D': # making sure streams are not maksed if 2D run           
+                    mask = gisdata['cmask_bi'].copy()
+                    gisdata[key] = gisdata[key] * mask
+                    if pgen['simtype'] != '2D': # making sure streams are not maksed if 2D run       
                         mask2 = gisdata['streams'].copy()
                         mask2 = np.where(mask2 == 1.0, np.nan, 1.0)
-                        gisdata[key] = gisdata[key] * mask2
+                        mask[~np.isfinite(mask2)] = np.nan
+                        gisdata[key] = gisdata[key] * mask
 
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
@@ -274,7 +282,6 @@ def preprocess_parameters(folder=''):
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
-    
     # overwrites the state variables with the last timestep of spinup file (if given)
     try:
         spinup = xr.open_dataset(pgen['spinup_file'])

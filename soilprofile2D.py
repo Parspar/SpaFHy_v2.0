@@ -164,8 +164,6 @@ class SoilGrid_2Dflow(object):
         Args:
             dt (float): solution timestep [days!!!!]
             rr (float/array): potential infiltration [m]
-            tr (float/array): transpiration from root zone [m]
-            evap (float/array): evaporation from top layer [m]
         Returns:
             results (dict)
 
@@ -259,13 +257,15 @@ class SoilGrid_2Dflow(object):
         TrN0 = np.ravel(self.TrN0)
         TrS0 = np.ravel(self.TrS0)
 
+        # from previous timestep
+        TrW1 = TrW0.copy()
+        TrE1 = TrE0.copy()
+        TrN1 = TrN0.copy()
+        TrS1 = TrS0.copy()
+
         # hydraulic heads, new iteration and old iteration
         Htmp = self.H.copy()
         Htmp1 = self.H.copy()
-
-        #print('Htmp shape', Htmp.shape)
-        #import sys
-        #sys.exit()
 
         # convergence criteria
         crit = 1e-3  # loosened this criteria from 1e-4, seems mass balance error remains resonable
@@ -276,20 +276,20 @@ class SoilGrid_2Dflow(object):
             # transmissivity [m2 d-1] to neighbouring cells with HTmp1
             # for ditch nodes that are active, transmissivity calculated based on mean H of
             # neighboring nodes, not ditch depth which would restrict tranmissivity too much
-            H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
-                                H_neighbours_2d, Htmp)
-            for key, value in self.gwl_to_Tr.items():
-                self.Tr1[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
-            TrTmpEW = gmean(self.rolling_window(self.Tr1, 2),-1)
-            TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr1), 2),-1))
-            self.TrW1[:,1:] = TrTmpEW
-            self.TrE1[:,:-1] = TrTmpEW
-            self.TrN1[1:,:] = TrTmpNS
-            self.TrS1[:-1,:]=TrTmpNS
-            del TrTmpEW, TrTmpNS
+            #H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
+            #                    H_neighbours_2d, Htmp)
+            #for key, value in self.gwl_to_Tr.items():
+            #    self.Tr1[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
+            #TrTmpEW = gmean(self.rolling_window(self.Tr1, 2),-1)
+            #TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr1), 2),-1))
+            #self.TrW1[:,1:] = TrTmpEW
+            #self.TrE1[:,:-1] = TrTmpEW
+            #self.TrN1[1:,:] = TrTmpNS
+            #self.TrS1[:-1,:]= TrTmpNS
+            #del TrTmpEW, TrTmpNS
             # ravel 2D arrays
-            TrW1 = np.ravel(self.TrW1); TrE1= np.ravel(self.TrE1)
-            TrN1 = np.ravel(self.TrN1); TrS1 = np.ravel(self.TrS1)
+            #TrW1 = np.ravel(self.TrW1); TrE1= np.ravel(self.TrE1)
+            #TrN1 = np.ravel(self.TrN1); TrS1 = np.ravel(self.TrS1)
 
             # differential water capacity dSto/dh
             # CCtmp = self.CC.copy()
@@ -341,7 +341,7 @@ class SoilGrid_2Dflow(object):
             Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
 
             conv1 = np.max(np.abs(Htmp1 - Htmp))
-
+                      
             max_index = np.unravel_index(np.argmax(np.abs(Htmp1 - Htmp)),(self.rows,self.cols))
 
             # especially near profile bottom, solution oscillates so added these steps to avoid that
@@ -352,12 +352,53 @@ class SoilGrid_2Dflow(object):
             else:
                 Htmp = Htmp1.copy()
 
+            if np.any(np.abs(Htmp1-Htmp)) > 0.5:
+                Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
+                print('Difference greater than 0.5')
+                print('\t', 'iterations:', it, ' con1:', conv1, 
+                      ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
+                      ' H[max_index]', Htmp_print[max_index]-self.ele[max_index])
+
             Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
             # print to get sense what's happening when problems in convergence
             if it > 90:
-                print('\t', it, conv1, max_index, self.ditch_h[max_index],
-                      Htmp[max_index]-self.ele[max_index])
+                print('\t', 'iterations:', it, ' con1:', conv1, 
+                      ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
+                      ' H[max_index]', Htmp[max_index]-self.ele[max_index])
+                
+                Htmp_N_temp = Htmp[(max_index[0]-1, max_index[1])]
+                Htmp_S_temp = Htmp[(max_index[0]+1, max_index[1])]
+                Htmp_W_temp = Htmp[(max_index[0], max_index[1]-1)]
+                Htmp_E_temp = Htmp[(max_index[0], max_index[1]+1)]
+
+                H_N_temp = Htmp[(max_index[0]-1, max_index[1])] - self.ele[(max_index[0]-1, max_index[1])]
+                H_S_temp = Htmp[(max_index[0]+1, max_index[1])] - self.ele[(max_index[0]+1, max_index[1])]
+                H_W_temp = Htmp[(max_index[0], max_index[1]-1)] - self.ele[(max_index[0], max_index[1]-1)]
+                H_E_temp = Htmp[(max_index[0], max_index[1]+1)] - self.ele[(max_index[0], max_index[1]+1)]
+
+                TrN1_temp = np.reshape(TrN1,(self.rows,self.cols))[(max_index[0]-1, max_index[1])]
+                TrS1_temp = np.reshape(TrS1,(self.rows,self.cols))[(max_index[0]+1, max_index[1])]
+                TrW1_temp = np.reshape(TrW1,(self.rows,self.cols))[(max_index[0], max_index[1]-1)]
+                TrE1_temp = np.reshape(TrE1,(self.rows,self.cols))[(max_index[0], max_index[1]+1)]
+
+                print('Max Htmp1-Htmp', np.max(np.abs(Htmp1-Htmp)))
+                print('Htmp of max_index:', Htmp[max_index])
+                print('Htmp of N neighbor:', Htmp_N_temp)
+                print('Htmp of S neighbor:', Htmp_S_temp)
+                print('Htmp of W neighbor:', Htmp_W_temp)
+                print('Htmp of E neighbor:', Htmp_E_temp)
+
+                print('H of max_index:', Htmp[max_index] - self.ele[max_index])
+                print('H of N neighbor:', H_N_temp)
+                print('H of S neighbor:', H_S_temp)
+                print('H of W neighbor:', H_W_temp)
+                print('H of E neighbor:', H_E_temp)                
+
+                print('Tr of N neighbor:', TrN1_temp)
+                print('Tr of S neighbor:', TrS1_temp)
+                print('Tr of W neighbor:', TrW1_temp)
+                print('Tr of E neighbor:', TrE1_temp)
 
             if conv1 < crit:
                 break
@@ -503,7 +544,7 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     #plt.figure(1)
     #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
     #plt.figure(2)
-    #plt.plot(np.array(gwl), np.array(Tr))
+    #plt.plot(np.array(gwl), np.log10(np.array(Tr)))
     #plt.figure(3)
     #plt.plot(np.array(gwl), np.array(Wsto_deep))
 
@@ -591,6 +632,11 @@ def transmissivity(dz, Ksat, gwl):
             dz_sat[ix[-1]] = dz_sat[ix[-1]] + (z[ix][-1] - dz[ix][-1] / 2 + ib)
             Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
             Tr = sum(Trans[ix])
+        
+    if Tr < 1e-16:
+        #Tr[Tr < 1e-16] = 1e-4
+        Tr = 1e-4 / 86400
+
     return Tr
 
 

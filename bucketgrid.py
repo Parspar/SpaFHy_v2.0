@@ -8,7 +8,6 @@ Created on Wed Aug 11 10:38:59 2021
 import numpy as np
 eps = np.finfo(float).eps
 import matplotlib.pyplot as plt
-import sys
 
 class BucketGrid(object):
     """
@@ -119,7 +118,7 @@ class BucketGrid(object):
         """
         Computes 2-layer bucket model water balance for one timestep dt
         Top layer is interception storage: dW/dt = Interception - Evaporation + Recharge from returnflow
-        Lower layer is rootzone: DW/dt = Infiltration - Transpiration - Drainae + Recharge from returnflow
+        Lower layer is rootzone: dW/dt = Infiltration - Transpiration - Drainage + Recharge from returnflow
         Capillary interaction between layers is neglected and connection from bottom up is only in case of excess returnflow.
         Pond storage can exist above top layer.
 
@@ -269,15 +268,9 @@ class BucketGrid(object):
         x = np.minimum(self.Wliq_root, self.poros_root)
         x = np.maximum(x, self.wr_root)  # checks limits
 
-        #print('n', self.n_root[160,345])
-        #print('poros', self.poros_root[160,345])
-        #print('wr', self.wr_root[160,345])
-        #print('alpha', self.alpha_root[160,345])
-        
         s = (self.poros_root - self.wr_root) / ((x - self.wr_root) + eps)
-        
         Psi = -1 / self.alpha_root*(s**(1.0 / m) - 1.0)**(1.0 / n)  # alpha defines the unit (kPa)
-        Psi[Psi==np.NaN] = 0.0
+        #Psi[Psi==np.NaN] = 0.0
         Psi = 1e-3*Psi # kPa to MPa
         #Psi[Psi<-3.0] = -3.0
         

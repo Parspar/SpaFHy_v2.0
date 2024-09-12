@@ -74,7 +74,7 @@ class SpaFHy():
     """
     SpaFHy model class
     """
-    def __init__(self, pgen, pcpy, pbu, pds, ptop, flatten=True):
+    def __init__(self, pgen, pcpy, pbu, pds, ptop, flatten=False):
 
         self.dt = pgen['dt']  # s
         self.simtype = pgen['simtype']
