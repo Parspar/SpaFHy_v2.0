@@ -107,17 +107,11 @@ class SoilGrid_2Dflow(object):
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         self.qr = np.full_like(self.h, 0.0) # 
         
-        # rootzone moisture [m3 m-3], parameters related to transpiration limit during dry conditions
+        # rootzone moisture [m3 m-3]
         self.deepmoist = np.full_like(self.h, 0.0)
         self.deepmoist[np.isnan(self.h)] = np.nan
-        self.deep_fc0 = np.full_like(self.h, 0.0)
-        self.deep_fc1 = np.full_like(self.h, 0.0)
-        self.deep_wp = np.full_like(self.h, 0.0)
         for key, value in self.gwl_to_rootmoist.items():
             self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
-            self.deep_fc0[self.soiltype == key] = value(-0.7 - 0.1)
-            self.deep_fc1[self.soiltype == key] = value(-1.2 - 0.1)
-            self.deep_wp[self.soiltype == key] = value(-150.0 - 0.1)
 
         """ parameters for 2D solution """
         # parameters for solving
@@ -273,26 +267,7 @@ class SoilGrid_2Dflow(object):
 
         for it in range(maxiter):
 
-            # transmissivity [m2 d-1] to neighbouring cells with HTmp1
-            # for ditch nodes that are active, transmissivity calculated based on mean H of
-            # neighboring nodes, not ditch depth which would restrict tranmissivity too much
-            #H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
-            #                    H_neighbours_2d, Htmp)
-            #for key, value in self.gwl_to_Tr.items():
-            #    self.Tr1[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
-            #TrTmpEW = gmean(self.rolling_window(self.Tr1, 2),-1)
-            #TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr1), 2),-1))
-            #self.TrW1[:,1:] = TrTmpEW
-            #self.TrE1[:,:-1] = TrTmpEW
-            #self.TrN1[1:,:] = TrTmpNS
-            #self.TrS1[:-1,:]= TrTmpNS
-            #del TrTmpEW, TrTmpNS
-            # ravel 2D arrays
-            #TrW1 = np.ravel(self.TrW1); TrE1= np.ravel(self.TrE1)
-            #TrN1 = np.ravel(self.TrN1); TrS1 = np.ravel(self.TrS1)
-
             # differential water capacity dSto/dh
-            # CCtmp = self.CC.copy()
             for key, value in self.gwl_to_C.items():
                 self.CC[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
             alfa = np.ravel(self.CC * self.dxy**2 / dt)

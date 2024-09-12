@@ -15,10 +15,26 @@ import xarray as xr
 import importlib
 import pprint
 import os
+from multiprocessing import Pool, cpu_count
 
 eps = np.finfo(float).eps
 
-def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder=''):
+def worker(catch, catchment, create_ncf, create_spinup, output, folder):
+    print(f'Simulating catchment: {catch}')
+    driver(catchment, catch, create_ncf=create_ncf, create_spinup=create_spinup, output=output, folder=folder)
+
+def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
+    # Create a Pool with the desired number of processes
+    size_setpool = min(cpu_count(), len(catchment_no))
+    with Pool(processes=size_setpool) as pool:
+        # Prepare arguments for each catchment
+        args = [(catch, catchment, create_ncf, create_spinup, output, folder) for catch in catchment_no]
+        pool.starmap(worker, args)
+
+    print('**** FINISHED ALL RUNS ****')
+
+
+def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -27,13 +43,17 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
     """ set up model """
     running_time = time.time()
 
+    parameters_module = importlib.import_module(f'parameters_{catchment}')
+    parameters = parameters_module.parameters
+    pgen, _, _, _ = parameters(folder)
+    pgen['mask'] = catchment_no
+
     # load and process parameters
-    pgen, pcpy, pbu, pds, cmask, ptop, gisinfo = preprocess_parameters(catchment, folder)
+    pgen, pcpy, pbu, pds, cmask, ptop, gisinfo = preprocess_parameters(pgen, catchment, folder)
 
     # new directory for results files
     results_folder = create_simulation_folder(pgen)
     pgen['results_folder'] = results_folder
-    print(results_folder)
     results_file = os.path.join(results_folder, pgen['ncf_file'])
     pgen['ncf_file'] = results_file
 
@@ -171,7 +191,7 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
         if output:
             return results, spa, pcpy, pbu, ptop, cmask
 
-def preprocess_parameters(catchment, folder=''):
+def preprocess_parameters(pgen, catchment, folder=''):
     """
     Reading gisdata if applicable and preprocesses parameters
     """
@@ -191,7 +211,7 @@ def preprocess_parameters(catchment, folder=''):
     ptopmodel = parameters_module.ptopmodel
     auxiliary_grids = parameters_module.auxiliary_grids
 
-    pgen, pcpy, pbu, pspd = parameters(folder)
+    _, pcpy, pbu, pspd = parameters(folder)
     ptop = ptopmodel()
     aux = auxiliary_grids()
     
@@ -267,7 +287,7 @@ def preprocess_parameters(catchment, folder=''):
                 if pgen['mask'] == 'cmask':
                     mask = gisdata['cmask_bi'].copy()
                     gisdata[key] = gisdata[key] * mask
-                if isinstance(pgen['mask'], (int, float)):
+                if isinstance(pgen['mask'], (int, float, np.int32, np.int64, np.float64)):
                     catchment = pgen['mask']
                     mask = gisdata['cmask'].copy()
                     mask[mask != pgen['mask']] = np.nan

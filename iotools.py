@@ -291,7 +291,7 @@ def read_aux_gisdata(fpath, spatial_aux, mask=None):
     return gis
 
 
-def read_forcing_gisdata(fpath):
+def read_spatial_forcing(fpath):
     """
     reads gis-data grids and returns numpy 2d-arrays
     Args:
@@ -326,6 +326,7 @@ def read_forcing_gisdata(fpath):
         gis[key] *= cmask
 
     return gis
+
 
 def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
     """
