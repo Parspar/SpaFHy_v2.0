@@ -263,41 +263,56 @@ def preprocess_parameters(catchment, folder=''):
     # masking the gisdata according to pgen['mask']
     if pgen['mask'] is not None:
         for key in gisdata:
-            if key not in ['xllcorner', 'yllcorner', 'dxy', 'cmask', 'cmask_bi', 'streams', 'lakes']:
+            if key not in ['xllcorner', 'yllcorner', 'dxy', 'streams', 'lakes']:
+
                 if pgen['mask'] == 'cmask':
-                    mask = gisdata['cmask_bi'].copy()
-                    gisdata[key] = gisdata[key] * mask
-                if isinstance(pgen['mask'], (int, float)):
+                    mask = np.where(np.isnan(gisdata['cmask']), np.nan, 1)
+                    gisdata[key] = np.where(np.isnan(mask), np.nan, gisdata[key])
+
+                elif isinstance(pgen['mask'], (int, float, np.int32, np.int64, np.float64)):
                     catchment = pgen['mask']
-                    mask = gisdata['cmask'].copy()
-                    mask[mask != pgen['mask']] = np.nan
-                    mask[mask == pgen['mask']] = 1.0
-                    gisdata[key] = gisdata[key] * mask
-                if pgen['mask'] == 'streams':
-                    if pgen['simtype'] != '2D': # making sure streams are not masked if 2D run
-                        mask = gisdata['streams'].copy()
-                        mask = np.where(mask == 1.0, np.nan, 1.0)
-                        gisdata[key] = gisdata[key] * mask
-                if pgen['mask'] == 'streams/lakes':
-                    if pgen['simtype'] != '2D': # making sure streams are not masked if 2D run
-                        mask = gisdata['streams'].copy()
-                        mask2 = gisdata['lakes'].copy()
-                        mask = np.where(mask == 1.0, np.nan, 1.0)
-                        mask2 = np.where(mask2 == 1.0, np.nan, 1.0)
-                        mask[~np.isfinite(mask2)] = np.nan
-                        gisdata[key] = gisdata[key] * mask
-                if pgen['mask'] == 'lakes':
-                    mask = gisdata['lakes'].copy()
-                    mask = np.where(mask == 1.0, np.nan, 1.0)
-                    gisdata[key] = gisdata[key] * mask                        
-                if pgen['mask'] == 'cmask/streams':
-                    mask = gisdata['cmask_bi'].copy()
-                    gisdata[key] = gisdata[key] * mask
-                    if pgen['simtype'] != '2D': # making sure streams are not maksed if 2D run       
-                        mask2 = gisdata['streams'].copy()
-                        mask2 = np.where(mask2 == 1.0, np.nan, 1.0)
-                        mask[~np.isfinite(mask2)] = np.nan
-                        gisdata[key] = gisdata[key] * mask
+                    mask = np.where(gisdata['cmask'] == catchment, 1.0, np.nan)
+                    gisdata[key] = np.where(np.isnan(mask), np.nan, gisdata[key])
+
+                elif pgen['mask'] == 'streams' and pgen['simtype'] != '2D':
+                    mask = gisdata['streams']
+                    gisdata[key] = np.where(mask == 1.0, np.nan, gisdata[key])
+
+                elif pgen['mask'] == 'streams/lakes' and pgen['simtype'] != '2D':
+                    mask_streams = np.where(gisdata['streams'] == 1.0, np.nan, 1.0)
+                    mask_lakes = np.where(gisdata['lakes'] == 1.0, np.nan, 1.0)
+                    mask = np.where(~np.isnan(gisdata['streams']) 
+                                    | ~np.isnan(gisdata['lakes']), np.nan, 1.0)
+                    gisdata[key] = np.where(np.isnan(combined_mask), np.nan, gisdata[key])
+
+                elif pgen['mask'] == 'lakes':
+                    mask = gisdata['lakes']
+                    gisdata[key] = np.where(mask == 1.0, np.nan, gisdata[key])
+
+                elif pgen['mask'] == 'cmask/streams':
+                    mask_cmask = np.where(np.isnan(gisdata['cmask']), np.nan, 1)
+                    mask_streams = np.where(np.isnan(gisdata['streams']), np.nan, 1.0)
+                    mask_lakes = np.where(np.isnan(gisdata['lakes']), np.nan, 1.0)
+                    mask = np.where(np.isnan(gisdata['cmask']) 
+                                    | ~np.isnan(gisdata['streams'])
+                                    | ~np.isnan(gisdata['lakes']), np.nan, 1.0)
+                    gisdata[key] = np.where(np.isnan(mask_cmask), np.nan, gisdata[key])
+
+                    if pgen['simtype'] != '2D':  # making sure streams are not masked if 2D run
+                        mask_streams = np.where(gisdata['streams'] == 1.0, np.nan, 1.0)
+                        gisdata[key] = np.where(np.isnan(mask_streams), np.nan, gisdata[key])
+
+    # clipping the gisdata according to pgen['mask'] if numeric or cmask
+    if pgen['mask'] in ['cmask', 'cmask/streams'] or isinstance(pgen['mask'], 
+                                                                (int, float, np.int32, np.int64, np.float64)):
+        for key in gisdata:
+            if key not in ['xllcorner', 'yllcorner', 'dxy', 'cmask']:
+                gisdata[key], rows_id, cols_id = clip_2d_to_mask(gisdata[key], gisdata['cmask'])
+        gisdata['cmask'] = gisdata['cmask'][rows_id[0]:rows_id[1]+1,cols_id[0]:cols_id[1]+1]
+
+        # updating the information
+        gisdata['xllcorner'] = gisdata['xllcorner'] + cols_id[0] * gisdata['dxy']
+        gisdata['yllcorner'] = gisdata['yllcorner'] + rows_id[0] * gisdata['dxy']
 
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
@@ -310,7 +325,7 @@ def preprocess_parameters(catchment, folder=''):
         dsdata = preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, pgen['spatial_soil'])
     else:
         dsdata = pspd.copy() # dummy
-        
+    
     gisinfo = {}
     gisinfo['xllcorner'] = gisdata['xllcorner']
     gisinfo['yllcorner'] = gisdata['yllcorner']
@@ -479,7 +494,26 @@ def create_simulation_folder(pgen):
     
     return simulation_folder_path
 
+def clip_2d_to_mask(arr, mask):
+    # Find rows and columns where there is at least one non-nan value
+    # Find rows and columns where there is at least one non-nan value
+    non_nan_rows = np.any(~np.isnan(mask), axis=1)
+    non_nan_cols = np.any(~np.isnan(mask), axis=0)
 
+    # Get indices where there are non-nan values
+    rows_id = np.where(non_nan_rows)[0]
+    cols_id = np.where(non_nan_cols)[0]
+
+    row_ext = (rows_id[0], rows_id[-1])
+    col_ext = (cols_id[0], cols_id[-1])
+        
+    # Clip based on the first and last valid row and column
+    if len(non_nan_rows) > 0 and len(non_nan_cols) > 0:
+        return arr[rows_id[0]:rows_id[-1]+1, cols_id[0]:cols_id[-1]+1], row_ext, col_ext
+    else:
+        return np.array([[]])  # Return empty if there are no valid rows/columns
+
+    
 
 if __name__ == '__main__':
 

@@ -10,9 +10,9 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '1D', # 1D, TOP, 2D,
+            'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2005-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2005-02-01', # 2021-12-31,
+            'end_date': '2005-01-05', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '2005-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
@@ -31,7 +31,7 @@ def parameters(folder=''):
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
             'cmask' : 'catchment_mask.asc',
-            'mask': 14, # 'cmask/streams', 'cmask', 'streams', None
+            'mask': 18, # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'results_folder': str(pathlib.Path(folder+r'/results')),
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)

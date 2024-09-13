@@ -267,16 +267,7 @@ def read_aux_gisdata(fpath, spatial_aux, mask=None):
     
     if 'cmask' in spatial_aux:
         cmask, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['cmask']))
-        uniqs = np.unique(cmask) # check the type of cmask (zeros and ones, multiple masks etc.)
-        if len(uniqs) == 2:
-            cmask[cmask == 0] = np.nan
-            cmask_bi = cmask.copy()
-        elif len(uniqs) > 2:
-            cmask_bi = cmask.copy()
-            cmask_bi[np.isfinite(cmask_bi)] = 1
-        
         gis['cmask'] = cmask
-        gis['cmask_bi'] = cmask_bi
 
     if 'streams' in spatial_aux:
         streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['streams']))
@@ -753,10 +744,13 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     cellsize = gisinfo['dxy']
     
     #xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
-    xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)-cellsize), cellsize) # ?????
-    ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
+    #xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)-cellsize), cellsize) # ?????
+    #ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
+    #ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize+cellsize)), cellsize) # ?????
+    xcoords = np.linspace(xllcorner, xllcorner + (lon_shape - 1) * cellsize, lon_shape)
+    ycoords = np.linspace(yllcorner, yllcorner + (lat_shape - 1) * cellsize, lat_shape)
     ycoords = np.flip(ycoords)
-    
+
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
