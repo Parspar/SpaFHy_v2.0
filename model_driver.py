@@ -15,10 +15,32 @@ import xarray as xr
 import importlib
 import pprint
 import os
+from multiprocessing import Pool, cpu_count
 
 eps = np.finfo(float).eps
 
-def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder=''):
+def worker(catch, catchment, create_ncf, create_spinup, output, folder):
+    print(f'*** Catchment no.: {catch} ***')
+    outputfile = driver(catchment, catch, create_ncf=create_ncf, create_spinup=create_spinup, output=output, folder=folder)
+    return outputfile
+
+def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
+    # Create a Pool with the desired number of processes
+    if not isinstance(catchment_no, np.ndarray):
+        catchment_no = np.array([catchment_no])
+    size_setpool = min(cpu_count(), len(catchment_no))
+
+    with Pool(processes=size_setpool) as pool:
+        # Prepare arguments for each catchment
+        args = [(catch, catchment, create_ncf, create_spinup, output, folder) for catch in catchment_no]
+        outputfile = pool.starmap(worker, args)
+
+    print('**** FINISHED ALL RUNS ****')
+
+    return outputfile
+
+
+def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
     or return dictionary of results.
@@ -26,14 +48,17 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
 
     """ set up model """
     running_time = time.time()
+    parameters_module = importlib.import_module(f'parameters_{catchment}')
+    parameters = parameters_module.parameters
+    pgen, _, _, _ = parameters(folder)
+    pgen['mask'] = catchment_no
 
     # load and process parameters
-    pgen, pcpy, pbu, pds, cmask, ptop, gisinfo = preprocess_parameters(catchment, folder)
+    pgen, pcpy, pbu, pds, cmask, ptop, gisinfo = preprocess_parameters(pgen, catchment, folder)
 
     # new directory for results files
     results_folder = create_simulation_folder(pgen)
     pgen['results_folder'] = results_folder
-    print(results_folder)
     results_file = os.path.join(results_folder, pgen['ncf_file'])
     pgen['ncf_file'] = results_file
 
@@ -71,6 +96,7 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
                 description=pgen['description'],
                 gisinfo=gisinfo)
 
+
     if create_spinup:
         ncf_spinup, outputfile_spinup = initialize_netcdf_spinup(
                 pgen=pgen,
@@ -107,10 +133,8 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
         pds = flatten_2d_arrays(pds)
         ptop = flatten_2d_arrays(ptop)
 
-    # this here temp so that we save params
+    # this here so that we save params
     dir_path = pgen['results_folder']
-    #with open(ptfile, 'w') as file:
-    #    pprint.pprint(pcpy, stream=file, indent=4, width=100)
     # Loop through each dictionary and save it
     dicts = {'pgen': pgen, 'pcpy': pcpy, 'pbu': pbu, 'pds': pds, 'ptop': ptop}
     for dict_name, dict_data in dicts.items():
@@ -121,6 +145,7 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
     # initialize SpaFHy
     spa = SpaFHy(pgen, pcpy, pbu, pds, ptop)
 
+    # run spa timesteps
     for k in range(0, Nsteps):
         if pgen['simtype'] == '2D':
             deep_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
@@ -129,7 +154,7 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
         elif pgen['simtype'] == '1D':
             canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
 
-        # here should reshape the results arrays
+        # here reshape the results arrays if flattened
         if flatten == True:
             canopy_results = reshape_1d_to_2d(canopy_results, rows=rows, cols=cols)
             bucket_results = reshape_1d_to_2d(bucket_results, rows=rows, cols=cols)
@@ -171,7 +196,7 @@ def driver(catchment, create_ncf=False, create_spinup=False, output=True, folder
         if output:
             return results, spa, pcpy, pbu, ptop, cmask
 
-def preprocess_parameters(catchment, folder=''):
+def preprocess_parameters(pgen, catchment, folder=''):
     """
     Reading gisdata if applicable and preprocesses parameters
     """
@@ -191,7 +216,7 @@ def preprocess_parameters(catchment, folder=''):
     ptopmodel = parameters_module.ptopmodel
     auxiliary_grids = parameters_module.auxiliary_grids
 
-    pgen, pcpy, pbu, pspd = parameters(folder)
+    _, pcpy, pbu, pspd = parameters(folder)
     ptop = ptopmodel()
     aux = auxiliary_grids()
     
@@ -260,7 +285,7 @@ def preprocess_parameters(catchment, folder=''):
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
 
-    # masking the gisdata according to pgen['mask']
+     # masking the gisdata according to pgen['mask']
     if pgen['mask'] is not None:
         for key in gisdata:
             if key not in ['xllcorner', 'yllcorner', 'dxy', 'streams', 'lakes']:
@@ -325,7 +350,7 @@ def preprocess_parameters(catchment, folder=''):
         dsdata = preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, pgen['spatial_soil'])
     else:
         dsdata = pspd.copy() # dummy
-    
+        
     gisinfo = {}
     gisinfo['xllcorner'] = gisdata['xllcorner']
     gisinfo['yllcorner'] = gisdata['yllcorner']
@@ -390,6 +415,7 @@ def preprocess_forcing(pgen):
                     df[var].values.reshape(len(dates),1),np.ones((1,len(ix[0]))))
     ds = xr.Dataset(ddict, coords={'date': dates})
 
+    # if forcing is not spatially distributed, squeezes the i and j dims
     if ds.dims['i'] == 1 and ds.dims['j'] == 1:
         ds = ds.squeeze(dim=['i', 'j'])  
 
@@ -444,6 +470,7 @@ def _append_results(group, step_results, results, step=None):
             else:
                 results[key][step] = res
     return results
+
 
 def flatten_2d_arrays(d):
     new_dict = {}
@@ -512,7 +539,6 @@ def clip_2d_to_mask(arr, mask):
         return arr[rows_id[0]:rows_id[-1]+1, cols_id[0]:cols_id[-1]+1], row_ext, col_ext
     else:
         return np.array([[]])  # Return empty if there are no valid rows/columns
-
     
 
 if __name__ == '__main__':

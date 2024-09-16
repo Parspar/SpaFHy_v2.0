@@ -10,11 +10,11 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D,
+            'simtype': '1D', # groundwater conceptualizations: '1D', 'TOP' or '2D',
             'start_date': '2018-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2018-12-31', # 2021-12-31,
+            'end_date': '2019-08-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2018-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2018-08-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -27,11 +27,9 @@ def parameters(folder=''):
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(folder+r'/gis')),
-            #'forcing_file': r'/projappl/project_2000908/nousu/SpaFHy_FORCING/HYYTIALA_FORCING_1980_2021.csv',
             'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING.csv')),
-            #'forcing_file': r'/Users/jpnousu/SpaFHy_RUNS/hyytiala/forcing/FORCING.csv',
             'forcing_id': 0,  # used if spatial_forcing == False
-            'ncf_file': str(pathlib.Path(folder+r'/results')) + '/' + time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
+            'ncf_file': time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
             'cmask' : 'cmask.dat',
             'mask': 'cmask', # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
