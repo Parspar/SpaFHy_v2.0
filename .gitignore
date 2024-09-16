@@ -129,3 +129,4 @@ sand*.ipynb
 *.err
 *.xml
 *.nc
+.DS_Store
