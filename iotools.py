@@ -180,9 +180,9 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     if 'streams' in spatial_pspd:
         if spatial_pspd['streams'] == True:
             streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
-            streams[np.isfinite(streams)] = -1.0
-            #streams[streams == np.nan] = 0.0
-            #streams = np.where(streams == 0, np.nan, -1.0)
+            streams[(np.isfinite(streams)) & (streams != 0.0)] = -1.0
+            streams[streams != -1.0] = np.nan
+
     else:
         print('*** No stream file ***')
         streams = np.full_like(deepsoil, 0.0)
