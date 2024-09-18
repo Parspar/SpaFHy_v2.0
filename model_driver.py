@@ -39,7 +39,6 @@ def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=Fal
 
     return outputfile
 
-
 def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
     """
     Model driver: sets up model, runs it and saves results to file (create_ncf==True)
@@ -332,12 +331,12 @@ def preprocess_parameters(pgen, catchment, folder=''):
                                                                 (int, float, np.int32, np.int64, np.float64)):
         for key in gisdata:
             if key not in ['xllcorner', 'yllcorner', 'dxy', 'cmask']:
-                gisdata[key], rows_id, cols_id = clip_2d_to_mask(gisdata[key], gisdata['cmask'])
+                gisdata[key], rows_id, cols_id, xllcorner_id, yllcorner_id = clip_2d_to_mask(gisdata[key], gisdata['cmask'])
         gisdata['cmask'] = gisdata['cmask'][rows_id[0]:rows_id[1]+1,cols_id[0]:cols_id[1]+1]
 
         # updating the information
-        gisdata['xllcorner'] = gisdata['xllcorner'] + cols_id[0] * gisdata['dxy']
-        gisdata['yllcorner'] = gisdata['yllcorner'] + rows_id[0] * gisdata['dxy']
+        gisdata['xllcorner'] = gisdata['xllcorner'] + xllcorner_id * gisdata['dxy']
+        gisdata['yllcorner'] = gisdata['yllcorner'] + yllcorner_id * gisdata['dxy']
 
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
@@ -524,6 +523,8 @@ def create_simulation_folder(pgen):
 def clip_2d_to_mask(arr, mask):
     # Find rows and columns where there is at least one non-nan value
     # Find rows and columns where there is at least one non-nan value
+
+    arr_shape = arr.shape
     non_nan_rows = np.any(~np.isnan(mask), axis=1)
     non_nan_cols = np.any(~np.isnan(mask), axis=0)
 
@@ -531,12 +532,15 @@ def clip_2d_to_mask(arr, mask):
     rows_id = np.where(non_nan_rows)[0]
     cols_id = np.where(non_nan_cols)[0]
 
+    xllcorner_id = cols_id[0]
+    yllcorner_id = arr_shape[0] -1 - rows_id[-1]
+
     row_ext = (rows_id[0], rows_id[-1])
     col_ext = (cols_id[0], cols_id[-1])
         
     # Clip based on the first and last valid row and column
     if len(non_nan_rows) > 0 and len(non_nan_cols) > 0:
-        return arr[rows_id[0]:rows_id[-1]+1, cols_id[0]:cols_id[-1]+1], row_ext, col_ext
+        return arr[rows_id[0]:rows_id[-1]+1, cols_id[0]:cols_id[-1]+1], row_ext, col_ext, xllcorner_id, yllcorner_id
     else:
         return np.array([[]])  # Return empty if there are no valid rows/columns
     

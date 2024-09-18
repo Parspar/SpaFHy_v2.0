@@ -10,11 +10,11 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '1D', # 1D, TOP, 2D,
+            'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2005-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2005-01-05', # 2021-12-31,
+            'end_date': '2006-12-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2005-01-01',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2005-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -51,7 +51,6 @@ def parameters(folder=''):
                     ['parameters_streams', 'streams'],
                     ['parameters_lakes', 'lakes'],
                     ['parameters_cmask', 'cmask'],
-                    ['parameters_cmask_bi', 'cmask'],
                     ['parameters_twi', 'twi'],
                     ['parameters_slope', 'slope'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
@@ -75,7 +74,7 @@ def parameters(folder=''):
                     #['bucket_storage_change', 'bucket water storage change (top and root) [mm d-1]'],
                     ['bucket_water_closure', 'bucket water balance error [mm d-1]'],
                     ['bucket_return_flow', 'return flow from deepzone to bucket [mm d-1]'],
-                    ['deep_water_storage', 'soil water storage (deeplayer) [m]'],
+                    #['deep_water_storage', 'soil water storage (deeplayer) [m]'],
                     ['deep_ground_water_level', 'ground water level [m]'],
                     ['deep_lateral_netflow', 'subsurface lateral netflow [mm d-1]'],
                     ['deep_netflow_to_ditch', 'netflow to stream [mm d-1]'],
@@ -94,13 +93,13 @@ def parameters(folder=''):
                     #['canopy_fLAI', 'state of LAI'],
                     #['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
                     #['canopy_snowfall', 'canopy snowfall'],
-                    ['top_baseflow', 'topmodel baseflow [mm d-1]'],
-                    ['top_water_closure', 'topmodel water balance error [mm d-1]'],
-                    ['top_returnflow', 'topmodel returnflow [mm d-1]'],
-                    ['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
-                    ['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
+                    #['top_baseflow', 'topmodel baseflow [mm d-1]'],
+                    #['top_water_closure', 'topmodel water balance error [mm d-1]'],
+                    #['top_returnflow', 'topmodel returnflow [mm d-1]'],
+                    #['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
+                    #['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
                     #['top_saturation_deficit', 'topmodel saturation deficit [m]'],
-                    ['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
+                    #['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
                     #['top_saturated_area', 'topmodel saturated area [-]'],
                     #['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
                     ]

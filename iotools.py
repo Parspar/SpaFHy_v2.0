@@ -1279,3 +1279,182 @@ def rw_FMI_files(sourcefiles, out_path, plot=False):
     print(readme, file=outF)
     outF.close()
     return fmi
+
+
+def stitch_result_nc_files(root_directory, output_file, plot=False):
+    """Processes NetCDF files in the given directory, extracts global lat/lon, time, and variables, and creates a new file."""
+    
+    import xarray as xr
+
+    def extract_lats_lons(nc_file):
+        """Extracts latitudes and longitudes from a NetCDF file."""
+        with xr.open_dataset(nc_file) as ds:
+            lat = ds['lat'].values
+            lon = ds['lon'].values
+            cellsize = np.float32(np.abs(ds['lat'][1]-ds['lat'][0]))
+        return lat, lon, cellsize
+
+    def extract_time_and_variables(nc_file):
+        """Extracts time dimensions and data variable names from the first NetCDF file."""
+        with xr.open_dataset(nc_file) as ds:
+            time = ds['time'].values
+            variables = {var: ds[var].dims for var in ds.data_vars.keys()}
+        return time, variables
+
+    def find_global_lats_lons(root_directory):
+        """Finds the latitude and longitude coordinates and extracts time and variable dimensions from the first NetCDF file."""
+        all_latitudes = set()
+        all_longitudes = set()
+        time = None
+        variables = None
+
+        for dirpath, _, filenames in os.walk(root_directory):
+            for file in filenames:
+                if file.endswith(".nc"):
+                    nc_file_path = os.path.join(dirpath, file)
+                    lat, lon, cellsize = extract_lats_lons(nc_file_path)
+
+                    # Collect all unique latitudes and longitudes
+                    all_latitudes.update(lat)
+                    all_longitudes.update(lon)
+
+                    # Extract time and variable dimensions from the first file
+                    if time is None:
+                        time, variables = extract_time_and_variables(nc_file_path)
+
+        # Convert sets to sorted arrays
+        latitudes = np.sort(np.array(list(all_latitudes)))
+        longitudes = np.sort(np.array(list(all_longitudes)))
+
+        latitudes = np.arange(min(latitudes), max(latitudes) + cellsize, cellsize)
+        longitudes = np.arange(min(longitudes), max(longitudes) + cellsize, cellsize)
+
+        return latitudes, longitudes, time, variables
+
+    def create_new_nc_file(temp_file, time, latitudes, longitudes, variables, plot):
+        """Creates a new NetCDF file with time, latitude, and longitude dimensions, and retains original variable dimensions."""
+        data_vars = {}
+
+        # Initialize data variables based on dimensions from the first .nc file
+        for dirpath, _, filenames in os.walk(root_directory):
+            for file in filenames:
+                if file.endswith(".nc"):
+                    nc_file_path = os.path.join(dirpath, file)
+                    with xr.open_dataset(nc_file_path) as ds:
+                        for var in ds.data_vars.keys():
+                            var_dims = ds[var].dims
+
+                            # Create an empty array with NaNs for the variable based on dimensions
+                            shape = [len(time) if dim == 'time' else len(latitudes) if dim == 'lat' else len(longitudes) if dim == 'lon' else 1 for dim in var_dims]
+                            empty_array = np.full(shape, np.nan)
+
+                            # Store the empty array with the variable's dimensions
+                            if var not in data_vars:
+                                data_vars[var] = (var_dims, empty_array)
+
+        # Create the new NetCDF file
+        with xr.Dataset(
+            data_vars={var: (dims, data) for var, (dims, data) in data_vars.items()},
+            coords={
+                "time": time,
+                "lat": latitudes,
+                "lon": longitudes
+            }
+        ) as ds:
+            ds.to_netcdf(temp_file)
+
+    # Step 1: Find global latitudes, longitudes, time, and variables
+    print('checking global lats and lons')
+    latitudes, longitudes, time, variables = find_global_lats_lons(root_directory)
+    print('found global lats and lons')
+
+    # Step 2: Create the new NetCDF file
+    print('creating the new nc file')
+    temp_file = os.path.join(os.path.dirname(output_file), "temp.nc")
+    create_new_nc_file(temp_file, time, latitudes, longitudes, variables, plot)
+    print('created the new nc file')
+
+    # Step 3: Open the newly created NetCDF file
+    new_ds = xr.open_dataset(temp_file)
+
+    i = 0
+    # Step 4: Walk through the root_directory and process each .nc file
+    for dirpath, _, filenames in os.walk(root_directory):
+        for file in filenames:
+            if file.endswith('.nc'):
+                result_path = os.path.join(dirpath, file)
+
+                # Read the result dataset
+                result_ds = xr.open_dataset(result_path)
+                if plot:
+                    plt.figure(i)
+                i += 1
+                print('processing file', result_path)
+                if (result_ds['lat'].min() < new_ds['lat'].min()) or (result_ds['lat'].max() > new_ds['lat'].max()):
+                    print('RESULT LAT OUTSIDE')
+                if (result_ds['lon'].min() < new_ds['lon'].min()) or (result_ds['lon'].max() > new_ds['lon'].max()):
+                    print('RESULT LON OUTSIDE')
+
+                # Ensure the result_ds has the same time dimension and data variables as new_ds
+                assert np.all(new_ds.time == result_ds.time), "Time dimensions do not match"
+                assert set(new_ds.data_vars) == set(result_ds.data_vars), "Data variables do not match"
+
+                # Reindex lat and lon once # TEST
+                aligned_result_ds = result_ds.reindex(lat=new_ds['lat'], lon=new_ds['lon'], method='nearest') # TEST
+                # Apply lat/lon masks to handle values outside original bounds TEST
+                lat_mask = (new_ds['lat'] >= result_ds['lat'].min()) & (new_ds['lat'] <= result_ds['lat'].max())
+                lon_mask = (new_ds['lon'] >= result_ds['lon'].min()) & (new_ds['lon'] <= result_ds['lon'].max())
+
+                '''
+                # TEST WITHOUT LOOP
+                # Step 5: Separate variables into those with lat/lon and those without lat/lon dimensions
+                lat_lon_vars = [var for var in result_ds.data_vars if 'lat' in result_ds[var].dims and 'lon' in result_ds[var].dims]
+                time_only_vars = [var for var in result_ds.data_vars if 'time' in result_ds[var].dims and 'lat' not in result_ds[var].dims and 'lon' not in result_ds[var].dims]
+                # 1. Handle variables with lat/lon dimensions (Reindex, mask, and combine)
+                if lat_lon_vars:
+                    # Reindex lat/lon dimensions once for all variables with these dimensions
+                    aligned_result_ds = result_ds[lat_lon_vars].reindex(lat=new_ds['lat'], lon=new_ds['lon'], method='nearest')
+
+                    # Apply lat/lon masks
+                    lat_mask = (new_ds['lat'] >= result_ds['lat'].min()) & (new_ds['lat'] <= result_ds['lat'].max())
+                    lon_mask = (new_ds['lon'] >= result_ds['lon'].min()) & (new_ds['lon'] <= result_ds['lon'].max())
+
+                    # Mask the reindexed data to handle values outside the original lat/lon bounds
+                    masked_result_ds = aligned_result_ds.where(lat_mask & lon_mask, np.nan)
+
+                    # Combine new_ds and masked_result_ds, filling missing values in new_ds
+                    new_ds = new_ds.combine_first(masked_result_ds)
+
+                # 2. Handle variables with only the time dimension
+                if time_only_vars:
+                    # These variables can be directly combined without reindexing
+                    time_only_result_ds = result_ds[time_only_vars]
+                    new_ds = new_ds.combine_first(time_only_result_ds)
+                # TEST WITHOUT LOOP ENDS
+                '''
+                    
+                # Step 5: Iterate over data variables in new_ds
+                print('entering the fill loop')
+            
+                for var in new_ds.data_vars:
+                    if var in result_ds:
+                        try:
+                            masked_result_ds = aligned_result_ds[var].where(lat_mask & lon_mask, np.nan)
+                            # Fill values in new_ds with values from aligned_result_ds where not NaN
+                            new_ds[var] = xr.where(np.isnan(new_ds[var]), masked_result_ds, new_ds[var])
+                        except Exception as e:
+                            print(f"Error processing variable '{var}' in file '{result_path}': {e}")
+                        if (var == 'bucket_moisture_root') & (plot == True):
+                            masked_result_ds[-1].plot(vmin=0, vmax=1)
+                print('exited the fill loop')
+                
+
+
+    if plot:
+        plt.figure(i)
+        new_ds['bucket_moisture_root'][-1].plot(vmin=0, vmax=1)
+
+    new_ds.to_netcdf(output_file)
+    os.remove(temp_file)  # Remove the temporary file
+            
+    print('*** Finished ***')
