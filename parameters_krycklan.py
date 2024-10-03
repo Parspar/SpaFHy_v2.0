@@ -11,10 +11,10 @@ def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2005-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2006-12-31', # 2021-12-31,
+            'start_date': '2014-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'end_date': '2017-12-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2005-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2014-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -93,8 +93,8 @@ def parameters(folder=''):
                     #['canopy_fLAI', 'state of LAI'],
                     #['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
                     #['canopy_snowfall', 'canopy snowfall'],
-                    #['top_baseflow', 'topmodel baseflow [mm d-1]'],
-                    #['top_water_closure', 'topmodel water balance error [mm d-1]'],
+                    ['top_baseflow', 'topmodel baseflow [mm d-1]'],
+                    ['top_water_closure', 'topmodel water balance error [mm d-1]'],
                     #['top_returnflow', 'topmodel returnflow [mm d-1]'],
                     #['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
                     #['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
@@ -221,8 +221,8 @@ def parameters(folder=''):
     pspd = {
             # deep soil profile, following properties are used if spatial_deep = False
             'deep_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)
-            'elevation': 'dem.asc', # uniform (float) OR path to grid in gispath (str) 
-            'streams': 'stream_mask.asc',
+            'elevation': 'inflated_d4_dem.asc', # uniform (float) OR path to grid in gispath (str) 
+            'streams': 'stream_ditch_mask.asc',
             'lakes': 'lake_mask.asc',
             'deep_z': -5.0, # THIS NEEDS WORK!
             'deep_poros': 0.41,
@@ -244,12 +244,12 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {
-            'dem': 'dem.asc',
+            'dem': 'inflated_d4_dem.asc',
             'flow_accumulation': 'flow_accumulation.asc',
             'slope': 'slope.asc',
             'twi': 'twi.asc',
             'dt': 86400.0, # timestep (s)
-            'm': 0.025, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
+            'm': 0.01, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
             'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
@@ -262,7 +262,7 @@ def auxiliary_grids():
     """
     grids = {
             'cmask':    'catchment_mask.asc',
-            'streams':  'stream_mask.asc',
+            'streams':  'stream_ditch_mask.asc',
             'lakes':    'lake_mask.asc'
             }
     return grids

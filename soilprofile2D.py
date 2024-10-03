@@ -90,6 +90,7 @@ class SoilGrid_2Dflow(object):
         # nan to lake interiors (lake interiors should not be solved)
         self.soiltype[self.lake_interior == 1] = np.nan
         self.cmask[self.lake_interior == 1] = np.nan
+        self.h[self.lake_interior == 1] = np.nan
         self.H[self.lake_interior == 1] = -999
 
         # replace nans (values outside catchment area)
@@ -109,9 +110,9 @@ class SoilGrid_2Dflow(object):
         
         # rootzone moisture [m3 m-3]
         self.deepmoist = np.full_like(self.h, 0.0)
-        self.deepmoist[np.isnan(self.h)] = np.nan
         for key, value in self.gwl_to_rootmoist.items():
             self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
+        self.deepmoist[np.isnan(self.h)] = np.nan
 
         """ parameters for 2D solution """
         # parameters for solving
