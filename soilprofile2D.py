@@ -65,6 +65,10 @@ class SoilGrid_2Dflow(object):
         lake_boundary = np.zeros_like(self.lake_h)
         self.lake_interior = np.zeros_like(self.lake_h)
         
+        #import sys
+        #plt.imshow(self.ditch_h)
+        #sys.exit()
+
         # grid
         self.rows = np.shape(self.h)[0]
         self.cols = np.shape(self.h)[1]

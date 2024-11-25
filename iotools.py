@@ -472,8 +472,6 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
     for key, value in deepp.items():
-        print('key', key)
-        print('value', value)
         c = value['deep_id']
         ix = np.where(data['deep_id'] == c)
         data['soiltype'][ix] = key
