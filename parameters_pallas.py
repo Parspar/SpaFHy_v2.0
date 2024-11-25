@@ -11,7 +11,7 @@ def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # groundwater conceptualizations: '1D', 'TOP' or '2D',
-            'start_date': '2018-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'start_date': '2018-01-01', # '2011-01-01', for tests: '2020-01-01'
             'end_date': '2019-12-31', # 2021-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '2018-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file

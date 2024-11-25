@@ -231,6 +231,7 @@ class SoilGrid_2Dflow(object):
         for key, value in self.gwl_to_Tr.items():
             self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
+        # is is actually at all four sides, or just along east-west and north-sound axes?
         TrTmpEW = gmean(self.rolling_window(self.Tr0, 2), -1)
         TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr0), 2), -1))
         self.TrW0[:,1:] = TrTmpEW
@@ -314,6 +315,9 @@ class SoilGrid_2Dflow(object):
             Htmp1 = linalg.spsolve(A,hs)
 
             # testing, limit change
+            #if np.any(np.abs(Htmp1-Htmp)) > 0.5:
+                #print('Difference greater than 0.5')
+
             Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
 
             conv1 = np.max(np.abs(Htmp1 - Htmp))
@@ -476,27 +480,30 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
             'to_C'
             'to_Tr'
     """
-
-    z = np.array(z) # profile depths
+    z = np.array(z, dtype=np.float64) # profile depths
     dz = abs(z)
     dz[1:] = z[:-1] - z[1:] # profile depths into profile thicknesses
 
     # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
-    z_fine=np.arange(0,min(z),-0.01)-0.01
+    z_fine= (np.arange(0, min(z), -0.01) - 0.01).astype(np.float64)
     dz_fine = z_fine*0.0 + 0.01
     z_mid_fine = dz_fine / 2 - np.cumsum(dz_fine)
 
-    ix = np.zeros(len(z_fine))
+    ix = np.zeros(len(z_fine), dtype=np.float64)
+
     for depth in z:
-        ix += np.where(z_fine < depth, 1, 0)
+        # below makes sure floating point precision doesnt mess with the ix
+        ix += np.where((z_fine < depth) & ~np.isclose(z_fine, depth, atol=1e-9), 1, 0)
 
     pF_fine={}
     for key in pF.keys():
-        pp = np.array([pF[key][int(ix[i])] for i in range(len(z_fine))])
-        pF_fine.update({key: pp})
+        pp = []
+        for i in range(len(z_fine)):
+            pp.append(pF[key][int(ix[i])])
+        pF_fine.update({key: np.array(pp)})
 
     # --------- connection between gwl and Wsto, Tr, C------------
-    gwl = np.arange(1.0, -10., -1e-2)
+    gwl = np.arange(1.0, min(z), -1e-2)
     # solve water storage corresponding to gwls
     Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
             + max(0.0,g) for g in gwl]  # water storage above ground surface == gwl
@@ -517,12 +524,13 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
     
-    #plt.figure(1)
-    #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
-    #plt.figure(2)
-    #plt.plot(np.array(gwl), np.log10(np.array(Tr)))
-    #plt.figure(3)
-    #plt.plot(np.array(gwl), np.array(Wsto_deep))
+    plt.figure(1)
+    plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
+    plt.figure(2)
+    plt.plot(np.array(gwl), np.log10(np.array(Tr)))
+    #plt.plot(np.array(gwl), np.array(Tr))
+    plt.figure(3)
+    plt.plot(np.array(gwl), np.array(Wsto_deep))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -574,7 +582,7 @@ def transmissivity(dz, Ksat, gwl):
     r""" Transmissivity of saturated layer.
 
     Args:
-       dz (array):  soil conpartment thichness, node in center [m]
+       dz (array):  soil compartment thickness, node in center [m]
        Ksat (array): horizontal saturated hydr. cond. [ms-1]
        gwl (float): ground water level below surface, <0 [m]
 
