@@ -147,6 +147,8 @@ class SoilGrid_2Dflow(object):
         self.conv99 = 99
         #self.totit = 0
 
+        print('ditch_h uniques', np.unique(self.ditch_h))
+
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
         strides = a.strides + (a.strides[-1],)
@@ -310,6 +312,11 @@ class SoilGrid_2Dflow(object):
 
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
 
+            #print('mean hs', np.mean(hs))
+            #if self.tmstep > 19:
+                #print('A', A)
+                #print('hs', np.mean(hs))
+
             # Solve: A*Htmp1 = hs
             Htmp1 = linalg.spsolve(A,hs)
 
@@ -358,7 +365,7 @@ class SoilGrid_2Dflow(object):
                 TrW1_temp = np.reshape(TrW1,(self.rows,self.cols))[(max_index[0], max_index[1]-1)]
                 TrE1_temp = np.reshape(TrE1,(self.rows,self.cols))[(max_index[0], max_index[1]+1)]
 
-                print('Max Htmp1-Htmp', np.max(np.abs(Htmp1-Htmp)))
+                #print('Max Htmp1-Htmp', np.max(np.abs(Htmp1-Htmp)))
                 print('Htmp of max_index:', Htmp[max_index])
                 print('Htmp of N neighbor:', Htmp_N_temp)
                 print('Htmp of S neighbor:', Htmp_S_temp)
@@ -496,7 +503,7 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
         pF_fine.update({key: pp})
 
     # --------- connection between gwl and Wsto, Tr, C------------
-    gwl = np.arange(1.0, -10., -1e-2)
+    gwl = np.arange(1.0, min(z)-5, -1e-2)
     # solve water storage corresponding to gwls
     Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
             + max(0.0,g) for g in gwl]  # water storage above ground surface == gwl
