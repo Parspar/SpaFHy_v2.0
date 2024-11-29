@@ -171,16 +171,15 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     # soil depth
     if 'deep_z' in spatial_pspd:
         if spatial_pspd['deep_z'] == True:
-            deep_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_z']))
-            gis['deep_z'] = deep_id
+            deep_z, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_z']))
+            gis['deep_z'] = deep_z
 
     # dem
     if 'elevation' in spatial_pspd:
         if spatial_pspd['elevation'] == True:
             elevation, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
-            bedrock = elevation - 5.0
             gis['elevation'] = elevation
-            gis['bedrock'] = bedrock
+
 
     # streams
     if 'streams' in spatial_pspd:
@@ -188,14 +187,17 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
             streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
             if isinstance(pspd['stream_depth'], float):
                 streams[(np.isfinite(streams)) & (streams != 0.0)] = pspd['stream_depth']
+                streams[~np.isfinite(streams)] = 0.0
             else:
                 streams[(np.isfinite(streams)) & (streams != 0.0)] = -1.0
-                streams[streams != -1.0] = np.nan
+                streams[streams != -1.0] = 0.0
 
     if 'stream_depth' in spatial_pspd:
         if spatial_pspd['stream_depth'] == True:
             stream_depth, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_depth']))
             streams = stream_depth.copy()
+            streams[~np.isfinite(streams)] = 0.0
+            stream_depth[~np.isfinite(stream_depth)] = 0.0
             gis['stream_depth'] = stream_depth
         else:
             stream_depth = pspd['stream_depth']
@@ -453,7 +455,7 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     else:
         data['deep_id'] = gisdata['deep_id']
         data['elevation'] = gisdata['elevation']
-        data['bedrock'] = gisdata['bedrock']        
+        #data['soildepth'] = gisdata['soildepth']        
         data['streams'] = gisdata['streams']
         data['lakes'] = gisdata['lakes']
 
@@ -470,15 +472,28 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         #raise ValueError("Deep soil id in inputs not specified in parameters.py")
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+    data.update({'pF': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+    data.update({'deep_ksat': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+    #data.update({'deep_z': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
     for key, value in deepp.items():
         c = value['deep_id']
         ix = np.where(data['deep_id'] == c)
         data['soiltype'][ix] = key
+        data['pF'][ix] = value['pF']
+        data['deep_ksat'][ix] = value['deep_ksat']
         # interpolation function between wsto and gwl
-        value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
+        #value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
         # interpolation function between root_wsto and gwl
-        value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
+        #value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
+
+    import sys
+    print('shape', data['pF'].shape)
+    print(data['pF'][40,30])
+    print(data['deep_ksat'][40,30])
+    print(data['deep_z'][40,30])
+    print('unique z', np.unique(data['deep_z']))
+    sys.exit()
 
     # stream depth corresponding to assigned parameter
     #data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)

@@ -297,6 +297,9 @@ def preprocess_parameters(pgen, catchment, folder=''):
                     catchment = pgen['mask']
                     mask = np.where(gisdata['cmask'] == catchment, 1.0, np.nan)
                     gisdata[key] = np.where(np.isnan(mask), np.nan, gisdata[key])
+                    if pgen['simtype'] != '2D':
+                        mask_lakes = np.where(gisdata['lakes'] == 1.0, np.nan, 1.0)
+                        gisdata[key] = np.where(np.isnan(mask_lakes), np.nan, gisdata[key])
 
                 elif pgen['mask'] == 'streams' and pgen['simtype'] != '2D':
                     mask = gisdata['streams']
@@ -307,7 +310,7 @@ def preprocess_parameters(pgen, catchment, folder=''):
                     mask_lakes = np.where(gisdata['lakes'] == 1.0, np.nan, 1.0)
                     mask = np.where(~np.isnan(gisdata['streams']) 
                                     | ~np.isnan(gisdata['lakes']), np.nan, 1.0)
-                    gisdata[key] = np.where(np.isnan(combined_mask), np.nan, gisdata[key])
+                    gisdata[key] = np.where(np.isnan(mask), np.nan, gisdata[key])
 
                 elif pgen['mask'] == 'lakes':
                     mask = gisdata['lakes']
