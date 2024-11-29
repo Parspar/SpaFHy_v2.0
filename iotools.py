@@ -455,7 +455,6 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     else:
         data['deep_id'] = gisdata['deep_id']
         data['elevation'] = gisdata['elevation']
-        #data['soildepth'] = gisdata['soildepth']        
         data['streams'] = gisdata['streams']
         data['lakes'] = gisdata['lakes']
 
@@ -472,28 +471,15 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         #raise ValueError("Deep soil id in inputs not specified in parameters.py")
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
-    data.update({'pF': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
-    data.update({'deep_ksat': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
-    #data.update({'deep_z': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
     for key, value in deepp.items():
         c = value['deep_id']
         ix = np.where(data['deep_id'] == c)
         data['soiltype'][ix] = key
-        data['pF'][ix] = value['pF']
-        data['deep_ksat'][ix] = value['deep_ksat']
         # interpolation function between wsto and gwl
-        #value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
+        value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
         # interpolation function between root_wsto and gwl
-        #value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
-
-    import sys
-    print('shape', data['pF'].shape)
-    print(data['pF'][40,30])
-    print(data['deep_ksat'][40,30])
-    print(data['deep_z'][40,30])
-    print('unique z', np.unique(data['deep_z']))
-    sys.exit()
+        value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
 
     # stream depth corresponding to assigned parameter
     #data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
@@ -509,6 +495,7 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data['dxy'] = gisdata['dxy']
 
     return data
+
 
 def preprocess_cpydata(pcpy, spatial_pcpy, gisdata, spatial=True):
     """
