@@ -98,10 +98,14 @@ class BucketGrid(object):
         except:
             pass
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
-        self.Wair_root = self.poros_root - self.Wliq_root
+        #self.Wair_root = self.poros_root - self.Wliq_root
+        self.Wair_root = np.maximum(0.0, self.MaxStoRoot - self.WstoRoot)
         self.Sat_root = self.Wliq_root/self.poros_root
+        #self.Wair_top = self.poros_top - self.Wliq_top
+        self.Wair_top = np.maximum(0.0, self.MaxStoTopInt - self.WatStoTop)
         self.Sat_top = self.Wliq_top/self.poros_top
         self.Rew = np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0)
+        #self.Wair_bu = self.Wair_top + self.Wair_root
         
         # drainage to rootzone
         if self.org_drain == True:
@@ -245,18 +249,23 @@ class BucketGrid(object):
         """ updates state variables"""
         # root zone
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
-        self.Wair_root = self.poros_root - self.Wliq_root
+        #self.Wair_root = self.poros_root - self.Wliq_root
+        self.Wair_root = np.maximum(0.0, self.MaxStoRoot - self.WstoRoot)
         self.Sat_root = self.Wliq_root / self.poros_root
         self.Rew = np.maximum(0.0,
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
+
 
         # organic top layer; maximum that can be hold is Fc or poros
         self.Wliq_top = (self.MaxStoTop / self.D_top) * self.WatStoTop / (self.MaxStoTop + eps) 
         self.Sat_top = self.Wliq_top / self.poros_top
         self.Ree = self.relative_evaporation()
         self.Wliq_top[self.D_top == 0] = np.NaN
+        #self.Wair_top = self.poros_top - self.Wliq_top
+        self.Wair_top = np.maximum(0.0, self.MaxStoTopInt - self.WatStoTop)
         self.Ree[self.D_top == 0] = eps # vie canopyn Efloor'in nollaan (mass-balance consistency)
         self.Psi = self.theta_psi() # MPa
+        #self.Wair_bu = self.Wair_root + self.Wair_top
 
     def theta_psi(self):
         """
