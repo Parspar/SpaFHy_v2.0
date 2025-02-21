@@ -13,7 +13,11 @@ class OverlandFlowModel:
         Initialize the OverlandFlowModel with required constants.
 
         Parameters:
-        - MaxPondSto (float): Maximum pond storage before water flows to the next cell.
+        - flowacc (np.ndarray): Flow accumulation raster
+        - fdir (np.ndarray): Flow direction raster
+        - streams (np.ndarray): Stream raster
+        - lakes (np.ndarray): Lake raster
+        - MaxPondSto (float): Maximum pond storage
         """
 
         # Max pond storage
@@ -34,6 +38,11 @@ class OverlandFlowModel:
 
         # Create a mask for valid cells (non-nan)
         self.valid_mask = ~np.isnan(flowacc) & ~np.isnan(fdir)
+
+        # Get valid flat indices sorted by flow accumulation (low to high)
+        flat_valid_indices = np.flatnonzero(self.valid_mask)
+        self.sorted_indices = flat_valid_indices[np.argsort(
+            self.flowacc.ravel()[flat_valid_indices])]
 
         # Define movement directions based on flow direction (fdir)
         self.direction_offsets = {
@@ -56,31 +65,26 @@ class OverlandFlowModel:
         - airspace (np.array): Available airspace for infiltration.
 
         Returns:
-        - updated_pondsto (np.array): Updated pond storage.
-        - updated_airspace (np.array): Updated airspace.
-        - netflow_to_ditch (np.array): Netflow to ditch generated in this timestep.
+        - results (dict)
         """
 
         # saving initial states for mbe calculation
+        airspace = np.where(self.water_bodies == 1, 0., airspace)
+        pondsto = np.where(self.water_bodies == 1, 0., pondsto)
         pondsto0 = pondsto.copy()
         airspace0 = airspace.copy()
 
         # Initialize arrays
-        netflow_to_ditch = np.zeros_like(self.flowacc)
+        netflow_to_ditch = np.zeros_like(self.flowacc)*self.flowacc
         mbe = np.zeros_like(self.flowacc)
         lateral_flow = np.zeros_like(self.flowacc)*self.flowacc
 
-        # Get valid flat indices sorted by flow accumulation (low to high)
-        flat_valid_indices = np.flatnonzero(self.valid_mask)
-        sorted_indices = flat_valid_indices[np.argsort(
-            self.flowacc.ravel()[flat_valid_indices])]
-
         # Process cells in sorted order
-        for flat_index in sorted_indices:
+        for flat_index in self.sorted_indices:
             # Convert flat index to 2D indices
             r, c = divmod(flat_index, self.cols)
 
-            if pondsto[r, c] > 0:  # Process cells with water
+            if pondsto[r, c] > self.MaxPondSto:  # Process cells with water
 
                 # Compute ditch flow for water body cells before infiltration
                 # Check if the cell is a stream or lake
@@ -111,26 +115,27 @@ class OverlandFlowModel:
                                 pondsto[nr, nc] += excess_water
                                 # Keep max pond storage at current cell
                                 pondsto[r, c] = self.MaxPondSto
-                                # Track lateral flow
-                                #lateral_flow[r, c] = -excess_water  # Water leaving this cell
-                                #lateral_flow[nr, nc] = excess_water  # Water entering neighbor cell
 
-        lateral_flow = (pondsto0 - pondsto) - (airspace0 - airspace) - netflow_to_ditch
+        # NOTE lateral flow should take into account 'remaining_ponds'. Check also mbe with those.
+        # Computing lateral flow based on initial states
+        lateral_flow = (pondsto - pondsto0) - (airspace - airspace0)
 
         # After processing all cells, remove any remaining excess water as surface runoff
-        excess_water = np.maximum(pondsto - self.MaxPondSto, 0.)
-        netflow_to_ditch += excess_water  # Add excess water to surface runoff
-        pondsto -= excess_water  # Remove excess water from pond storage
+        remaining_ponds = np.maximum(pondsto - self.MaxPondSto, 0.)
+        pondsto -= remaining_ponds  # Remove excess water from pond storage
+        # saving surface runoff
+        surface_runoff = remaining_ponds + netflow_to_ditch
 
         # Mass balance error calculation using airspace and lateral flow
-        mbe = (pondsto0 - pondsto) - netflow_to_ditch - (airspace0 - airspace) - lateral_flow
+        mbe = (pondsto - pondsto0) - (airspace - airspace0) - lateral_flow + remaining_ponds
 
         results = {
-                'pond_storage': pondsto,  # [mm]
-                'airspace': airspace, # [mm]
-                'netflow_to_ditch': netflow_to_ditch,  # [mm d-1]
-                'lateral_netflow': lateral_flow, # [mm d-1]
-                'mbe': mbe, # [mm]
+                'pond_storage': pondsto,  # [m]
+                'airspace': airspace, # [m]
+                'netflow_to_ditch': netflow_to_ditch,  # [m d-1]
+                'lateral_netflow': lateral_flow, # [m d-1]
+                'surface_runoff': surface_runoff, # [m d-1]
+                'mbe': mbe, # [m]
                 }
 
         return results

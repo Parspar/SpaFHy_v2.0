@@ -7,7 +7,6 @@ Created on Wed Aug 11 10:38:59 2021
 
 import numpy as np
 eps = np.finfo(float).eps
-import matplotlib.pyplot as plt
 
 class BucketGrid(object):
     """
