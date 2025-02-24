@@ -168,25 +168,48 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
             deep_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
             gis['deep_id'] = deep_id
 
+    # soil depth
+    if 'deep_z' in spatial_pspd:
+        if spatial_pspd['deep_z'] == True:
+            deep_z, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_z']))
+            gis['deep_z'] = deep_z
+
     # dem
     if 'elevation' in spatial_pspd:
         if spatial_pspd['elevation'] == True:
             elevation, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
-            bedrock = elevation - 5.0
             gis['elevation'] = elevation
-            gis['bedrock'] = bedrock
+
 
     # streams
     if 'streams' in spatial_pspd:
         if spatial_pspd['streams'] == True:
             streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
-            streams[(np.isfinite(streams)) & (streams != 0.0)] = -1.0
-            streams[streams != -1.0] = np.nan
+            if isinstance(pspd['stream_depth'], float):
+                streams[(np.isfinite(streams)) & (streams != 0.0)] = pspd['stream_depth']
+                streams[~np.isfinite(streams)] = 0.0
+            else:
+                streams[(np.isfinite(streams)) & (streams != 0.0)] = -1.0
+                streams[streams != -1.0] = 0.0
 
-    else:
+    if 'stream_depth' in spatial_pspd:
+        if spatial_pspd['stream_depth'] == True:
+            stream_depth, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_depth']))
+            streams = stream_depth.copy()
+            streams[~np.isfinite(streams)] = 0.0
+            stream_depth[~np.isfinite(stream_depth)] = 0.0
+            gis['stream_depth'] = stream_depth
+        else:
+            stream_depth = pspd['stream_depth']
+
+    if not (('streams' in spatial_pspd and spatial_pspd['streams']) or 
+        ('stream_depth' in spatial_pspd and spatial_pspd['stream_depth'])):
         print('*** No stream file ***')
         streams = np.full_like(deepsoil, 0.0)
+        stream_depth = np.full_like(deepsoil, 0.0)
+
     gis['streams'] = streams
+    gis['stream_depth'] = stream_depth
     
     # lakes if available
     if 'lakes' in spatial_pspd:
@@ -432,7 +455,6 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     else:
         data['deep_id'] = gisdata['deep_id']
         data['elevation'] = gisdata['elevation']
-        data['bedrock'] = gisdata['bedrock']        
         data['streams'] = gisdata['streams']
         data['lakes'] = gisdata['lakes']
 
@@ -461,7 +483,7 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     # stream depth corresponding to assigned parameter
     #data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
-    data['streams'] = np.where(data['streams'] < -eps, pspd['stream_depth'], 0)
+    #data['streams'] = np.where(data['streams'] < -eps, pspd['stream_depth'], 0)
     data['lakes'] = np.where(data['lakes'] < -eps, pspd['lake_depth'], 0)
     #data['streams'] = np.where(data['lakes'] < -eps, pspd['stream_depth'], 0)
     
@@ -473,6 +495,7 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data['dxy'] = gisdata['dxy']
 
     return data
+
 
 def preprocess_cpydata(pcpy, spatial_pcpy, gisdata, spatial=True):
     """
