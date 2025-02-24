@@ -147,6 +147,8 @@ class SoilGrid_2Dflow(object):
         self.conv99 = 99
         #self.totit = 0
 
+        print('ditch_h uniques', np.unique(self.ditch_h))
+
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
         strides = a.strides + (a.strides[-1],)
@@ -310,6 +312,11 @@ class SoilGrid_2Dflow(object):
                         a_s[k] = 0 # ONKO OIKEIN?? NÄMÄ INDEKSIT VOISI TARKASTAA
 
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
+
+            #print('mean hs', np.mean(hs))
+            #if self.tmstep > 19:
+                #print('A', A)
+                #print('hs', np.mean(hs))
 
             # Solve: A*Htmp1 = hs
             Htmp1 = linalg.spsolve(A,hs)
