@@ -98,7 +98,7 @@ class BucketGrid(object):
             pass
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
         #self.Wair_root = self.poros_root - self.Wliq_root
-        self.Wair_root = np.maximum(0.0, self.MaxStoRoot - self.WstoRoot)
+        self.Wair_root = np.maximum(0.0, self.MaxStoRoot - self.WatStoRoot)
         self.Sat_root = self.Wliq_root/self.poros_root
         #self.Wair_top = self.poros_top - self.Wliq_top
         self.Wair_top = np.maximum(0.0, self.MaxStoTopInt - self.WatStoTop)
@@ -158,7 +158,7 @@ class BucketGrid(object):
         WatStoRoot0 = self.WatStoRoot.copy()
         WatStoTop0 = self.WatStoTop.copy()
 
-        #top layer interception & water balance
+        # top layer interception & water balance
         interc = np.maximum(0.0, (self.MaxStoTopInt - self.WatStoTop))\
                     * (1.0 - np.exp(-(rr / (self.MaxStoTopInt + eps))))
         
@@ -249,7 +249,7 @@ class BucketGrid(object):
         # root zone
         self.Wliq_root = self.poros_root*self.WatStoRoot / self.MaxStoRoot
         #self.Wair_root = self.poros_root - self.Wliq_root
-        self.Wair_root = np.maximum(0.0, self.MaxStoRoot - self.WstoRoot)
+        self.Wair_root = np.maximum(0.0, self.MaxStoRoot - self.WatStoRoot)
         self.Sat_root = self.Wliq_root / self.poros_root
         self.Rew = np.maximum(0.0,
               np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0))
