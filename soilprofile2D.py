@@ -469,6 +469,7 @@ class SoilGrid_2Dflow(object):
 
         return results
 
+
 def gwl_Wsto(z, pF, Ksat=None, root=False):
     r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
     function of water storage [m] and vice versa + others
@@ -492,8 +493,9 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     dz[1:] = z[:-1] - z[1:] # profile depths into profile thicknesses
 
     # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
-    z_fine= (np.arange(0, min(z), -0.01) - 0.01).astype(np.float64)
-    dz_fine = z_fine*0.0 + 0.01
+    step = -0.01
+    z_fine= (np.arange(0, min(z), step) - step).astype(np.float64)
+    dz_fine = z_fine*0.0 - step
     z_mid_fine = dz_fine / 2 - np.cumsum(dz_fine)
 
     ix = np.zeros(len(z_fine), dtype=np.float64)
@@ -510,11 +512,10 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
         pF_fine.update({key: np.array(pp)})
 
     # --------- connection between gwl and Wsto, Tr, C------------
-    gwl = np.arange(1.0, min(z)-5, -1e-2)
+    gwl = np.arange(1.0, min(z)-5, step)
     # solve water storage corresponding to gwls
     Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
             + max(0.0,g) for g in gwl]  # water storage above ground surface == gwl
-    # Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]  # old
 
     if root:
         Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]
@@ -525,19 +526,22 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     # solve transmissivity corresponding to gwls
     Tr = [transmissivity(dz, Ksat, g) * 86400. for g in gwl]  # [m2 d-1]
 
+    #print('np.array(gwl).shape', np.array(gwl).shape)
+    #print('np.array(Wsto_deep).shape', np.array(Wsto_deep).shape)
+
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto_deep), np.array(gwl), fill_value='extrapolate')
     GwlToWsto = interp1d(np.array(gwl), np.array(Wsto_deep), fill_value='extrapolate')
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
     
-    plt.figure(1)
-    plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
-    plt.figure(2)
-    plt.plot(np.array(gwl), np.log10(np.array(Tr)))
+    #plt.figure(1)
+    #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
+    #plt.figure(2)
+    #plt.plot(np.array(gwl), np.log10(np.array(Tr)))
     #plt.plot(np.array(gwl), np.array(Tr))
-    plt.figure(3)
-    plt.plot(np.array(gwl), np.array(Wsto_deep))
+    #plt.figure(3)
+    #plt.plot(np.array(gwl), np.array(Wsto_deep))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -598,9 +602,10 @@ def transmissivity(dz, Ksat, gwl):
     """
     z = dz / 2 - np.cumsum(dz)
     Tr = 0.0
+    print('dz', dz)
+    print('z', z)
 
     ib = sum(dz)
-
     # depth of saturated layer above impermeable bottom
     # Hdr = min(max(0, gwl + ib), ib)  # old
     Hdr = max(0, gwl + ib)  # not restricted to soil profile -> transmissivity increases when gwl above ground surface level
@@ -608,6 +613,7 @@ def transmissivity(dz, Ksat, gwl):
     """ drainage from saturated layers above ditch base """
     # layers above ditch bottom where drainage is possible
     ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -ib))
+    print('ix', ix)
 
     if Hdr > 0:
         # saturated layer thickness [m]
