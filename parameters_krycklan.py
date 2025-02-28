@@ -271,120 +271,131 @@ def deep_properties():
     """
     Properties of soil profiles.
     Note z is elevation of lower boundary of layer (soil surface at 0.0),
-    e.g. z = [-0.05, -0.15] means first layer tickness is 5 cm and second 10 cm.
+    e.g. z = [-0.05, -0.15] means first layer thickness is 5 cm and second 10 cm.
     """
     deepp = {
-        'Postglacial_sand':{ # Launiainen et al. 2021
+        'Postglacial_sand': {
             'deep_id': 1,
-            'deep_z': [-1.2, -3.8, -4.0, -14.4, -16.0], # -16.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.41,0.41,0.41,0.41,0.41], # Launiainen et al. 2021
-                    'ThetaR': [0.05,0.05,0.05,0.05,0.05], # Launiainen et al. 2021
-                    'alpha': [0.024,0.024,0.024,0.024,0.024], # Launiainen et al. 2021
-                    'n': [1.2,1.2,1.2,1.2,1.2]}, # Launiainen et al. 2021
-            'deep_ksat': [1E-07,3E-5,1E-8,3E-5,1E-4],
-                },
-        'Glaciofluvial_sediment':{ # CoarseText
+            'deep_z': [-1.2, -3.8, -4.0, -5.4, -6.0],
+            'pF': {
+                'ThetaS': [0.41] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [1E-07, 3E-5, 1E-8, 3E-5, 1E-4],
+        },
+        'Glaciofluvial_sediment': {
             'deep_id': 2,
-            'deep_z': [-27.0], # -27.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.41], # Launiainen et al. 2021
-                    'ThetaR': [0.05], # Launiainen et al. 2021
-                    'alpha': [0.024], # Launiainen et al. 2021
-                    'n': [1.2]}, # Launiainen et al. 2021
-            'deep_ksat': [1E-04],
-                },
-        'Peat':{
+            'deep_z': [-1.0, -3.0, -4.0, -7.0, -10.0],
+            'pF': {
+                'ThetaS': [0.41] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [1E-04] * 5,
+        },
+        'Peat': {
             'deep_id': 3,
-            'deep_z': [-5.0, -7.0, -17.0], # -17.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.89,0.89,0.89],
-                    'ThetaR': [0.196,0.196,0.196],
-                    'alpha': [0.072,0.072,0.072],
-                    'n': [1.255,1.255,1.255]}, 
-            'deep_ksat': [1E-06,1E-9,1E-6], 
-                },
-        'Postglacial_sand_gravel':{ # CoarseText
-            'deep_id': 4, 
-            'deep_z': [-0.8, -3.0, -14.0], # -14.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.41,0.41,0.41], # Launiainen et al. 2021
-                    'ThetaR': [0.05,0.05,0.05], # Launiainen et al. 2021
-                    'alpha': [0.024,0.024,0.024], # Launiainen et al. 2021
-                    'n': [1.2,1.2,1.2]}, # Launiainen et al. 2021
-            'deep_ksat': [3E-5, 1E-8, 1E-6],
-                },
-        'Clay_silt':{ # Fine
+            'deep_z': [-3.0, -4.0, -6.0, -6.0, -6.0],
+            'pF': {
+                'ThetaS': [0.89] * 5,
+                'ThetaR': [0.196] * 5,
+                'alpha': [0.072] * 5,
+                'n': [1.255] * 5
+            },
+            'deep_ksat': [1E-6, 1E-9, 1E-6, 1E-6, 1E-6],
+        },
+        'Postglacial_sand_gravel': {
+            'deep_id': 4,
+            'deep_z': [-0.8, -2.0, -3.0, -4.5, -14.0],
+            'pF': {
+                'ThetaS': [0.41] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [3E-5, 1E-8, 1E-6, 1E-6, 1E-6],
+        },
+        'Clay_silt': {
             'deep_id': 5,
-            'deep_z': [-3, -23.0], # -23.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.6,0.6],
-                    'ThetaR': [0.07,0.07],
-                    'alpha': [0.018,0.018],
-                    'n': [1.16,1.16]},
-            'deep_ksat': [1E-08, 1E-6],
-                },
-        'Washed_sediment_gravel_boulders':{ # CoarseText
+            'deep_z': [-3.0, -3.5, -4.0, -4.5, -10.0],
+            'pF': {
+                'ThetaS': [0.6] * 5,
+                'ThetaR': [0.07] * 5,
+                'alpha': [0.018] * 5,
+                'n': [1.16] * 5
+            },
+            'deep_ksat': [1E-08, 1E-6, 1E-6, 1E-6, 1E-6],
+        },
+        'Washed_sediment_gravel_boulders': {
             'deep_id': 6,
-            'deep_z': [-0.5, -2.5, -13.0], # -13.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.41,0.41,0.41], # Launiainen et al. 2021
-                    'ThetaR': [0.05,0.05,0.05], # Launiainen et al. 2021
-                    'alpha': [0.024,0.024,0.024], # Launiainen et al. 2021
-                    'n': [1.2,1.2,1.2]}, # Launiainen et al. 2021
-            'deep_ksat': [2E-06, 2E-6, 1E-6],
-                },
-        'Water':{ # Medium
+            'deep_z': [-0.5, -1.0, -1.5, -2.5, -13.0],
+            'pF': {
+                'ThetaS': [0.41] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [2E-06, 2E-6, 1E-6, 1E-6, 1E-6],
+        },
+        'Water': {
             'deep_id': 7,
-            'deep_z': [-17.0], # -17.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.43], # Launiainen et al. 2019
-                    'ThetaR': [0.05], # Launiainen et al. 2019
-                    'alpha': [0.024], # Launiainen et al. 2019
-                    'n': [1.2]}, # # Launiainen et al. 2021
-            'deep_ksat': [1E-05],
-                },        
-        'Moraine':{ # Medium
+            'deep_z': [-1.0, -2.0, -4.0, -7.0, -10.0],
+            'pF': {
+                'ThetaS': [0.43] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [1E-05] * 5,
+        },
+        'Moraine': {
             'deep_id': 8,
-            'deep_z': [-0.5, -2.5, -13.0], # -13.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.43,0.43,0.43], # Launiainen et al. 2019
-                    'ThetaR': [0.05,0.05,0.05], # Launiainen et al. 2019
-                    'alpha': [0.024,0.024,0.024], # Launiainen et al. 2019
-                    'n': [1.2,1.2,1.2]}, # # Launiainen et al. 2021
-            'deep_ksat': [2E-06, 2E-6, 1E-6],
-                },        
-        'Fill':{ # Medium
+            'deep_z': [-0.5, -1.0, -2.0, -3.0, -13.0],
+            'pF': {
+                'ThetaS': [0.43] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [2E-06, 2E-6, 1E-6, 1E-6, 1E-6],
+        },
+        'Fill': {
             'deep_id': 9,
-            'deep_z': [-0.5, -2.5, -13.0], # -18.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.43,0.43,0.43], # Launiainen et al. 2019
-                    'ThetaR': [0.05,0.05,0.05], # Launiainen et al. 2019
-                    'alpha': [0.024,0.024,0.024], # Launiainen et al. 2019
-                    'n': [1.2,1.2,1.2]}, # # Launiainen et al. 2021
-            'deep_ksat': [2E-06, 2E-6, 1E-6],
-                }, 
-        'Bedrock':{
+            'deep_z': [-0.5, -1.0, -2.0, -3.0, -13.0],
+            'pF': {
+                'ThetaS': [0.43] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [2E-06, 2E-6, 1E-6, 1E-6, 1E-6],
+        },
+        'Bedrock': {
             'deep_id': 10,
-            'deep_z': [-5.0], # -1.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.43], # Launiainen et al. 2019
-                    'ThetaR': [0.05], # Launiainen et al. 2019
-                    'alpha': [0.024], # Launiainen et al. 2019
-                    'n': [1.2]}, # # Launiainen et al. 2021
-            'deep_ksat': [1E-05],
-                },         
-        'Fluvial_sedimend_sand':{ # Fine
+            'deep_z': [-1.0, -1.0, -1.0, -1.0, -1.0],
+            'pF': {
+                'ThetaS': [0.43] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [1E-05] * 5,
+        },
+        'Fluvial_sediment_sand': {
             'deep_id': 11,
-            'deep_z': [-0.8, -3.0, -14.0], # -32.0
-            'pF': {  # vanGenuchten water retention parameters
-                    'ThetaS': [0.41,0.41,0.41],
-                    'ThetaR': [0.05,0.05,0.05],
-                    'alpha': [0.024,0.024,0.024],
-                    'n': [1.2,1.2,1.2]},
-            'deep_ksat': [3E-5, 1E-8, 1E-6],
-                },           
+            'deep_z': [-0.8, -1.0, -2.0, -3.0, -14.0],
+            'pF': {
+                'ThetaS': [0.41] * 5,
+                'ThetaR': [0.05] * 5,
+                'alpha': [0.024] * 5,
+                'n': [1.2] * 5
+            },
+            'deep_ksat': [3E-5, 1E-8, 1E-6, 1E-6, 1E-6],
         }
+    }
     return deepp
 
 
