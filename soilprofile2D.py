@@ -535,13 +535,13 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
     
-    #plt.figure(1)
-    #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
-    #plt.figure(2)
-    #plt.plot(np.array(gwl), np.log10(np.array(Tr)))
-    #plt.plot(np.array(gwl), np.array(Tr))
-    #plt.figure(3)
-    #plt.plot(np.array(gwl), np.array(Wsto_deep))
+    plt.figure(1)
+    plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
+    plt.figure(2)
+    plt.plot(np.array(gwl), np.log10(np.array(Tr)))
+    plt.plot(np.array(gwl), np.array(Tr))
+    plt.figure(3)
+    plt.plot(np.array(gwl), np.array(Wsto_deep))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -602,8 +602,6 @@ def transmissivity(dz, Ksat, gwl):
     """
     z = dz / 2 - np.cumsum(dz)
     Tr = 0.0
-    print('dz', dz)
-    print('z', z)
 
     ib = sum(dz)
     # depth of saturated layer above impermeable bottom
@@ -613,7 +611,6 @@ def transmissivity(dz, Ksat, gwl):
     """ drainage from saturated layers above ditch base """
     # layers above ditch bottom where drainage is possible
     ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -ib))
-    print('ix', ix)
 
     if Hdr > 0:
         # saturated layer thickness [m]
