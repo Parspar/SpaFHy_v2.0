@@ -568,7 +568,7 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         # flattening    
         deep_id_f = data['deep_id'].flatten()
         deep_z_f = data['deep_z'].flatten()
-        deep_z_f[deep_z_f < 5] = 5
+        deep_z_f[deep_z_f < 5] = 5 # NOTE MINIMUM IS 5M DEPTH!
         # creating the arrays
         deep_zs = np.full((len(deep_id_f), max_nlyrs), np.nan)
         deep_ksats = np.full((len(deep_id_f), max_nlyrs), np.nan)
@@ -596,7 +596,10 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
             if np.any(mask):  # Only proceed if at least one match
                 nlyrs = len(value['deep_z'])
                 deep_zs[mask, :nlyrs] = value['deep_z']
-                deep_zs[mask, nlyrs - 1] = np.abs(deep_z_f[mask])*-1  # Replace last layer
+                a = np.abs(deep_z_f[mask])*-1
+                b = deep_zs[mask, nlyrs - 1]
+                deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])  # Replace last layer
+                #deep_zs[mask, nlyrs - 1] = np.abs(deep_z_f[mask])*-1  # Replace last layer
                 deep_ksats[mask, :nlyrs] = value['deep_ksat']
                 deep_pFs[mask] = value['pF']
         
