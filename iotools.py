@@ -9,11 +9,12 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile2D import gwl_Wsto
+from soilprofile2D import gwl_Wsto, gwl_Wsto_vectorized
 from koordinaattimuunnos import koordTG
 from topmodel import twi as twicalc
 import re
 import importlib
+import sys
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -495,16 +496,14 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
     data['dxy'] = gisdata['dxy']
 
-    #print('gwl_to_wsto', data['gwl_to_wsto'])
-    print('deepp', deepp['Postglacial_sand']['to_wsto'])
-
-    import sys
-    sys.exit()
+    for key in data.keys():
+        print('key:', key)
+        print('data[key]', data[key])
 
     return data
 
 
-def preprocess_dsdata_jp(pspd, spatial_pspd, deepp, gisdata, spatial=True):
+def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     """
     creates input dictionary for initializing SoilGrid
     Args:
@@ -528,38 +527,6 @@ def preprocess_dsdata_jp(pspd, spatial_pspd, deepp, gisdata, spatial=True):
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
 
-    # we have data['deep_id'] and data['z']    
-    max_nlyrs = 0
-    for key, value in deepp.items():
-        nlyrs = len(value['deep_z'])
-        max_nlyrs = np.maximum(max_nlyrs, nlyrs)
-
-    # flattening    
-    deep_id_f = data['deep_id'].flatten()
-    deep_z_f = data['deep_z'].flatten()
-
-    deep_zs = np.empty(shape=[len(deep_id_f), max_nlyrs])
-    deep_ksats = np.empty(shape=[len(deep_id_f), max_nlyrs])
-    deep_pFs = np.empty(shape=[len(deep_id_f)], dtype=object)
-    gwl_Wsto = np.empty(shape=[len(deep_id_f)], dtype=object)
-
-    for key, value in deepp.items():
-        if value['deep_id'] in deep_id_f:
-            mask = deep_id_f == value['deep_id']
-            nlyrs = len(value['deep_z'])
-            deep_zs[mask, :nlyrs] = value['deep_z']
-            deep_zs[mask, nlyrs-1] = deep_z_f[mask]
-            deep_ksats[mask, :nlyrs] = value['deep_ksat']
-            deep_pFs[mask] = value['pF']
-            if nlyrs < max_nlyrs:
-                deep_zs[mask, nlyrs:max_nlyrs] = np.nan
-                deep_ksats[mask, nlyrs:max_nlyrs] = np.nan
-
-    for i in range(len(deep_id_f)):
-        c = deep_id_f[i]
-        gwl_Wsto[i](deep_zs[i], deep_pFs[i], deep_ksats[i])
-
-
     deep_ids = []
     for key, value in deepp.items():
         deep_ids.append(value['deep_id'])
@@ -574,26 +541,82 @@ def preprocess_dsdata_jp(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
-    for key, value in deepp.items():
-        c = value['deep_id']
-        ix = np.where(data['deep_id'] == c)
-        data['soiltype'][ix] = key
-        # interpolation function between wsto and gwl
-        value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
-        # interpolation function between root_wsto and gwl
-        value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
+    z_source = 'gis'
 
-    # stream depth corresponding to assigned parameter
-    #data['streams'] = np.where((data['streams'] < -eps) | (data['lakes'] < -eps), pspd['stream_depth'], 0)
-    #data['streams'] = np.where(data['streams'] < -eps, pspd['stream_depth'], 0)
+    if z_source == 'soiltype':
+        for key, value in deepp.items():
+            c = value['deep_id']
+            ix = np.where(data['deep_id'] == c)
+            data['soiltype'][ix] = key
+            # interpolation function between wsto and gwl
+            value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
+            # interpolation function between root_wsto and gwl
+            value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
+        
+        data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
+        data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
+        data['gwl_to_C'] = {soiltype: deepp[soiltype]['to_C'] for soiltype in deepp.keys()}
+        data['gwl_to_Tr'] = {soiltype: deepp[soiltype]['to_Tr'] for soiltype in deepp.keys()}
+        data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
+
+    elif z_source == 'gis':
+        # we have data['deep_id'] and data['z']
+        max_nlyrs = 0    
+        for key, value in deepp.items():
+            nlyrs = len(value['deep_z'])
+            max_nlyrs = max(max_nlyrs, nlyrs)
+        # flattening    
+        deep_id_f = data['deep_id'].flatten()
+        deep_z_f = data['deep_z'].flatten()
+        deep_z_f[deep_z_f < 5] = 5
+        # creating the arrays
+        deep_zs = np.full((len(deep_id_f), max_nlyrs), np.nan)
+        deep_ksats = np.full((len(deep_id_f), max_nlyrs), np.nan)
+
+        # Initialize deep_pFs with dictionaries containing NaN values
+        default_pF = {
+            'ThetaS': [np.nan] * max_nlyrs,
+            'ThetaR': [np.nan] * max_nlyrs,
+            'alpha': [np.nan] * max_nlyrs,
+            'n': [np.nan] * max_nlyrs
+        }
+
+        deep_pFs = np.array([default_pF.copy() for _ in range(len(deep_id_f))], dtype=object)
+        
+        # temporary arrays to store the interpolation functions
+        temp_to_gwl = np.empty(len(deep_id_f), dtype=object)
+        temp_to_wsto = np.empty(len(deep_id_f), dtype=object)
+        temp_to_Tr = np.empty(len(deep_id_f), dtype=object)
+        temp_to_C = np.empty(len(deep_id_f), dtype=object)
+        temp_to_rootmoist = np.empty(len(deep_id_f), dtype=object)
+
+        # making parametes into 2D arrays (total length and layered information)
+        for key, value in deepp.items():
+            mask = deep_id_f == value['deep_id']
+            if np.any(mask):  # Only proceed if at least one match
+                nlyrs = len(value['deep_z'])
+                deep_zs[mask, :nlyrs] = value['deep_z']
+                deep_zs[mask, nlyrs - 1] = np.abs(deep_z_f[mask])*-1  # Replace last layer
+                deep_ksats[mask, :nlyrs] = value['deep_ksat']
+                deep_pFs[mask] = value['pF']
+        
+        mask = np.isfinite(deep_zs[:,0])
+        ifs_v = gwl_Wsto_vectorized(deep_zs[mask], deep_pFs[mask], -0.2, deep_ksats[mask])
+        ifs_r = gwl_Wsto_vectorized(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True)
+
+        temp_to_gwl[mask] = ifs_v['to_gwl']
+        temp_to_wsto[mask] = ifs_v['to_wsto']
+        temp_to_C[mask] = ifs_v['to_C']
+        temp_to_Tr[mask] = ifs_v['to_Tr']
+        temp_to_rootmoist[mask] = ifs_r['to_rootmoist']
+
+        data['wtso_to_gwl'] = temp_to_gwl.reshape(gridshape.shape)
+        data['gwl_to_wsto'] = temp_to_wsto.reshape(gridshape.shape)
+        data['gwl_to_C'] = temp_to_C.reshape(gridshape.shape)
+        data['gwl_to_Tr'] = temp_to_Tr.reshape(gridshape.shape)
+        data['gwl_to_rootmoist'] = temp_to_rootmoist.reshape(gridshape.shape)
+
     data['lakes'] = np.where(data['lakes'] < -eps, pspd['lake_depth'], 0)
-    #data['streams'] = np.where(data['lakes'] < -eps, pspd['stream_depth'], 0)
-    
-    data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
-    data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
-    data['gwl_to_C'] = {soiltype: deepp[soiltype]['to_C'] for soiltype in deepp.keys()}
-    data['gwl_to_Tr'] = {soiltype: deepp[soiltype]['to_Tr'] for soiltype in deepp.keys()}
-    data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
     data['dxy'] = gisdata['dxy']
 
     return data

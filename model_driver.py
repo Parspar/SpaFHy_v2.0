@@ -201,7 +201,9 @@ def preprocess_parameters(pgen, catchment, folder=''):
     """
 
     from iotools import read_bu_gisdata, read_ds_gisdata, read_cpy_gisdata, read_top_gisdata, read_aux_gisdata
-    from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
+    from iotools import preprocess_budata, preprocess_cpydata, preprocess_topdata
+    from iotools import preprocess_dsdata_vec as preprocess_dsdata
+    #from iotools import preprocess_dsdata
 
     parameters_module = importlib.import_module(f'parameters_{catchment}')
 

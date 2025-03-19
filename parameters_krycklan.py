@@ -224,7 +224,7 @@ def parameters(folder=''):
             'elevation': 'inflated_dem.asc', # uniform (float) OR path to grid in gispath (str) 
             'streams': 'stream_mask_dig.asc',
             'lakes': 'lake_mask.asc',
-            'deep_z': -15.0, #'soildepth.asc',
+            'deep_z': 'soildepth.asc',
             'deep_poros': 0.41,
             'deep_wr': 0.05,
             'deep_alpha': 0.024,
