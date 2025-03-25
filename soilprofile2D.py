@@ -98,21 +98,38 @@ class SoilGrid_2Dflow(object):
 
         # water storage [m]
         self.Wsto_deep_max = np.full_like(self.h, 0.0)  # storage of fully saturated profile
-        for key, value in self.gwl_to_wsto.items():
-            self.Wsto_deep_max[self.soiltype == key] = value(0.0)
-        self.Wsto_deep = np.full_like(self.h, 0.0)  # storage corresponding to h
-        for key, value in self.gwl_to_wsto.items():
-            self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
+        self.Wsto_deep = np.full_like(self.h, 0.0)  
+
+        # rootzone moisture [m3 m-3]
+        self.deepmoist = np.full_like(self.h, 0.0)
+
+        # self.z_from_gis == True OR False
+        # determines whether the deep_z and thus interpolation functions are made cell-wise (True) or soiltype-wise (False)
+        # if-elif statements later in the code made accordingly
+        self.z_from_gis = (
+            isinstance(spara['wtso_to_gwl'], np.ndarray) and
+            spara['deep_id'].shape == spara['wtso_to_gwl'].shape
+            )
+        
+        if self.z_from_gis == False:
+            for key, value in self.gwl_to_wsto.items():
+                self.Wsto_deep_max[self.soiltype == key] = value(0.0)
+                self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key]) # storage corresponding to h
+            for key, value in self.gwl_to_rootmoist.items():
+                self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
+        elif self.z_from_gis == True:
+            for i in range(self.gwl_to_wsto.shape[0]):
+                for j in range(self.gwl_to_wsto.shape[1]):
+                    if np.isfinite(self.cmask[i,j]): 
+                        self.Wsto_deep_max[i,j] = self.gwl_to_wsto[i,j](0.0) # max storage with gwl = 0
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.h[i,j]) # storage corresponding to h
+                        self.deepmoist[i,j] = self.gwl_to_rootmoist[i,j](self.h[i,j])
+            
+        self.deepmoist[np.isnan(self.h)] = np.nan
 
         # air volume and returnflow
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         self.qr = np.full_like(self.h, 0.0) # 
-        
-        # rootzone moisture [m3 m-3]
-        self.deepmoist = np.full_like(self.h, 0.0)
-        for key, value in self.gwl_to_rootmoist.items():
-            self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
-        self.deepmoist[np.isnan(self.h)] = np.nan
 
         """ parameters for 2D solution """
         # parameters for solving
@@ -146,8 +163,6 @@ class SoilGrid_2Dflow(object):
         self.tmstep = 0
         self.conv99 = 99
         #self.totit = 0
-
-        print('ditch_h uniques', np.unique(self.ditch_h))
 
     def rolling_window(self, a, window):
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
@@ -230,8 +245,16 @@ class SoilGrid_2Dflow(object):
         # Whole profile depth still considered, but I think that is the usual way..
         H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
                             H_neighbours_2d, self.H)
-        for key, value in self.gwl_to_Tr.items():
-            self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
+        
+        if self.z_from_gis == False:
+            for key, value in self.gwl_to_Tr.items():
+                self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
+        elif self.z_from_gis == True:
+            for i in range(self.gwl_to_Tr.shape[0]):
+                for j in range(self.gwl_to_Tr.shape[1]):
+                    if np.isfinite(self.cmask[i,j]): 
+                        self.Tr0[i,j] = self.gwl_to_wsto[i,j](H_for_Tr[i,j] - self.ele[i,j])
+
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
         # is is actually at all four sides, or just along east-west and north-sound axes?
         TrTmpEW = gmean(self.rolling_window(self.Tr0, 2), -1)
@@ -272,14 +295,20 @@ class SoilGrid_2Dflow(object):
         for it in range(maxiter):
 
             # differential water capacity dSto/dh
-            for key, value in self.gwl_to_C.items():
-                self.CC[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
+            if self.z_from_gis == False:
+                for key, value in self.gwl_to_C.items():
+                    self.CC[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
+                for key, value in self.gwl_to_wsto.items():
+                    self.Wtso1_deep[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
+            elif self.z_from_gis == True:
+                for i in range(self.gwl_to_C.shape[0]):
+                    for j in range(self.gwl_to_C.shape[1]):
+                        if np.isfinite(self.cmask[i,j]): 
+                            self.CC[i,j] = self.gwl_to_C[i,j](Htmp[i,j] - self.ele[i,j])
+                            self.Wtso1_deep[i,j] = self.gwl_to_wsto[i,j](Htmp[i,j] - self.ele[i,j])
+
             alfa = np.ravel(self.CC * self.dxy**2 / dt)
             # alfa = np.ravel((0.5*self.CC + 0.5*CCtmp) * self.dxy**2 / dt)
-
-            # water storage
-            for key, value in self.gwl_to_wsto.items():
-                self.Wtso1_deep[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
 
             # Setup of diagonal sparse matrix
             a_d = self.implic * (TrW1 + TrE1 + TrN1 + TrS1) + alfa  # Diagonal
@@ -325,6 +354,14 @@ class SoilGrid_2Dflow(object):
             #if np.any(np.abs(Htmp1-Htmp)) > 0.5:
                 #print('Difference greater than 0.5')
 
+            max_index_print = np.unravel_index(np.argmax(np.abs(Htmp1 - Htmp)),(self.rows,self.cols))
+            Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
+            Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
+            print('\t', 'iterations:', it,
+                    ' max_index:', max_index_print,
+                    ' H[max_index]', Htmp_print[max_index_print]-self.ele[max_index_print], 
+                    ' H1[max_index]', Htmp1_print[max_index_print]-self.ele[max_index_print])
+
             Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
 
             conv1 = np.max(np.abs(Htmp1 - Htmp))
@@ -341,10 +378,12 @@ class SoilGrid_2Dflow(object):
 
             if np.any(np.abs(Htmp1-Htmp)) > 0.5:
                 Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
+                Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
                 print('Difference greater than 0.5')
                 print('\t', 'iterations:', it, ' con1:', conv1, 
                       ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
-                      ' H[max_index]', Htmp_print[max_index]-self.ele[max_index])
+                      ' H[max_index]', Htmp_print[max_index]-self.ele[max_index], 
+                      ' H1[max_index]', Htmp1_print[max_index]-self.ele[max_index])
 
             Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
@@ -408,9 +447,14 @@ class SoilGrid_2Dflow(object):
         # soil profile
         self.H = Htmp.copy()      
         self.h = self.H - self.ele
-        for key, value in self.gwl_to_wsto.items():
-            self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
-            
+        if self.z_from_gis == False:
+            for key, value in self.gwl_to_wsto.items():
+                self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
+        elif self.z_from_gis == True:
+            for i in range(self.gwl_to_wsto.shape[0]):
+                for j in range(self.gwl_to_wsto.shape[1]):
+                    if np.isfinite(self.cmask[i,j]): 
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.h[i,j])  
         
         # lateral flow 2/2
         lateral_flow += ((1-self.implic)*(self.TrW0*(self.H - self.HW)
@@ -428,15 +472,20 @@ class SoilGrid_2Dflow(object):
         #self.H[self.lake_interior == 1] = -999
 
         # Updating the storage according to new head
-        for key, value in self.gwl_to_wsto.items():
-            self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
-        
+        if self.z_from_gis == False:
+            for key, value in self.gwl_to_wsto.items():
+                self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
+            for key, value in self.gwl_to_rootmoist.items():
+                self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
+        elif self.z_from_gis == True:
+            for i in range(self.gwl_to_wsto.shape[0]):
+                for j in range(self.gwl_to_wsto.shape[1]):
+                    if np.isfinite(self.cmask[i,j]): 
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.H[i,j] - self.ele[i,j])  
+                        self.deepmoist[i,j] = self.gwl_to_rootmoist[i,j](self.h[i,j])
+
         # The difference is the return flow to bucket grid
         self.qr = np.maximum(0.0, Wsto_before_qr - self.Wsto_deep)
-        
-        ##################################################
-        for key, value in self.gwl_to_rootmoist.items():
-            self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
             
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
@@ -469,6 +518,7 @@ class SoilGrid_2Dflow(object):
 
         return results
 
+
 def gwl_Wsto(z, pF, Ksat=None, root=False):
     r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
     function of water storage [m] and vice versa + others
@@ -492,8 +542,9 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     dz[1:] = z[:-1] - z[1:] # profile depths into profile thicknesses
 
     # finer grid for calculating wsto to avoid discontinuity in C (dWsto/dGWL)
-    z_fine= (np.arange(0, min(z), -0.01) - 0.01).astype(np.float64)
-    dz_fine = z_fine*0.0 + 0.01
+    step = -0.01
+    z_fine= (np.arange(0, min(z), step) - step).astype(np.float64)
+    dz_fine = z_fine*0.0 - step
     z_mid_fine = dz_fine / 2 - np.cumsum(dz_fine)
 
     ix = np.zeros(len(z_fine), dtype=np.float64)
@@ -510,11 +561,10 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
         pF_fine.update({key: np.array(pp)})
 
     # --------- connection between gwl and Wsto, Tr, C------------
-    gwl = np.arange(1.0, min(z)-5, -1e-2)
+    gwl = np.arange(1.0, min(z)-5, step)
     # solve water storage corresponding to gwls
     Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine)
             + max(0.0,g) for g in gwl]  # water storage above ground surface == gwl
-    # Wsto = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]  # old
 
     if root:
         Wsto_deep = [sum(h_to_cellmoist(pF_fine, g - z_mid_fine, dz_fine) * dz_fine) for g in gwl]
@@ -524,6 +574,9 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
 
     # solve transmissivity corresponding to gwls
     Tr = [transmissivity(dz, Ksat, g) * 86400. for g in gwl]  # [m2 d-1]
+
+    #print('np.array(gwl).shape', np.array(gwl).shape)
+    #print('np.array(Wsto_deep).shape', np.array(Wsto_deep).shape)
 
     # interpolate functions
     WstoToGwl = interp1d(np.array(Wsto_deep), np.array(gwl), fill_value='extrapolate')
@@ -535,7 +588,7 @@ def gwl_Wsto(z, pF, Ksat=None, root=False):
     plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
     plt.figure(2)
     plt.plot(np.array(gwl), np.log10(np.array(Tr)))
-    #plt.plot(np.array(gwl), np.array(Tr))
+    plt.plot(np.array(gwl), np.array(Tr))
     plt.figure(3)
     plt.plot(np.array(gwl), np.array(Wsto_deep))
 
@@ -600,7 +653,6 @@ def transmissivity(dz, Ksat, gwl):
     Tr = 0.0
 
     ib = sum(dz)
-
     # depth of saturated layer above impermeable bottom
     # Hdr = min(max(0, gwl + ib), ib)  # old
     Hdr = max(0, gwl + ib)  # not restricted to soil profile -> transmissivity increases when gwl above ground surface level
@@ -627,6 +679,242 @@ def transmissivity(dz, Ksat, gwl):
     if Tr < 1e-16:
         #Tr[Tr < 1e-16] = 1e-4
         Tr = 1e-4 / 86400
+
+    return Tr
+
+
+def gwl_Wsto_vectorized(z, pF, grid_step=-0.01, Ksat=None, root=False):
+    r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
+    function of water storage [m] and vice versa + others
+
+    Args:
+        - pF (np.ndarray):
+            - dict
+                - 'ThetaS' (np.ndarray): saturated water content [m\ :sup:`3` m\ :sup:`-3`\ ]
+                - 'ThetaR' (np.ndarray): residual water content [m\ :sup:`3` m\ :sup:`-3`\ ]
+                - 'alpha' (np.ndarray): air entry suction [cm\ :sup:`-1`]
+                - 'n' (np.ndarray): pore size distribution [-]
+        - z (np.ndarrays): soil compartment thichness, node in center [m]
+    Returns:
+        - (np.ndarray):
+            - dict
+                - 'to_gwl' (np.ndarray): interpolated function for gwl(Wsto)
+                - 'to_wsto' (np.ndarray): interpolated function for Wsto(gwl)
+                - 'to_C' (np.ndarray): interpolated function for C(Wsto)
+                - 'to_Tr' (np.ndarray): interpolated function for Tr(gwl)
+    """
+    # Ensure z is a NumPy array
+    z = np.array(z, dtype=np.float32)
+    pF = np.array(pF)
+
+    if z.ndim == 1:
+        z = np.expand_dims(z, axis=0)
+        pF = np.expand_dims(pF, axis=0)
+        if Ksat is not None:
+            Ksat = np.array(Ksat)
+            Ksat = np.expand_dims(Ksat, axis=0)
+
+    dz = np.abs(z)
+    dz = np.hstack((dz[:, :1], np.diff(dz, axis=1)))
+    
+    changing_lim = False
+
+    if changing_lim == False:
+        z_min = np.min(z, axis=1)
+        max_len = int(np.abs(np.nanmin(z_min)) / np.abs(grid_step)) + 1
+        z_fine = np.tile(np.arange(0., grid_step * max_len, grid_step), (z.shape[0], 1)) + grid_step
+        z_fine = z_fine.astype(np.float32)
+        z_fine[z_fine < z_min[:, None]] = np.nan
+        dz_fine = z_fine*0.0 - grid_step
+        z_mid_fine = dz_fine / 2 - np.cumsum(dz_fine, axis=1)
+        ix = np.full((z_fine.shape), np.nan)
+        # Expand z along the second axis to match z_fine's shape (broadcasting)
+        z_expanded = np.expand_dims(z, axis=1)  # Shape: (rows, 1, cols)
+        z_fine_expanded = np.expand_dims(z_fine, axis=2)  # Shape: (rows, fine_steps, 1)    
+
+    elif changing_lim == True:
+        z_min = np.min(z, axis=1).astype(np.float32)
+        z_min_min = np.nanmin(z_min)
+        limits = [-1, -5, z_min_min]
+        steps = [-0.01, -0.05, -0.5]
+        z1 = np.arange(0+steps[0], limits[0], steps[0])
+        z2 = np.arange(limits[0], limits[1], steps[1])
+        z3 = np.arange(limits[1], limits[2] + steps[2], steps[2])  # Ensure we reach z_min
+        # Combine all segments
+        z_values = np.concatenate([z1, z2, z3])  # Ensure exact z_min
+        z_fine = np.tile(z_values, (z.shape[0], 1))
+        z_fine = z_fine.astype(np.float32)
+        z_fine[z_fine < z_min[:, None]] = np.nan
+        # Compute dz_fine
+        dz_fine = np.abs(np.diff(z_fine, axis=1))  # Compute differences along the second axis
+        # Insert the first element (z_fine[:, 0] - 0) at the beginning
+        dz_fine = np.hstack([z_fine[:, [0]], dz_fine])
+        z_mid_fine = dz_fine / 2 - np.cumsum(dz_fine, axis=1)
+        ix = np.full((z_fine.shape), np.nan)
+        # Expand z along the second axis to match z_fine's shape (broadcasting)
+        z_expanded = np.expand_dims(z, axis=1)  # Shape: (rows, 1, cols)
+        z_fine_expanded = np.expand_dims(z_fine, axis=2)  # Shape: (rows, fine_steps, 1)
+
+    # Compute mask using broadcasting (row-wise comparison)
+    mask = (z_fine_expanded < z_expanded) & ~np.isclose(z_fine_expanded, z_expanded, atol=1e-9)
+
+    # Sum along the depth dimension to count how many times z_fine falls below z
+    ix = np.sum(mask, axis=2).astype(np.float64)  # Convert to float to retain NaN compatibility
+
+    pF_fine = {}
+
+    for key in pF[0].keys():  # Iterate over each parameter in `pF`
+        # Convert pF into an array ensuring consistent shapes
+        try:
+            pF_array = np.vstack([p[key] for p in pF])  # Ensures (rows, depths) shape
+        except ValueError:  # If rows have different lengths, handle it gracefully
+            max_depth = max(len(p[key]) for p in pF)  # Find the longest row
+            pF_array = np.full((len(pF), max_depth), np.nan)  # Initialize padded array
+
+            # Fill rows with actual values
+            for i, p in enumerate(pF):
+                pF_array[i, :len(p[key])] = p[key]
+
+        # Ensure `ix` values are within valid range (clip to prevent indexing errors)
+        ix_valid = np.clip(ix.astype(int), 0, pF_array.shape[1] - 1)
+
+        # Assign values using vectorized indexing
+        pF_fine[key] = np.take_along_axis(pF_array, ix_valid, axis=1)  # Shape: (rows, fine_steps)
+
+    # --------- connection between gwl and Wsto, Tr, C------------
+    if changing_lim == False:
+        gwl = np.arange(1.0, min(z_min)-5, grid_step)
+    elif changing_lim == True:
+        limits = [-1, -5, min(z_min)-5]
+        steps = [-0.01, -0.05, -0.5]
+        # First segment: 1m to 0m (step = 1.0m)
+        z1 = np.arange(1, limits[0], steps[0])
+        z2 = np.arange(limits[0], limits[1], steps[1])
+        z3 = np.arange(limits[1], limits[2], steps[2])
+        gwl = np.concatenate([z1, z2, z3])  # Ensure exact z_min
+
+    Wsto_deep = np.stack([h_to_cellmoist_vectorized(pF_fine, g - z_mid_fine, dz_fine) + max(0.0, g) for g in gwl]).T
+
+    if root:
+        Wsto_deep = np.stack([h_to_cellmoist_vectorized(pF_fine, g - z_mid_fine, dz_fine) for g in gwl]).T
+        Wsto_deep = Wsto_deep/np.nansum(dz, axis=1)
+        #GwlToWsto = interp1d(np.array(gwl), np.array(Wsto_deep), fill_value='extrapolate')
+        GwlToWsto = [interp1d(gwl, wsto_row, kind='linear', fill_value='extrapolate') for wsto_row in Wsto_deep]
+        return {'to_rootmoist': GwlToWsto}
+
+    Tr1 = np.stack([transmissivity_vectorized(dz, Ksat, g) * 86400. for g in gwl]).T
+
+    # Generate interpolators for each row of Wsto_deep and Tr1 while keeping gwl the same
+    WstoToGwl = [interp1d(wsto_row, gwl, kind='linear', fill_value='extrapolate') for wsto_row in Wsto_deep]
+    GwlToWsto = [interp1d(gwl, wsto_row, kind='linear', fill_value='extrapolate') for wsto_row in Wsto_deep]
+    GwlToC = [interp1d(gwl, np.gradient(wsto_row) / np.gradient(gwl), kind='linear', fill_value='extrapolate') for wsto_row in Wsto_deep]
+    GwlToTr = [interp1d(gwl, tr_row, kind='linear', fill_value='extrapolate') for tr_row in Tr1]
+    
+    #plt.figure(1)
+    #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep[0])/np.gradient(gwl)), linestyle='--')
+    #plt.figure(2)
+    #plt.plot(np.array(gwl), np.log10(np.array(Tr1[0])), linestyle='--')
+    #plt.plot(np.array(gwl), np.array(Tr1[0]), linestyle='--')
+    #plt.figure(3)
+    #plt.plot(np.array(gwl), np.array(Wsto_deep[0]), linestyle='--')
+
+    return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
+
+def h_to_cellmoist_vectorized(pF, h, dz):
+    r""" Cell moisture based on vanGenuchten-Mualem soil water retention model.
+    Partly saturated cells calculated as thickness weigthed average of
+    saturated and unsaturated parts.
+
+    Args:
+        pF (np.ndarray):
+            dict
+                'ThetaS' (np.ndarray): saturated water content [m\ :sup:`3` m\ :sup:`-3`\ ]
+                'ThetaR' (np.ndarray): residual water content [m\ :sup:`3` m\ :sup:`-3`\ ]
+                'alpha' (np.ndarray): air entry suction [cm\ :sup:`-1`]
+                'n' (np.ndarray): pore size distribution [-]
+        h (float): pressure head [m]
+        dz (np.ndarray): soil compartment thichness, node in center [m]
+    Returns:
+        theta (np.ndarray): Total volumetric water content of cell for given gwl
+    """
+
+    # water retention parameters
+    Ts = np.array(pF['ThetaS'])
+    Tr = np.array(pF['ThetaR'])
+    alfa = np.array(pF['alpha'])
+    n = np.array(pF['n'])
+    m = 1.0 - np.divide(1.0, n)
+
+    # moisture based on cell center head
+    x = np.minimum(h, 0)
+    theta = Tr + (Ts - Tr) / (1 + abs(alfa * 100 * x)**n)**m
+
+    # correct moisture of partly saturated cells
+    ix = np.where(abs(h[0]) < dz/2)
+
+    if Ts.shape[1] == 1:
+        ixx = (np.array([0]), np.array([0]))  # Single index for 2D case
+    else:
+        ixx = ix
+    # moisture of unsaturated part
+    x[ix] = -(dz[ix]/2 - h[ix]) / 2
+    theta[ix] = Tr[ixx] + (Ts[ixx] - Tr[ixx]) / (1 + abs(alfa[ixx] * 100 * x[ix])**n[ixx])**m[ixx]
+    # total moisture as weighted average
+    theta[ix] = (theta[ix] * (dz[ix]/2 - h[ix]) + Ts[ixx] * (dz[ix]/2 + h[ix])) / (dz[ix])
+    # from vwc to total water content
+    Wsto = theta * dz
+    # 
+    Wsto = np.nansum(Wsto, axis=1)
+    
+    return Wsto
+
+def transmissivity_vectorized(dz, Ksat, gwl):
+    r""" Vectorized transmissivity function for 2D inputs.
+
+    Args:
+       dz (np.ndarray):  Soil compartment thickness, node in center [m]
+       Ksat (np.ndarray): Horizontal saturated hydraulic conductivity [m/s]
+       gwl (float): Groundwater level below surface, <0 [m]
+
+    Returns:
+       Tr (np.ndarray): Transmissivity for each cell [m²/s]
+    """
+
+    # Compute midpoints of layers
+    z = dz / 2 - np.cumsum(dz, axis=1)  # Shape: (n_cells, n_layers)
+
+    # Total soil thickness (impermeable boundary depth)
+    ib = np.sum(dz, axis=1, keepdims=True)  # Shape: (n_cells, 1)
+
+    # Saturated layer thickness
+    Hdr = np.maximum(0, gwl + ib)  # Shape: (n_cells, 1)
+
+    # Mask for contributing layers
+    mask = ((z - dz / 2) - gwl < 0) & ((z + dz / 2) > -ib)  # Shape: (n_cells, n_layers)
+
+    # Compute saturated thickness for each layer
+    dz_sat = np.maximum(gwl - (z - dz / 2), 0)  # Shape: (n_cells, n_layers)
+
+    # Compute transmissivity of each layer
+    Trans = Ksat * dz_sat  # Shape: (n_cells, n_layers)
+
+    # Find last contributing layer index
+    last_layer_ix = np.argmax(mask[:, ::-1], axis=1)  # Indices in reversed order
+    last_layer_ix = mask.shape[1] - 1 - last_layer_ix  # Convert to correct index
+
+    # Adjust last layer's saturated thickness
+    valid_cells = np.any(mask, axis=1)  # True where any layer contributes
+
+    row_idx = np.where(valid_cells)[0]  # Get valid cell indices
+    last_layer_idx = last_layer_ix[row_idx]  # Get last contributing layer indices
+
+    dz_sat[row_idx, last_layer_idx] += z[row_idx, last_layer_idx] - dz[row_idx, last_layer_idx] / 2 + ib[row_idx, 0]
+
+    # Recalculate transmissivity for last layer
+    Trans[row_idx, last_layer_idx] = Ksat[row_idx, last_layer_idx] * dz_sat[row_idx, last_layer_idx]
+
+    # Sum transmissivity across layers
+    Tr = np.where(valid_cells, np.sum(Trans * mask, axis=1), 1e-4 / 86400)  # Shape: (n_cells,)
 
     return Tr
 

@@ -63,9 +63,9 @@ def wrc(pF: Dict, theta: np.ndarray=None, psi: np.ndarray=None, draw_pF: bool=Fa
         return Th
 
     # --- convert between theta <-- --> psi
-    if theta:
+    if theta is not None:
         y = theta_psi(theta)  # 'Theta-->Psi'
-    elif psi:
+    elif psi is not None:
         y = psi_theta(psi)  # 'Psi-->Theta'
 
     # draws pf-curve

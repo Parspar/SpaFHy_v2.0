@@ -9,11 +9,12 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-from soilprofile2D import gwl_Wsto
+from soilprofile2D import gwl_Wsto, gwl_Wsto_vectorized
 from koordinaattimuunnos import koordTG
 from topmodel import twi as twicalc
 import re
 import importlib
+import sys
 
 eps = np.finfo(float).eps  # machine epsilon
 workdir = os.getcwd()
@@ -136,7 +137,7 @@ def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
     if plotgrids is True:
 
         plt.figure()
-        plt.subplot(221); plt.imshow(LAI_pine+LAI_spruce); plt.colorbar();
+        #plt.subplot(221); plt.imshow(LAI_pine+LAI_spruce); plt.colorbar();
         plt.title('LAI conif (m2/m2)')
         plt.subplot(222); plt.imshow(LAI_decid); plt.colorbar();
         plt.title('LAI decid (m2/m2)')
@@ -205,8 +206,8 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     if not (('streams' in spatial_pspd and spatial_pspd['streams']) or 
         ('stream_depth' in spatial_pspd and spatial_pspd['stream_depth'])):
         print('*** No stream file ***')
-        streams = np.full_like(deepsoil, 0.0)
-        stream_depth = np.full_like(deepsoil, 0.0)
+        streams = np.full_like(deep_id, 0.0)
+        stream_depth = np.full_like(deep_id, 0.0)
 
     gis['streams'] = streams
     gis['stream_depth'] = stream_depth
@@ -228,7 +229,7 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
 
     if plotgrids is True:
         plt.figure()
-        plt.subplot(311); plt.imshow(soilclass); plt.colorbar(); plt.title('soiltype')
+        plt.subplot(311); plt.imshow(deep_id); plt.colorbar(); plt.title('soiltype')
         plt.subplot(312); plt.imshow(elevation); plt.colorbar(); plt.title('elevation')
         plt.subplot(313); plt.imshow(elevation); plt.colorbar();
 
@@ -426,6 +427,7 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
 
     return data
 
+
 def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     """
     creates input dictionary for initializing SoilGrid
@@ -494,8 +496,134 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
     data['dxy'] = gisdata['dxy']
 
+    for key in data.keys():
+        print('key:', key)
+        print('data[key]', data[key])
+
     return data
 
+
+def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
+    """
+    creates input dictionary for initializing SoilGrid
+    Args:
+        soil parameters
+        soiltype parameters
+        gisdata
+            cmask
+            soilclass
+        spatial
+    """
+    # create dict for initializing soil profile.
+    # copy pbu into sdata and make each value np.array(np.shape(cmask))
+    data = pspd.copy()
+    spatial_data = spatial_pspd.copy()
+
+    gridshape = np.ones(shape=gisdata['deep_id'].shape)
+   
+    for key in data:
+        if spatial_data[key] == True:
+            data[key] = gisdata[key]
+        if spatial_data[key] == False:
+            uni_value = data[key]
+            data[key] = np.full_like(gridshape, uni_value)
+
+    deep_ids = []
+    for key, value in deepp.items():
+        deep_ids.append(value['deep_id'])
+        
+    if set(deep_ids) >= set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()):
+        # no problems
+        print('*** Defined deep soil IDs:',set(deep_ids), 'Used soil IDs:',
+              set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
+    else:
+        print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
+        #raise ValueError("Deep soil id in inputs not specified in parameters.py")
+
+    data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+
+    if spatial_data['deep_z'] == False:
+        for key, value in deepp.items():
+            c = value['deep_id']
+            ix = np.where(data['deep_id'] == c)
+            data['soiltype'][ix] = key
+            # interpolation function between wsto and gwl
+            value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
+            # interpolation function between root_wsto and gwl
+            value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
+        
+        data['wtso_to_gwl'] = {soiltype: deepp[soiltype]['to_gwl'] for soiltype in deepp.keys()}
+        data['gwl_to_wsto'] = {soiltype: deepp[soiltype]['to_wsto'] for soiltype in deepp.keys()}
+        data['gwl_to_C'] = {soiltype: deepp[soiltype]['to_C'] for soiltype in deepp.keys()}
+        data['gwl_to_Tr'] = {soiltype: deepp[soiltype]['to_Tr'] for soiltype in deepp.keys()}
+        data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
+
+    elif spatial_data['deep_z'] == True:
+        # we have data['deep_id'] and data['z']
+        max_nlyrs = 0    
+        for key, value in deepp.items():
+            nlyrs = len(value['deep_z'])
+            max_nlyrs = max(max_nlyrs, nlyrs)
+        # flattening    
+        deep_id_f = data['deep_id'].flatten()
+        deep_z_f = data['deep_z'].flatten()
+        deep_z_f[deep_z_f < 5] = 5 # NOTE MINIMUM IS 5M DEPTH!
+        # creating the arrays
+        deep_zs = np.full((len(deep_id_f), max_nlyrs), np.nan)
+        deep_ksats = np.full((len(deep_id_f), max_nlyrs), np.nan)
+
+        # Initialize deep_pFs with dictionaries containing NaN values
+        default_pF = {
+            'ThetaS': [np.nan] * max_nlyrs,
+            'ThetaR': [np.nan] * max_nlyrs,
+            'alpha': [np.nan] * max_nlyrs,
+            'n': [np.nan] * max_nlyrs
+        }
+
+        deep_pFs = np.array([default_pF.copy() for _ in range(len(deep_id_f))], dtype=object)
+        
+        # temporary arrays to store the interpolation functions
+        temp_to_gwl = np.empty(len(deep_id_f), dtype=object)
+        temp_to_wsto = np.empty(len(deep_id_f), dtype=object)
+        temp_to_Tr = np.empty(len(deep_id_f), dtype=object)
+        temp_to_C = np.empty(len(deep_id_f), dtype=object)
+        temp_to_rootmoist = np.empty(len(deep_id_f), dtype=object)
+
+        # making parametes into 2D arrays (total length and layered information)
+        for key, value in deepp.items():
+            mask = deep_id_f == value['deep_id']
+            if np.any(mask):  # Only proceed if at least one match
+                nlyrs = len(value['deep_z'])
+                deep_zs[mask, :nlyrs] = value['deep_z']
+                a = np.abs(deep_z_f[mask])*-1
+                b = deep_zs[mask, nlyrs - 1]
+                # Replace last layer. Cannot be smaller than smallest assigned 'z' in parameters
+                deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])
+                # Cannot me smaller than -30.
+                deep_zs[mask, nlyrs - 1] = np.maximum(deep_zs[mask, nlyrs - 1], -30.)
+                deep_ksats[mask, :nlyrs] = value['deep_ksat']
+                deep_pFs[mask] = value['pF']
+        
+        mask = np.isfinite(deep_zs[:,0])
+        ifs_v = gwl_Wsto_vectorized(deep_zs[mask], deep_pFs[mask], -0.2, deep_ksats[mask])
+        ifs_r = gwl_Wsto_vectorized(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True)
+
+        temp_to_gwl[mask] = ifs_v['to_gwl']
+        temp_to_wsto[mask] = ifs_v['to_wsto']
+        temp_to_C[mask] = ifs_v['to_C']
+        temp_to_Tr[mask] = ifs_v['to_Tr']
+        temp_to_rootmoist[mask] = ifs_r['to_rootmoist']
+
+        data['wtso_to_gwl'] = temp_to_gwl.reshape(gridshape.shape)
+        data['gwl_to_wsto'] = temp_to_wsto.reshape(gridshape.shape)
+        data['gwl_to_C'] = temp_to_C.reshape(gridshape.shape)
+        data['gwl_to_Tr'] = temp_to_Tr.reshape(gridshape.shape)
+        data['gwl_to_rootmoist'] = temp_to_rootmoist.reshape(gridshape.shape)
+
+    data['lakes'] = np.where(data['lakes'] < -eps, pspd['lake_depth'], 0)
+    data['dxy'] = gisdata['dxy']
+
+    return data
 
 def preprocess_cpydata(pcpy, spatial_pcpy, gisdata, spatial=True):
     """

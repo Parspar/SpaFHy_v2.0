@@ -15,6 +15,7 @@ import xarray as xr
 import importlib
 import pprint
 import os
+import sys
 from multiprocessing import Pool, cpu_count
 
 eps = np.finfo(float).eps
@@ -201,7 +202,9 @@ def preprocess_parameters(pgen, catchment, folder=''):
     """
 
     from iotools import read_bu_gisdata, read_ds_gisdata, read_cpy_gisdata, read_top_gisdata, read_aux_gisdata
-    from iotools import preprocess_budata, preprocess_dsdata, preprocess_cpydata, preprocess_topdata
+    from iotools import preprocess_budata, preprocess_cpydata, preprocess_topdata
+    from iotools import preprocess_dsdata_vec as preprocess_dsdata
+    #from iotools import preprocess_dsdata
 
     parameters_module = importlib.import_module(f'parameters_{catchment}')
 
@@ -269,9 +272,9 @@ def preprocess_parameters(pgen, catchment, folder=''):
     if pgen['spatial_cpy']:
         gisdata.update(read_cpy_gisdata(pgen['gis_folder'], spatial_pcpy=spatial_pcpy, mask=pgen['mask']))
     
-    if pgen['spatial_forcing']:
-        gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask=pgen['mask']))
-        pgen.update({'forcing_id': gisdata['forcing_id']})
+    #if pgen['spatial_forcing']:
+    #    gisdata.update(read_forcing_gisdata(pgen['gis_folder'], mask=pgen['mask']))
+    #    pgen.update({'forcing_id': gisdata['forcing_id']})
 
     if pgen['simtype'] == 'TOP':
         gisdata.update(read_top_gisdata(pgen['gis_folder'], spatial_ptop, mask=pgen['mask']))
@@ -341,6 +344,28 @@ def preprocess_parameters(pgen, catchment, folder=''):
         gisdata['xllcorner'] = gisdata['xllcorner'] + xllcorner_id * gisdata['dxy']
         gisdata['yllcorner'] = gisdata['yllcorner'] + yllcorner_id * gisdata['dxy']
 
+    save_cmask = False
+    if save_cmask == True:
+        from iotools import write_AsciiGrid
+        ftemp = r'/Users/jpnousu/SpaFHy_RUNS/krycklan/gis/temp/cmask_temp.asc'
+        ftemp2 = r'/Users/jpnousu/SpaFHy_RUNS/krycklan/gis/temp/dem_temp.asc'
+        ncols = gisdata['cmask'].shape[1]
+        nrows = gisdata['cmask'].shape[0]
+        xllcorner = gisdata['xllcorner']
+        yllcorner = gisdata['yllcorner']
+        cellsize = gisdata['dxy']
+        info = [
+            f'ncols         {ncols}\n',
+            f'nrows         {nrows}\n',
+            f'xllcorner         {xllcorner}\n',
+            f'yllcorner         {yllcorner}\n',
+            f'cellsize         {cellsize}\n',
+            'NODATA_value         -9999\n'
+        ] 
+        #write_AsciiGrid(ftemp, gisdata['cmask'], info)
+        write_AsciiGrid(ftemp2, gisdata['elevation'], info)
+        sys.exit()
+
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, spatial_pcpy, gisdata, pgen['spatial_cpy'])
@@ -363,12 +388,12 @@ def preprocess_parameters(pgen, catchment, folder=''):
         spinup = xr.open_dataset(pgen['spinup_file'])
         cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
         cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
-        soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
-        soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
-        if pgen['simtype'] == '2D':
-            soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
-        elif pgen['simtype'] == 'TOP':
-            ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
+        #soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
+        #soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
+        #if pgen['simtype'] == '2D':
+        #    soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
+        #elif pgen['simtype'] == 'TOP':
+        #    ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
 
         print('*** State variables assigned from ', pgen['spinup_file'],  '***')
     except:
