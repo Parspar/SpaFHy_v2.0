@@ -388,12 +388,12 @@ def preprocess_parameters(pgen, catchment, folder=''):
         spinup = xr.open_dataset(pgen['spinup_file'])
         cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
         cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
-        soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
-        soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
-        if pgen['simtype'] == '2D':
-            soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
-        elif pgen['simtype'] == 'TOP':
-            ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
+        #soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
+        #soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
+        #if pgen['simtype'] == '2D':
+        #    soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
+        #elif pgen['simtype'] == 'TOP':
+        #    ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
 
         print('*** State variables assigned from ', pgen['spinup_file'],  '***')
     except:
