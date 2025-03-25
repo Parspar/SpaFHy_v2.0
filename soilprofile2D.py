@@ -106,8 +106,11 @@ class SoilGrid_2Dflow(object):
         # self.z_from_gis == True OR False
         # determines whether the deep_z and thus interpolation functions are made cell-wise (True) or soiltype-wise (False)
         # if-elif statements later in the code made accordingly
-        self.z_from_gis = spara['deep_id'].shape == spara['wtso_to_gwl'].shape
-
+        self.z_from_gis = (
+            isinstance(spara['wtso_to_gwl'], np.ndarray) and
+            spara['deep_id'].shape == spara['wtso_to_gwl'].shape
+            )
+        
         if self.z_from_gis == False:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep_max[self.soiltype == key] = value(0.0)
