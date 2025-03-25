@@ -103,16 +103,18 @@ class SoilGrid_2Dflow(object):
         # rootzone moisture [m3 m-3]
         self.deepmoist = np.full_like(self.h, 0.0)
 
-        # z from 'soiltype' or 'gis'
-        self.z_source = 'gis'
+        # self.z_from_gis == True OR False
+        # determines whether the deep_z and thus interpolation functions are made cell-wise (True) or soiltype-wise (False)
+        # if-elif statements later in the code made accordingly
+        self.z_from_gis = spara['deep_id'].shape == spara['wtso_to_gwl'].shape
 
-        if self.z_source == 'soiltype':
+        if self.z_from_gis == False:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep_max[self.soiltype == key] = value(0.0)
                 self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key]) # storage corresponding to h
             for key, value in self.gwl_to_rootmoist.items():
                 self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
-        elif self.z_source == 'gis':
+        elif self.z_from_gis == True:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
@@ -125,7 +127,6 @@ class SoilGrid_2Dflow(object):
         # air volume and returnflow
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         self.qr = np.full_like(self.h, 0.0) # 
-        
 
         """ parameters for 2D solution """
         # parameters for solving
@@ -242,15 +243,14 @@ class SoilGrid_2Dflow(object):
         H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
                             H_neighbours_2d, self.H)
         
-        if self.z_source == 'soiltype':
+        if self.z_from_gis == False:
             for key, value in self.gwl_to_Tr.items():
                 self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
-        elif self.z_source == 'gis':
+        elif self.z_from_gis == True:
             for i in range(self.gwl_to_Tr.shape[0]):
                 for j in range(self.gwl_to_Tr.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
                         self.Tr0[i,j] = self.gwl_to_wsto[i,j](H_for_Tr[i,j] - self.ele[i,j])
-
 
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
         # is is actually at all four sides, or just along east-west and north-sound axes?
@@ -292,12 +292,12 @@ class SoilGrid_2Dflow(object):
         for it in range(maxiter):
 
             # differential water capacity dSto/dh
-            if self.z_source == 'soiltype':
+            if self.z_from_gis == False:
                 for key, value in self.gwl_to_C.items():
                     self.CC[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
                 for key, value in self.gwl_to_wsto.items():
                     self.Wtso1_deep[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
-            elif self.z_source == 'gis':
+            elif self.z_from_gis == True:
                 for i in range(self.gwl_to_C.shape[0]):
                     for j in range(self.gwl_to_C.shape[1]):
                         if np.isfinite(self.cmask[i,j]): 
@@ -351,6 +351,14 @@ class SoilGrid_2Dflow(object):
             #if np.any(np.abs(Htmp1-Htmp)) > 0.5:
                 #print('Difference greater than 0.5')
 
+            max_index_print = np.unravel_index(np.argmax(np.abs(Htmp1 - Htmp)),(self.rows,self.cols))
+            Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
+            Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
+            print('\t', 'iterations:', it,
+                    ' max_index:', max_index_print,
+                    ' H[max_index]', Htmp_print[max_index_print]-self.ele[max_index_print], 
+                    ' H1[max_index]', Htmp1_print[max_index_print]-self.ele[max_index_print])
+
             Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
 
             conv1 = np.max(np.abs(Htmp1 - Htmp))
@@ -367,10 +375,12 @@ class SoilGrid_2Dflow(object):
 
             if np.any(np.abs(Htmp1-Htmp)) > 0.5:
                 Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
+                Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
                 print('Difference greater than 0.5')
                 print('\t', 'iterations:', it, ' con1:', conv1, 
                       ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
-                      ' H[max_index]', Htmp_print[max_index]-self.ele[max_index])
+                      ' H[max_index]', Htmp_print[max_index]-self.ele[max_index], 
+                      ' H1[max_index]', Htmp1_print[max_index]-self.ele[max_index])
 
             Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
@@ -434,10 +444,10 @@ class SoilGrid_2Dflow(object):
         # soil profile
         self.H = Htmp.copy()      
         self.h = self.H - self.ele
-        if self.z_source == 'soiltype':
+        if self.z_from_gis == False:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep[self.soiltype == key] = value(self.h[self.soiltype == key])
-        elif self.z_source == 'gis':
+        elif self.z_from_gis == True:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
@@ -459,12 +469,12 @@ class SoilGrid_2Dflow(object):
         #self.H[self.lake_interior == 1] = -999
 
         # Updating the storage according to new head
-        if self.z_source == 'soiltype':
+        if self.z_from_gis == False:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
             for key, value in self.gwl_to_rootmoist.items():
                 self.deepmoist[self.soiltype == key] = value(self.h[self.soiltype == key])
-        elif self.z_source == 'gis':
+        elif self.z_from_gis == True:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 

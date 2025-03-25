@@ -137,7 +137,7 @@ def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
     if plotgrids is True:
 
         plt.figure()
-        plt.subplot(221); plt.imshow(LAI_pine+LAI_spruce); plt.colorbar();
+        #plt.subplot(221); plt.imshow(LAI_pine+LAI_spruce); plt.colorbar();
         plt.title('LAI conif (m2/m2)')
         plt.subplot(222); plt.imshow(LAI_decid); plt.colorbar();
         plt.title('LAI decid (m2/m2)')
@@ -518,6 +518,7 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = pspd.copy()
     spatial_data = spatial_pspd.copy()
+
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
    
     for key in data:
@@ -541,9 +542,7 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
-    z_source = 'gis'
-
-    if z_source == 'soiltype':
+    if spatial_data['deep_z'] == False:
         for key, value in deepp.items():
             c = value['deep_id']
             ix = np.where(data['deep_id'] == c)
@@ -559,7 +558,7 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         data['gwl_to_Tr'] = {soiltype: deepp[soiltype]['to_Tr'] for soiltype in deepp.keys()}
         data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
 
-    elif z_source == 'gis':
+    elif spatial_data['deep_z'] == True:
         # we have data['deep_id'] and data['z']
         max_nlyrs = 0    
         for key, value in deepp.items():
@@ -598,8 +597,10 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
                 deep_zs[mask, :nlyrs] = value['deep_z']
                 a = np.abs(deep_z_f[mask])*-1
                 b = deep_zs[mask, nlyrs - 1]
-                deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])  # Replace last layer
-                #deep_zs[mask, nlyrs - 1] = np.abs(deep_z_f[mask])*-1  # Replace last layer
+                # Replace last layer. Cannot be smaller than smallest assigned 'z' in parameters
+                deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])
+                # Cannot me smaller than -30.
+                deep_zs[mask, nlyrs - 1] = np.maximum(deep_zs[mask, nlyrs - 1], -30.)
                 deep_ksats[mask, :nlyrs] = value['deep_ksat']
                 deep_pFs[mask] = value['pF']
         
