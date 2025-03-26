@@ -548,7 +548,7 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
             ix = np.where(data['deep_id'] == c)
             data['soiltype'][ix] = key
             # interpolation function between wsto and gwl
-            value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
+            value.update(gwl_Wsto(value['deep_z'], value['pF'], -0.01, value['deep_ksat']))
             # interpolation function between root_wsto and gwl
             value.update(gwl_Wsto(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True))
         
@@ -599,11 +599,11 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
                 b = deep_zs[mask, nlyrs - 1]
                 # Replace last layer. Cannot be smaller than smallest assigned 'z' in parameters
                 deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])
-                # Cannot me smaller than -30.
-                deep_zs[mask, nlyrs - 1] = np.maximum(deep_zs[mask, nlyrs - 1], -30.)
+                # Cannot be smaller than -30.
+                #deep_zs[mask, nlyrs - 1] = np.maximum(deep_zs[mask, nlyrs - 1], -30.)
                 deep_ksats[mask, :nlyrs] = value['deep_ksat']
                 deep_pFs[mask] = value['pF']
-        
+
         mask = np.isfinite(deep_zs[:,0])
         ifs_v = gwl_Wsto_vectorized(deep_zs[mask], deep_pFs[mask], -0.2, deep_ksats[mask])
         ifs_r = gwl_Wsto_vectorized(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True)

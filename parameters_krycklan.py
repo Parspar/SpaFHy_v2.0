@@ -12,7 +12,7 @@ def parameters(folder=''):
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2013-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2015-01-01', # 2017-12-31,
+            'end_date': '2016-01-01', # 2017-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '2013-01-01',  # '2014-12-31', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
