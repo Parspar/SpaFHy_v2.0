@@ -81,6 +81,7 @@ def parameters(folder=''):
                     ['deep_moisture_deep', 'volumetric water content of deepzone [m3 m-3]'],
                     ['deep_water_closure', 'soil water balance error [mm d-1]'],                   
                     ['deep_return_flow', 'return flow from deepzone to bucket [mm d-1]'],
+                    ['deep_transmissivity', 'transmissivity'],
                     #['canopy_interception', 'canopy interception [mm d-1]'],
                     ['canopy_evaporation', 'evaporation from interception storage [mm d-1]'],
                     ['canopy_transpiration','transpiration [mm d-1]'],
@@ -233,7 +234,7 @@ def parameters(folder=''):
             'deep_ksat': 1E-05,
             # initial states
             'ground_water_level': -4.0,  # groundwater depth [m]
-            'stream_depth': -1., #'stream_depth.asc', # 'stream_depth.asc',   # initial stream water level relative to ground surface (currently not dynamic) [m]
+            'stream_depth': -0.1, #'stream_depth.asc', # 'stream_depth.asc',   # initial stream water level relative to ground surface (currently not dynamic) [m]
             'lake_depth': -1.0  # initial lake water level relative to ground surface (currently not dynamic) [m]
             }
 

@@ -13,8 +13,6 @@ from scipy.sparse import diags, linalg
 import matplotlib.pyplot as plt
 eps = np.finfo(float).eps
 
-apply_vectorized = np.vectorize(lambda f, x: f(x))
-
 class SoilGrid_2Dflow(object):
     """
     2D soil water flow model based on Ari Lauren SUSI2D
@@ -25,8 +23,10 @@ class SoilGrid_2Dflow(object):
         Initializes SoilProfile2D:
         Args:
             spara (dict):
+                'deep_id': deep soil id
                 'elevation': elevation [m]
                 'streams': stream water level [m], < 0 for streams otherwise 0
+                'lakes': lake water level [m], < 0 for streams otherwise 0
                 'dxy': cell horizontal length
                 # scipy interpolation functions describing soil behavior
                 'wtso_to_gwl'
@@ -39,7 +39,6 @@ class SoilGrid_2Dflow(object):
         """
 
         """ deep soil """
-
         # soil/peat type
         self.soiltype = spara['soiltype']
         
@@ -111,13 +110,14 @@ class SoilGrid_2Dflow(object):
             spara['deep_id'].shape == spara['wtso_to_gwl'].shape
             )
         
-        if self.z_from_gis == False:
+        # initial water storages according to gwl
+        if self.z_from_gis == False: # soiltype-wise calculation
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep_max[self.soiltype == key] = value(0.0)
                 self.Wsto_deep[self.soiltype == key] = value(self.gwl[self.soiltype == key]) # storage corresponding to h
             #for key, value in self.gwl_to_rootmoist.items():
             #    self.deepmoist[self.soiltype == key] = value(self.gwl[self.soiltype == key])
-        elif self.z_from_gis == True:
+        elif self.z_from_gis == True: # cell-wise calculation
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
@@ -129,7 +129,7 @@ class SoilGrid_2Dflow(object):
 
         # air volume and returnflow
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
-        self.qr = np.full_like(self.gwl, 0.0) # 
+        #self.qr = np.full_like(self.gwl, 0.0)
 
         """ parameters for 2D solution """
         # parameters for solving
@@ -237,8 +237,7 @@ class SoilGrid_2Dflow(object):
             else:  # corners or nodes surrounded by ditches dont have neighbors, given its ditch depth
                 H_neighbours[k] = ele[k] + ditch_h[k] + eps
         
-        H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
-        # H_neighbours_2d is the 2D np.array of stream/ditch neighbouring land cells' average hydraulic head
+        H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols)) # 2D array of stream/ditch neighbouring land cells' average hydraulic head
 
         # Transmissivity of previous timestep [m2 d-1]
         # for ditch nodes that are active, transmissivity calculated based on mean H of
@@ -247,6 +246,7 @@ class SoilGrid_2Dflow(object):
         H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
                             H_neighbours_2d, self.H)
         
+        # transmissivities based on gwl
         if self.z_from_gis == False:
             for key, value in self.gwl_to_Tr.items():
                 self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
@@ -257,7 +257,7 @@ class SoilGrid_2Dflow(object):
                         self.Tr0[i,j] = self.gwl_to_wsto[i,j](H_for_Tr[i,j] - self.ele[i,j])
 
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
-        # is is actually at all four sides, or just along east-west and north-sound axes?
+        # is this actually at all four sides, or just along east-west and north-sound axes?
         TrTmpEW = gmean(self.rolling_window(self.Tr0, 2), -1)
         TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr0), 2), -1))
         self.TrW0[:,1:] = TrTmpEW
@@ -290,11 +290,10 @@ class SoilGrid_2Dflow(object):
         Htmp1 = self.H.copy()
 
         # convergence criteria
-        crit = 1e-3  # loosened this criteria from 1e-4, seems mass balance error remains resonable
+        crit = 1e-3  # 1e-3 seems mass balance error remains resonable
         maxiter = 100
 
         for it in range(maxiter):
-
             # differential water capacity dSto/dh
             if self.z_from_gis == False:
                 for key, value in self.gwl_to_C.items():
@@ -342,11 +341,6 @@ class SoilGrid_2Dflow(object):
                         a_s[k] = 0
 
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
-
-            #print('mean hs', np.mean(hs))
-            #if self.tmstep > 19:
-                #print('A', A)
-                #print('hs', np.mean(hs))
 
             # Solve: A*Htmp1 = hs
             Htmp1 = linalg.spsolve(A,hs)
@@ -433,6 +427,8 @@ class SoilGrid_2Dflow(object):
         if it == 99:
             self.conv99 +=1
         #self.totit += it
+        Htmp = np.reshape(Htmp,(self.rows,self.cols))
+
         print('Timestep:', self.tmstep, ', iterations:', it, ', conv1:', conv1, ', H[max_index]:', Htmp[max_index]-self.ele[max_index])
         
         # lateral flow is calculated in two parts: one depending on previous time step
@@ -448,6 +444,8 @@ class SoilGrid_2Dflow(object):
         # soil profile
         self.H = Htmp.copy()      
         self.gwl = self.H - self.ele
+
+        # water storages according to new gwl
         if self.z_from_gis == False:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep[self.soiltype == key] = value(self.gwl[self.soiltype == key])
@@ -468,16 +466,34 @@ class SoilGrid_2Dflow(object):
                         + self.TrE0*(self.H - self.HE)
                         + self.TrN0*(self.H - self.HN)
                         + self.TrS0*(self.H - self.HS)))/ self.dxy**2
+        
+        #Tr = np.nanmax([self.TrW1, self.TrE1, self.TrN1, self.TrS1], axis=0) didn't work yet
+        #Tr = np.reshape(Tr,(self.rows,self.cols))
 
         """ new update state """
+        # state0 = water storage at timestep0 (including bucket drainage at timestep0)
+        # Wsto_deep = water storage at timestep1
+        # lateral_flow = lateral flow of each grid-cell as calculated in two parts earlier
+        #   lateral_flow is positive when flow going out of the grid cells (saved as -lateral_flow)
+        # mbe = Wsto_deep - state0 - lateral_flow (makes sense)
+        # seems like ditch water flow to surrounding??
+        # how could we fix this..
+        # netflow_to_ditch = storage difference in the ditch cells (why lateral_flow involved here?)
+        #   this is basically mbe at the ditch cells..
+        # qr = return flow to bucketgrid (out of soilprofile2D but this is basically in lateral_flow as well)
+
+        # ditches are described as constant heads so the netflow to ditches can
+        # be calculated from their mass balance
+        netflow_to_ditch = np.where(self.ditch_h < -eps, state0 - self.Wsto_deep - lateral_flow, 0.0)
+
         # Let's limit head to 0 and assign rest as return flow to bucketgrid
         Wsto_before_qr = self.Wsto_deep.copy()
 
         # restricting gwl to 0 on land and ditch_h where ditches/streams
+        #self.gwl = np.where(self.ditch_h < -eps, self.ditch_h, np.minimum(0.0, self.gwl))
         self.gwl = np.where(self.ditch_h < -eps, self.ditch_h, np.minimum(0.0, self.gwl))
         self.H = self.gwl + self.ele
         self.H[np.isnan(self.H)] = -999
-        #self.H[self.lake_interior == 1] = -999
 
         # Updating the storage according to new head
         if self.z_from_gis == False:
@@ -492,29 +508,60 @@ class SoilGrid_2Dflow(object):
                         self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.H[i,j] - self.ele[i,j])  
                         #self.deepmoist[i,j] = self.gwl_to_rootmoist[i,j](self.gwl[i,j])
 
-        # The difference is the return flow to bucket grid or ditch flow out
-        netflow_to_ditch = np.where(self.ditch_h < -eps, Wsto_before_qr - self.Wsto_deep, 0.)
-        self.qr = np.where(self.ditch_h > -eps, Wsto_before_qr - self.Wsto_deep, 0.)
-        #self.qr_to_ditch = np.where(self.ditch_h < -eps, self.qr, 0.0) # ADDED
-        #self.qr -= self.qr_to_ditch # ADDED
+        # The difference is the return flow to bucketgrid
+        qr = np.where(self.ditch_h > -eps, Wsto_before_qr - self.Wsto_deep, 0.)
 
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
-        #netflow_to_ditch = (state0  - self.Wsto_deep - lateral_flow)#- self.qr_to_ditch) # CHANGED TO SELF.QR_TO_DITCH
-        #netflow_to_ditch = np.where(self.ditch_h < -eps, netflow_to_ditch, 0.0)
-
-        #netflow_to_ditch = np.where(self.ditch_h < -eps, state0 - Wsto_before_qr, 0.0) # simpler
+        netflow_to_ditch = np.where(self.ditch_h < -eps, state0 - self.Wsto_deep - lateral_flow, 0.0)
 
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         
-        lateral_flow = state0 - Wsto_before_qr # - self.qr - netflow_to_ditch # simple lateral flow
+        # mass balance error [m]
+        mbe = (state0  - Wsto_before_qr - lateral_flow)
+        mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
+        mbe = np.where(qr > 0., 0.0, mbe)
+
+        '''
+        """ new update state """
+        # Let's limit head to 0 and assign rest as return flow to bucketgrid
+        Wsto_before_qr = self.Wsto_deep.copy()
+
+        # restricting gwl to 0 on land and ditch_h where ditches/streams
+        self.gwl = np.where(self.ditch_h < -eps, self.ditch_h, np.minimum(0.0, self.gwl))
+        self.H = self.gwl + self.ele
+        self.H[np.isnan(self.H)] = -999
+
+        # Updating the storage according to new head
+        if self.z_from_gis == False:
+            for key, value in self.gwl_to_wsto.items():
+                self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
+            #for key, value in self.gwl_to_rootmoist.items():
+            #    self.deepmoist[self.soiltype == key] = value(self.gwl[self.soiltype == key])
+        elif self.z_from_gis == True:
+            for i in range(self.gwl_to_wsto.shape[0]):
+                for j in range(self.gwl_to_wsto.shape[1]):
+                    if np.isfinite(self.cmask[i,j]): 
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.H[i,j] - self.ele[i,j])  
+                        #self.deepmoist[i,j] = self.gwl_to_rootmoist[i,j](self.gwl[i,j])
+
+        # The difference is the return flow to bucketgrid
+        qr = np.where(self.ditch_h > -eps, Wsto_before_qr - self.Wsto_deep, 0.)
+
+        # ditches are described as constant heads so the netflow to ditches can
+        # be calculated from their mass balance
+        netflow_to_ditch = np.where(self.ditch_h < -eps, state0 - Wsto_before_qr - lateral_flow, 0.0)
+
+        # air volume
+        self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         
         # mass balance error [m]
-        mbe = (state0  - self.Wsto_deep - lateral_flow - self.qr - netflow_to_ditch) # - self.qr_to_ditch) # ADDED - self.qr_to_ditch
-
+        mbe = (state0  - Wsto_before_qr - lateral_flow)
         mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
-        
+        '''
+
+        # outputs multiplied by cmask
         h_out = self.gwl.copy() * self.cmask
         lateral_flow = lateral_flow * self.cmask
         netflow_to_ditch = netflow_to_ditch * self.cmask
@@ -529,7 +576,8 @@ class SoilGrid_2Dflow(object):
                 'water_closure': mbe * 1e3,  # [mm d-1]
                 #'moisture_deep': deepmoist_out,  # [m3 m-3]
                 'water_storage': Wsto_deep_out * 1e3, # [mm]
-                'return_flow': self.qr * 1e3 # [mm]
+                'return_flow': qr * 1e3, # [mm],
+                #'transmissivity': Tr
                 }
 
         return results
