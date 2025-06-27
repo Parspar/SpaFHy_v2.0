@@ -155,7 +155,7 @@ class SpaFHy():
                 rr=1e-3*canopy_results['potential_infiltration'],
                 tr=1e-3*canopy_results['transpiration'],
                 evap=1e-3*canopy_results['forestfloor_evaporation'],
-                retflow=self.ds.qr,
+                retflow=1e-3*deep_results['return_flow'],
                 airv_deep=self.ds.airv_deep) 
 
             return deep_results, canopy_results, bucket_results

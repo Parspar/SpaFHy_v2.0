@@ -222,8 +222,7 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     else:
         print('*** No lakes file ***')
         lakes = np.full_like(deep_id, 0.0)
-    gis['lakes'] = lakes
-
+    gis['lakes'] = lakes    
     xllcorner = int(re.findall(r'\d+', info[2])[0])
     yllcorner = int(re.findall(r'\d+', info[3])[0])
 
@@ -527,6 +526,14 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         if spatial_data[key] == False:
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
+
+    if spatial == False:
+        data['deep_id'] = pspd['deep_id']
+    else:
+        data['deep_id'] = gisdata['deep_id']
+        data['elevation'] = gisdata['elevation']
+        data['streams'] = gisdata['streams']
+        data['lakes'] = gisdata['lakes']
 
     deep_ids = []
     for key, value in deepp.items():
