@@ -226,7 +226,7 @@ def parameters(folder=''):
             'elevation': 'inflated_dem.asc', # uniform (float) OR path to grid in gispath (str) 
             'streams': 'stream_mask_dig.asc',
             'lakes': 'lake_mask.asc',
-            'deep_z': -5., #'soildepth.asc',
+            'deep_z': 'soildepth.asc', #'soildepth.asc',
             'deep_poros': 0.41,
             'deep_wr': 0.05,
             'deep_alpha': 0.024,
@@ -234,7 +234,7 @@ def parameters(folder=''):
             'deep_ksat': 1E-05,
             # initial states
             'ground_water_level': -4.0,  # groundwater depth [m]
-            'stream_depth': -0.1, #'stream_depth.asc', # 'stream_depth.asc',   # initial stream water level relative to ground surface (currently not dynamic) [m]
+            'stream_depth': 'stream_depth.asc', #'stream_depth.asc', #  # initial stream water level relative to ground surface (currently not dynamic) [m]
             'lake_depth': -1.0  # initial lake water level relative to ground surface (currently not dynamic) [m]
             }
 
