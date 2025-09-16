@@ -584,7 +584,6 @@ class SoilGrid_2Dflow(object):
                 'return_flow': qr * 1e3, # [mm],
                 'transmissivity': Tr,
                 }
-
         return results
 
 

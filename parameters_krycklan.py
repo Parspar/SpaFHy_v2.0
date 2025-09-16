@@ -10,9 +10,9 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': '2D', # 1D, TOP, 2D,
+            'simtype': 'TOP', # 1D, TOP, 2D,
             'start_date': '2013-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2016-01-01', # 2017-12-31,
+            'end_date': '2015-01-01', # 2017-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '2014-01-01',  # '2014-12-31', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
@@ -26,7 +26,7 @@ def parameters(folder=''):
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(folder+r'/gis/25m_3case')),
+            'gis_folder': str(pathlib.Path(folder+r'/gis/20m')),
             'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
@@ -95,15 +95,15 @@ def parameters(folder=''):
                     #['canopy_fLAI', 'state of LAI'],
                     #['canopy_water_storage', 'canopy intercepted water storage [mm d-1]'],
                     #['canopy_snowfall', 'canopy snowfall'],
-                    #['top_baseflow', 'topmodel baseflow [mm d-1]'],
-                    #['top_water_closure', 'topmodel water balance error [mm d-1]'],
-                    #['top_returnflow', 'topmodel returnflow [mm d-1]'],
-                    #['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
-                    #['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
-                    #['top_saturation_deficit', 'topmodel saturation deficit [m]'],
-                    #['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
-                    #['top_saturated_area', 'topmodel saturated area [-]'],
-                    #['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
+                    ['top_baseflow', 'topmodel baseflow [mm d-1]'],
+                    ['top_water_closure', 'topmodel water balance error [mm d-1]'],
+                    ['top_returnflow', 'topmodel returnflow [mm d-1]'],
+                    ['top_local_returnflow', 'topmodel local returnflow [mm d-1]'],
+                    ['top_drainage_in', 'topmodel inflow from drainage [mm d-1]'],
+                    ['top_saturation_deficit', 'topmodel saturation deficit [m]'],
+                    ['top_local_saturation_deficit', 'topmodel local saturation deficit [mm]'],
+                    ['top_saturated_area', 'topmodel saturated area [-]'],
+                    ['top_storage_change', 'topmodel_water_storage_change [mm d-1]']
                     ]
              }
 
@@ -223,10 +223,10 @@ def parameters(folder=''):
     pspd = {
             # deep soil profile, following properties are used if spatial_deep = False
             'deep_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)
-            'elevation': 'inflated_dem.asc', # uniform (float) OR path to grid in gispath (str) 
-            'streams': 'stream_mask_dig.asc',
+            'elevation': 'processed_dem.asc', # uniform (float) OR path to grid in gispath (str) 
+            'streams': 'channels.asc',
             'lakes': 'lake_mask.asc',
-            'deep_z': 'soildepth.asc', #'soildepth.asc',
+            'deep_z': -5.0, #'soildepth.asc', #'soildepth.asc',
             'deep_poros': 0.41,
             'deep_wr': 0.05,
             'deep_alpha': 0.024,
@@ -234,7 +234,7 @@ def parameters(folder=''):
             'deep_ksat': 1E-05,
             # initial states
             'ground_water_level': -4.0,  # groundwater depth [m]
-            'stream_depth': 'stream_depth.asc', #'stream_depth.asc', #  # initial stream water level relative to ground surface (currently not dynamic) [m]
+            'stream_depth': -1.0, #'stream_depth.asc', #  # initial stream water level relative to ground surface (currently not dynamic) [m]
             'lake_depth': -1.0  # initial lake water level relative to ground surface (currently not dynamic) [m]
             }
 
@@ -246,14 +246,14 @@ def ptopmodel():
     parameters of topmodel submodel
     """
     ptopmodel = {
-            'dem': 'inflated_dem.asc',
-            'flow_accumulation': 'flow_accumulation.asc',
+            'dem': 'processed_dem.asc',
+            'flow_accumulation': 'flow_accumulation_dinf.asc',
             'slope': 'slope.asc',
-            'twi': 'twi.asc',
+            'twi': 'twi_dinf.asc',
             'dt': 86400.0, # timestep (s)
             'm': 0.025, # 0.025 calibrated by Samuli, scaling depth (m), testin 0.01
             'ko': 0.001, # transmissivity parameter (ms-1)
-            'twi_cutoff': 97.5,  # cutoff of cumulative twi distribution (%)
+            'twi_cutoff': 99.5,  # cutoff of cumulative twi distribution (%)
             'so': 0.05 # initial saturation deficit (m)
            }
     return ptopmodel
@@ -264,7 +264,7 @@ def auxiliary_grids():
     """
     grids = {
             'cmask':    'catchment_mask.asc',
-            'streams':  'stream_mask_dig.asc',
+            'streams':  'channels.asc',
             'lakes':    'lake_mask.asc'
             }
     return grids
@@ -411,7 +411,7 @@ def deep_properties():
     deepp = {
         'Postglacial_sand': { # Postglacial sand: Sterte et al. 2018
             'deep_id': 1,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
@@ -422,7 +422,7 @@ def deep_properties():
         },
         'Glaciofluvial_sediment': { # Glacial deposit: Sterte et al. 2018
             'deep_id': 2,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
@@ -433,7 +433,7 @@ def deep_properties():
         },
         'Peat': { # Peat: Sterte et al. 2018
             'deep_id': 3,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.89],
                 'ThetaR': [0.196],
@@ -444,7 +444,7 @@ def deep_properties():
         },
         'Postglacial_sand_gravel': { # Sandy sediment: Sterte et al. 2018 
             'deep_id': 4,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
@@ -455,7 +455,7 @@ def deep_properties():
         },
         'Clay_silt': { # Silt/Clay: Sterte et al. 2018 
             'deep_id': 5,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.6],
                 'ThetaR': [0.07],
@@ -466,7 +466,7 @@ def deep_properties():
         },
         'Washed_sediment_gravel_boulders': { # Till: Sterte et al. 2018 
             'deep_id': 6,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
@@ -477,7 +477,7 @@ def deep_properties():
         },
         'Water': { # Clay under lakes: Sterte et al. 2018 
             'deep_id': 7,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.43],
                 'ThetaR': [0.05],
@@ -488,7 +488,7 @@ def deep_properties():
         },
         'Moraine': { # Till: Sterte et al. 2018 
             'deep_id': 8,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
@@ -499,7 +499,7 @@ def deep_properties():
         },
         'Fill': { # Till: Sterte et al. 2018 
             'deep_id': 9,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
@@ -510,7 +510,7 @@ def deep_properties():
         },
         'Bedrock': { # Bedrock: Sterte et al. 2018 
             'deep_id': 10,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.43],
                 'ThetaR': [0.05],
@@ -521,7 +521,7 @@ def deep_properties():
         },
         'Fluvial_sediment_sand': { # Sandy sediments: Sterte et al. 2018 
             'deep_id': 11,
-            'deep_z': [-5.0],
+            'deep_z': [-15.0],
             'pF': {
                 'ThetaS': [0.41],
                 'ThetaR': [0.05],
