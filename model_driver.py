@@ -383,6 +383,8 @@ def preprocess_parameters(pgen, catchment, folder=''):
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
+    budata['cmask'] = gisdata['cmask']
+
     # overwrites the state variables with the last timestep of spinup file (if given)
     try:
         spinup = xr.open_dataset(pgen['spinup_file'])

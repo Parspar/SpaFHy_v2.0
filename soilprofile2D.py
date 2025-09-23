@@ -46,6 +46,11 @@ class SoilGrid_2Dflow(object):
         self.cmask = np.full_like(spara['deep_id'], np.nan)
         self.cmask[np.isfinite(spara['deep_id'])] = 1.0
 
+        # stream parameters (currently np.nan for non-streams) 
+        self.ditch_l = spara['stream_length'] # total stream length
+        self.ditch_w = spara['stream_width'] # average stream width
+        self.ditch_d = spara['stream_distance'] # average distance to stream (only for stream grid-cells)
+
         # interpolated functions for soil column groundwater depth vs. water storage, transmissivity etc.
         self.wsto_to_gwl = spara['wtso_to_gwl']
         self.gwl_to_wsto = spara['gwl_to_wsto']
@@ -83,7 +88,7 @@ class SoilGrid_2Dflow(object):
                     if is_boundary:
                         lake_boundary[i,j] = 1       
 
-        self.ditch_h[self.lake_h < -eps] = self.lake_h[self.lake_h < -eps] # bringing the lakes into the ditch array
+        self.ditch_h[self.lake_h < -eps] = self.lake_h[self.lake_h < -eps] # bringing the lakes into the ditch_h array
         self.lake_interior[(lake_boundary != 1) & (self.lake_h < -eps)] = 1 # saving lake interior array
 
         # nan to lake interiors (lake interiors should not be solved)

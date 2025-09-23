@@ -10,7 +10,7 @@ import time
 def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
-            'simtype': 'TOP', # 1D, TOP, 2D,
+            'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2013-01-01',  # '2011-01-01', for tests: '2020-01-01'
             'end_date': '2015-01-01', # 2017-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
@@ -26,7 +26,7 @@ def parameters(folder=''):
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(folder+r'/gis/20m')),
+            'gis_folder': str(pathlib.Path(folder+r'/gis/80m')),
             'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
@@ -36,23 +36,27 @@ def parameters(folder=''):
             'results_folder': str(pathlib.Path(folder+r'/results')),
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
-                    ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
-                    ['parameters_lai_decid_max', 'leaf area index of decidious trees [m2 m-2]'],
-                    ['parameters_lai_shrub', 'leaf area index of shrubs [m2 m-2]'],
-                    ['parameters_lai_grass', 'leaf area index of grass [m2 m-2]'],
+                    #['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
+                    ['parameters_LAI_conif', 'leaf area index of conifers [m2 m-2]'],
+                    ['parameters_LAI_decid', 'leaf area index of conifers [m2 m-2]'],
+                    #['parameters_lai_shrub', 'leaf area index of shrubs [m2 m-2]'],
+                    #['parameters_lai_grass', 'leaf area index of grass [m2 m-2]'],
                     ['parameters_canopy_height', 'canopy height [m]'],
                     ['parameters_canopy_fraction', 'canopy closure [-]'],
                     ['parameters_org_id', 'soil class index'],
                     ['parameters_root_id', 'soil class index'],
                     ['parameters_deep_id', 'soil class index'],
                     ['parameters_elevation', 'elevation from dem [m]'],
-                    ['parameters_lat', 'latitude [deg]'],
-                    ['parameters_lon', 'longitude [deg]'],
+                    #['parameters_lat', 'latitude [deg]'],
+                    #['parameters_lon', 'longitude [deg]'],
                     ['parameters_streams', 'streams'],
+                    ['parameters_stream_length', 'total stream length'],
+                    ['parameters_stream_distance', 'average distance to stream'],
+                    ['parameters_stream_width', 'average stream width'],
                     ['parameters_lakes', 'lakes'],
                     ['parameters_cmask', 'cmask'],
-                    ['parameters_twi', 'twi'],
-                    ['parameters_slope', 'slope'],
+                    #['parameters_twi', 'twi'],
+                    #['parameters_slope', 'slope'],
                     ['forcing_air_temperature', 'air temperature [degC]'],
                     ['forcing_relative_humidity', 'relative humidity [%]'],
                     ['forcing_precipitation', 'precipitation [mm d-1]'],
@@ -225,8 +229,11 @@ def parameters(folder=''):
             'deep_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)
             'elevation': 'processed_dem.asc', # uniform (float) OR path to grid in gispath (str) 
             'streams': 'channels.asc',
+            'stream_distance': 'channels_distance.asc', # average distance to stream
+            'stream_length': 'channels_length.asc', # total stream length
+            'stream_width': 'channels_width.asc', # average stream width
             'lakes': 'lake_mask.asc',
-            'deep_z': -5.0, #'soildepth.asc', #'soildepth.asc',
+            'deep_z': 'soildepth.asc',
             'deep_poros': 0.41,
             'deep_wr': 0.05,
             'deep_alpha': 0.024,
@@ -234,7 +241,7 @@ def parameters(folder=''):
             'deep_ksat': 1E-05,
             # initial states
             'ground_water_level': -4.0,  # groundwater depth [m]
-            'stream_depth': -1.0, #'stream_depth.asc', #  # initial stream water level relative to ground surface (currently not dynamic) [m]
+            'stream_depth': 'channels_depth.asc', #  # initial stream water level relative to ground surface (currently not dynamic) [m]
             'lake_depth': -1.0  # initial lake water level relative to ground surface (currently not dynamic) [m]
             }
 
@@ -560,7 +567,7 @@ def root_properties():
                  'root_beta': 3.1,                    
                  'root_n': 1.2,
                  'root_wr': 0.05,
-                 'root_ksat': 1e-4, 
+                 'root_ksat': 1e-4,
                  },        
             'Peat':
                 {

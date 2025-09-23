@@ -198,10 +198,34 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
             stream_depth, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_depth']))
             streams = stream_depth.copy()
             streams[~np.isfinite(streams)] = 0.0
-            stream_depth[~np.isfinite(stream_depth)] = 0.0
+            #stream_depth[~np.isfinite(stream_depth)] = 0.0
             gis['stream_depth'] = stream_depth
         else:
             stream_depth = pspd['stream_depth']
+
+    if 'stream_length' in spatial_pspd:
+        if spatial_pspd['stream_length'] == True:
+            stream_length, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_length']))
+            #stream_length[~np.isfinite(stream_length)] = 0.0
+            gis['stream_length'] = stream_length
+        else:
+            stream_length = pspd['stream_length']
+
+    if 'stream_distance' in spatial_pspd:
+        if spatial_pspd['stream_distance'] == True:
+            stream_distance, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_distance']))
+            #stream_distance[~np.isfinite(stream_distance)] = 0.0
+            gis['stream_distance'] = stream_distance
+        else:
+            stream_distance = pspd['stream_distance']
+
+    if 'stream_width' in spatial_pspd:
+        if spatial_pspd['stream_width'] == True:
+            stream_width, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_width']))
+            #stream_width[~np.isfinite(stream_width)] = 0.0
+            gis['stream_width'] = stream_width
+        else:
+            stream_width = pspd['stream_width']
 
     if not (('streams' in spatial_pspd and spatial_pspd['streams']) or 
         ('stream_depth' in spatial_pspd and spatial_pspd['stream_depth'])):
