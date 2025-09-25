@@ -118,8 +118,6 @@ rad_ds.npy
 /obs
 /olds
 /testcase_input
-/gis
-/forcing
 
 # sandbucket, sandbox
 sand*.py
