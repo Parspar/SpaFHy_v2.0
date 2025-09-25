@@ -81,6 +81,7 @@ def parameters(folder=''):
                     ['deep_water_storage', 'soil water storage (deeplayer) [m]'],
                     ['deep_ground_water_level', 'ground water level [m]'],
                     ['deep_lateral_netflow', 'subsurface lateral netflow [mm d-1]'],
+                    ['deep_netflow_to_lake', 'netflow to lake [mm d-1]'],
                     ['deep_netflow_to_ditch', 'netflow to stream [mm d-1]'],
                     ['deep_moisture_deep', 'volumetric water content of deepzone [m3 m-3]'],
                     ['deep_water_closure', 'soil water balance error [mm d-1]'],                   

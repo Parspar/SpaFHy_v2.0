@@ -259,7 +259,7 @@ class BucketGrid(object):
         self.Wliq_top = (self.MaxStoTop / self.D_top) * self.WatStoTop / (self.MaxStoTop + eps) 
         self.Sat_top = self.Wliq_top / self.poros_top
         self.Ree = self.relative_evaporation()
-        self.Wliq_top[self.D_top == 0] = np.NaN
+        self.Wliq_top[self.D_top == 0] = np.nan
         #self.Wair_top = self.poros_top - self.Wliq_top
         self.Wair_top = np.maximum(0.0, self.MaxStoTopInt - self.WatStoTop)
         self.Ree[self.D_top == 0] = eps # vie canopyn Efloor'in nollaan (mass-balance consistency)
