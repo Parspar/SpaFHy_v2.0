@@ -496,11 +496,13 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         #raise ValueError("Deep soil id in inputs not specified in parameters.py")
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+    data.update({'deep_z': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
     for key, value in deepp.items():
         c = value['deep_id']
         ix = np.where(data['deep_id'] == c)
         data['soiltype'][ix] = key
+        data['deep_z'][ix] = value['deep_z']
         # interpolation function between wsto and gwl
         value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
         # interpolation function between root_wsto and gwl
@@ -574,10 +576,12 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
     if spatial_data['deep_z'] == False:
+        data.update({'deep_z': np.full(np.shape(gisdata['deep_id']), np.nan)})
         for key, value in deepp.items():
             c = value['deep_id']
             ix = np.where(data['deep_id'] == c)
             data['soiltype'][ix] = key
+            data['deep_z'][ix] = value['deep_z']
             # interpolation function between wsto and gwl
             value.update(gwl_Wsto(value['deep_z'], value['pF'], -0.01, value['deep_ksat']))
             # interpolation function between root_wsto and gwl
@@ -650,8 +654,10 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         data['gwl_to_C'] = temp_to_C.reshape(gridshape.shape)
         data['gwl_to_Tr'] = temp_to_Tr.reshape(gridshape.shape)
         data['gwl_to_rootmoist'] = temp_to_rootmoist.reshape(gridshape.shape)
+        data['deep_z'] = deep_z_f.reshape(data['deep_z'].shape)
 
     data['lakes'] = np.where(data['lakes'] < -eps, pspd['lake_depth'], 0)
+
     data['dxy'] = gisdata['dxy']
 
     return data

@@ -263,7 +263,6 @@ def preprocess_parameters(pgen, catchment, folder=''):
     deepp = deep_properties()
     gisdata = {}
 
-
     gisdata.update(read_aux_gisdata(pgen['gis_folder'], spatial_aux))
 
     if pgen['spatial_soil']:
@@ -281,11 +280,20 @@ def preprocess_parameters(pgen, catchment, folder=''):
 
     if pgen['simtype'] == '2D':
         gisdata.update(read_ds_gisdata(pgen['gis_folder'], spatial_pspd))
-
+        
     if (pgen['spatial_cpy'] == False and
         pgen['spatial_soil'] == False and
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
+    
+    # removing the grid-cell coexistence of lakes and stream parameters
+    for key in gisdata:
+        if "stream" in key:  # matches streams, streams_depth, stream_network, etc.
+            mask = np.where(gisdata['lakes'] < 0, np.nan, 1)
+            gisdata[key] = np.where(np.isnan(mask), 0, gisdata[key])   
+        #elif 'id' in key:
+        #    mask = np.where(gisdata['lakes'] < 0, np.nan, 1)
+        #    gisdata[key] = np.where(np.isnan(mask), 0, gisdata[key])         
 
      # masking the gisdata according to pgen['mask']
     if pgen['mask'] is not None:
@@ -344,27 +352,6 @@ def preprocess_parameters(pgen, catchment, folder=''):
         gisdata['xllcorner'] = gisdata['xllcorner'] + xllcorner_id * gisdata['dxy']
         gisdata['yllcorner'] = gisdata['yllcorner'] + yllcorner_id * gisdata['dxy']
 
-    save_cmask = False
-    if save_cmask == True:
-        from iotools import write_AsciiGrid
-        ftemp = r'/Users/jpnousu/SpaFHy_RUNS/krycklan/gis/temp/cmask_temp.asc'
-        ftemp2 = r'/Users/jpnousu/SpaFHy_RUNS/krycklan/gis/temp/dem_temp.asc'
-        ncols = gisdata['cmask'].shape[1]
-        nrows = gisdata['cmask'].shape[0]
-        xllcorner = gisdata['xllcorner']
-        yllcorner = gisdata['yllcorner']
-        cellsize = gisdata['dxy']
-        info = [
-            f'ncols         {ncols}\n',
-            f'nrows         {nrows}\n',
-            f'xllcorner         {xllcorner}\n',
-            f'yllcorner         {yllcorner}\n',
-            f'cellsize         {cellsize}\n',
-            'NODATA_value         -9999\n'
-        ] 
-        #write_AsciiGrid(ftemp, gisdata['cmask'], info)
-        write_AsciiGrid(ftemp2, gisdata['elevation'], info)
-        sys.exit()
 
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 

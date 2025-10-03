@@ -97,6 +97,7 @@ class SoilGrid_2Dflow(object):
         self.H[self.lake_interior == 1] = -999
 
         # lower boundaries
+        #print('spara[deep_z]', spara['deep_z'])
         self.deep_z = spara['deep_z']*-1
         self.bedrock_h = self.ele + self.deep_z
         self.bedrock_h[self.lake_interior == 1] = np.nan
@@ -230,7 +231,7 @@ class SoilGrid_2Dflow(object):
         ele = np.ravel(self.ele)
 
         # ditch drainage [m] - outside iteration loop to avoid ditch switching on and off during iteration
-        Ksat = 1E-02 * 86400.
+        Ksat = 1E-04 * 86400.
         S_dd = np.where((ditch_h < -eps) & (ele + ditch_h < H), 
                         Ksat * ditch_l * ditch_w / ditch_d * (H - (ele + ditch_h)) * dt / self.dxy**2,
                         0.0)
@@ -517,8 +518,8 @@ class SoilGrid_2Dflow(object):
         elif self.z_from_gis == True:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
-                    if np.isfinite(self.cmask[i,j]): 
-                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.gwl[i,j])  
+                    if np.isfinite(self.cmask[i,j]):
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.gwl[i,j])
 
         # Head in four neighbouring cells
         self.HW[:,1:] = self.H[:,:-1]

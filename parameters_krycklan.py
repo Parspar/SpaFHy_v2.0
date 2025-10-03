@@ -11,7 +11,7 @@ def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
-            'start_date': '2013-01-01',  # '2011-01-01', for tests: '2020-01-01'
+            'start_date': '2012-01-01',  # '2011-01-01', for tests: '2020-01-01'
             'end_date': '2015-01-01', # 2017-12-31,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
             'spinup_end': '2014-01-01',  # '2014-12-31', for tests: '2020-09-01' results after this are saved in result file
@@ -26,7 +26,7 @@ def parameters(folder=''):
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
-            'gis_folder': str(pathlib.Path(folder+r'/gis/80m')),
+            'gis_folder': str(pathlib.Path(folder+r'/gis/20m')),
             'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
@@ -47,6 +47,7 @@ def parameters(folder=''):
                     ['parameters_root_id', 'soil class index'],
                     ['parameters_deep_id', 'soil class index'],
                     ['parameters_elevation', 'elevation from dem [m]'],
+                    ['parameters_deep_z', 'deep soil layer thickness [m]'],
                     #['parameters_lat', 'latitude [deg]'],
                     #['parameters_lon', 'longitude [deg]'],
                     ['parameters_streams', 'streams'],
