@@ -67,8 +67,7 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     Nsteps = len(forcing['date'])
     Nspin = (pd.to_datetime(pgen['spinup_end']) - pd.to_datetime(pgen['start_date'])).days + 1
 
-    # results dictionary to accumulate simulation results
-    # FOR ONE YEAR AT A TIME
+    # results dictionary to accumulate simulation results for one year at a time
     if create_ncf:
         save_interval = min(pgen['save_interval'], Nsteps - Nspin)
         results = _create_results(pgen, cmask, save_interval)
@@ -123,16 +122,6 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     interval = 0
     Nsaved = Nspin - 1
 
-    # flatten arrays
-    flatten = False
-    if flatten == True:
-        rows = pcpy['state']['LAI_conif'].shape[0]
-        cols = pcpy['state']['LAI_conif'].shape[1]
-        pcpy = flatten_2d_arrays(pcpy)
-        pbu = flatten_2d_arrays(pbu)
-        pds = flatten_2d_arrays(pds)
-        ptop = flatten_2d_arrays(ptop)
-
     # this here so that we save params
     dir_path = pgen['results_folder']
     # Loop through each dictionary and save it
@@ -153,11 +142,6 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
             top_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
         elif pgen['simtype'] == '1D':
             canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
-
-        # here reshape the results arrays if flattened
-        if flatten == True:
-            canopy_results = reshape_1d_to_2d(canopy_results, rows=rows, cols=cols)
-            bucket_results = reshape_1d_to_2d(bucket_results, rows=rows, cols=cols)
 
         if (k >= Nspin):  # save results after spinup done
             if pgen['simtype'] == '2D':
@@ -263,7 +247,6 @@ def preprocess_parameters(pgen, catchment, folder=''):
     deepp = deep_properties()
     gisdata = {}
 
-
     gisdata.update(read_aux_gisdata(pgen['gis_folder'], spatial_aux))
 
     if pgen['spatial_soil']:
@@ -343,28 +326,6 @@ def preprocess_parameters(pgen, catchment, folder=''):
         # updating the information
         gisdata['xllcorner'] = gisdata['xllcorner'] + xllcorner_id * gisdata['dxy']
         gisdata['yllcorner'] = gisdata['yllcorner'] + yllcorner_id * gisdata['dxy']
-
-    save_cmask = False
-    if save_cmask == True:
-        from iotools import write_AsciiGrid
-        ftemp = r'/Users/jpnousu/SpaFHy_RUNS/krycklan/gis/temp/cmask_temp.asc'
-        ftemp2 = r'/Users/jpnousu/SpaFHy_RUNS/krycklan/gis/temp/dem_temp.asc'
-        ncols = gisdata['cmask'].shape[1]
-        nrows = gisdata['cmask'].shape[0]
-        xllcorner = gisdata['xllcorner']
-        yllcorner = gisdata['yllcorner']
-        cellsize = gisdata['dxy']
-        info = [
-            f'ncols         {ncols}\n',
-            f'nrows         {nrows}\n',
-            f'xllcorner         {xllcorner}\n',
-            f'yllcorner         {yllcorner}\n',
-            f'cellsize         {cellsize}\n',
-            'NODATA_value         -9999\n'
-        ] 
-        #write_AsciiGrid(ftemp, gisdata['cmask'], info)
-        write_AsciiGrid(ftemp2, gisdata['elevation'], info)
-        sys.exit()
 
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
@@ -497,33 +458,6 @@ def _append_results(group, step_results, results, step=None):
             else:
                 results[key][step] = res
     return results
-
-
-def flatten_2d_arrays(d):
-    new_dict = {}
-    for key, value in d.items():
-        # If the value is a dictionary, recursively apply the function and add to the new dictionary
-        if isinstance(value, dict):
-            new_dict[key] = flatten_2d_arrays(value)
-        # If the value is a 2D array, flatten it and add to the new dictionary
-        elif isinstance(value, np.ndarray) and value.ndim == 2:
-            new_dict[key] = value.flatten()
-        # Otherwise, just add the value as it is
-        else:
-            new_dict[key] = value
-    return new_dict
-
-
-def reshape_1d_to_2d(results_dict, rows, cols):
-    reshaped_dict = {}
-    
-    for key, value in results_dict.items():
-        if isinstance(value, (list, np.ndarray)) and len(value) == rows * cols:
-            reshaped_dict[key] = np.array(value).reshape(rows, cols)
-        else:
-            reshaped_dict[key] = value  # Leave floats or other values unchanged
-    
-    return reshaped_dict
 
 def create_simulation_folder(pgen):
     # Get the results folder path
