@@ -720,7 +720,7 @@ def wind_profile(LAI, hc, Uo, z, zm=2.0, zg=0.2):
     # solve ustar and U(hc) from log-profile above canopy
     ustar = Uo * k / np.log((zm - d) / zom)  # m/s
 
-    U = np.ones(len(z))*np.NaN
+    U = np.ones(len(z))*np.nan
 
     # above canopy top wind profile is logarithmic
     U[z >= hc] = ustar / k * np.log((z[z >= hc] - d) / zom)

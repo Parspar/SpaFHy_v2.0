@@ -207,7 +207,7 @@ class SpaFHy():
         converts variable x back to original grid
         """
         if self.ix:
-            a = np.full(self.gridshape, np.NaN)
+            a = np.full(self.gridshape, np.nan)
             a[self.ix] = x
         else: # for non-flattened, return
             a = x

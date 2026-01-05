@@ -380,23 +380,23 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
         if ~np.isnan(value['org_id']):
             org_ids.append(value['org_id'])
     
-    if set(root_ids) >= set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist()):
-        # no problems
-        print('*** Defined root soil IDs:',set(root_ids), 'Used root soil IDs:',
-              set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    else:
-        print('*** Defined root soil IDs:', set(root_ids),  'Used root soil IDs:',
-              set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    #    raise ValueError("Root soil id in inputs not specified in parameters.py")
+    # --- Root soil IDs check ---
+    used_root_ids = set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist())
+    defined_root_ids = set(root_ids)
 
-    if set(org_ids) >= set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist()):
-        # no problems
-        print('*** Defined organic soil IDs:',set(org_ids), 'Used organic soil IDs:',
-              set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    else:
-        print('*** Defined organic soil IDs:', set(org_ids), 'Used organic soil IDs:',
-              set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    #    raise ValueError("Org soil id in inputs not specified in parameters.py")
+    if not defined_root_ids >= used_root_ids:
+        raise ValueError(
+            f"Root soil IDs missing in parameters. Defined: {defined_root_ids}, Used: {used_root_ids}"
+        )
+
+    # --- Organic soil IDs check ---
+    used_org_ids = set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist())
+    defined_org_ids = set(org_ids)
+
+    if not defined_org_ids >= used_org_ids:
+        raise ValueError(
+            f"Organic soil IDs missing in parameters. Defined: {defined_org_ids}, Used: {used_org_ids}"
+        )
 
     if spatial == True:
         for key, value in orgp.items():
@@ -462,14 +462,13 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     deep_ids = []
     for key, value in deepp.items():
         deep_ids.append(value['deep_id'])
-        
-    if set(deep_ids) >= set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()):
-        # no problems
-        print('*** Defined deep soil IDs:',set(deep_ids), 'Used soil IDs:',
-              set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-    else:
-        print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-        #raise ValueError("Deep soil id in inputs not specified in parameters.py")
+
+    used_ids = set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist())
+    defined_ids = set(deep_ids)
+    if not defined_ids >= used_ids:
+        raise ValueError(
+            f"Deep soil IDs missing. Defined: {defined_ids}, Used: {used_ids}"
+        )
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
@@ -538,14 +537,13 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     deep_ids = []
     for key, value in deepp.items():
         deep_ids.append(value['deep_id'])
-        
-    if set(deep_ids) >= set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()):
-        # no problems
-        print('*** Defined deep soil IDs:',set(deep_ids), 'Used soil IDs:',
-              set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-    else:
-        print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-        #raise ValueError("Deep soil id in inputs not specified in parameters.py")
+
+    used_ids = set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist())
+    defined_ids = set(deep_ids)
+    if not defined_ids >= used_ids:
+        raise ValueError(
+            f"Deep soil IDs missing. Defined: {defined_ids}, Used: {used_ids}"
+        )
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
@@ -838,7 +836,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
     # -H2O partial pressure (hPa)
 
     sourcefile = os.path.join(sourcefile)
-    print('*** Simulation forced with:', sourcefile)
+    #print('*** Simulation forced with:', sourcefile)
     ID = int(ID)
 
     # import forcing data
@@ -1188,8 +1186,8 @@ def read_AsciiGrid(fname, setnans=True):
     data = np.loadtxt(fname, skiprows=6)
 
     if setnans is True:
-        data[data == nodata] = np.NaN
-        nodata = np.NaN
+        data[data == nodata] = np.nan
+        nodata = np.nan
 
     data = np.array(data, ndmin=2)
 
@@ -1254,7 +1252,7 @@ def create_input_GIS(fpath, plotgrids=False):
     # specific leaf area (m2/kg) for converting leaf mass to leaf area
     SLA = {'pine': 6.8, 'spruce': 4.7, 'decid': 14.0}  # Härkönen et al. 2015 BER 20, 181-195
 
-    # mask, cmask == 1, np.NaN outside
+    # mask, cmask == 1, np.nan outside
     cmask, _, pos, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.asc'))
 
     # latitude, longitude arrays

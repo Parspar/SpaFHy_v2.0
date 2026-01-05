@@ -21,8 +21,9 @@ from multiprocessing import Pool, cpu_count
 eps = np.finfo(float).eps
 
 def worker(catch, catchment, create_ncf, create_spinup, output, folder):
-    print(f'*** Catchment no.: {catch} ***')
+    print(f'*** Starting simulation for catchment no.: {catch} ***')
     outputfile = driver(catchment, catch, create_ncf=create_ncf, create_spinup=create_spinup, output=output, folder=folder)
+    print(f'*** Finished simulation for catchment no.: {catch} ***')
     return outputfile
 
 def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
@@ -36,7 +37,7 @@ def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=Fal
         args = [(catch, catchment, create_ncf, create_spinup, output, folder) for catch in catchment_no]
         outputfile = pool.starmap(worker, args)
 
-    print('**** FINISHED ALL RUNS ****')
+    print('**** Finished all catchments ****')
 
     return outputfile
 
@@ -105,19 +106,13 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
                 description=pgen['description'],
                 gisinfo=gisinfo)
 
-    print('*** Running model ***')
-
-    if pgen['simtype'] == '2D':
-            print('*** 2D run')
-    elif pgen['simtype'] == 'TOP':
-            print('*** TOPMODEL run')
-    elif pgen['simtype'] == '1D':
-            print('*** 1D run')
+    sim_type = pgen['simtype']
+    print(f'*** Running {sim_type} model ***')
             
-    if pgen['org_drain'] == True:
-            print('*** Bucket organic layer drains according to Campbell 1985')
-    else:
-            print('*** Bucket organic layer as in Launiainen et al., 2019')
+    #if pgen['org_drain'] == True:
+    #        print('*** Bucket organic layer drains according to Campbell 1985')
+    #else:
+    #        print('*** Bucket organic layer as in Launiainen et al., 2019')
 
     interval = 0
     Nsaved = Nspin - 1
@@ -345,10 +340,10 @@ def preprocess_parameters(pgen, catchment, folder=''):
     gisinfo['dxy'] = gisdata['dxy']
 
     # overwrites the state variables with the last timestep of spinup file (if given)
-    try:
-        spinup = xr.open_dataset(pgen['spinup_file'])
-        cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
-        cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
+    #try:
+    #    spinup = xr.open_dataset(pgen['spinup_file'])
+    #    cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
+    #    cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
         #soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
         #soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
         #if pgen['simtype'] == '2D':
@@ -356,9 +351,35 @@ def preprocess_parameters(pgen, catchment, folder=''):
         #elif pgen['simtype'] == 'TOP':
         #    ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
 
-        print('*** State variables assigned from ', pgen['spinup_file'],  '***')
-    except:
-        print('*** State variables assigned from parameters.py ***')
+    #    print('*** State variables assigned from ', pgen['spinup_file'],  '***')
+    #except:
+    #    print('*** State variables assigned from parameters.py ***')
+
+    spinup_file = pgen.get('spinup_file', None)
+
+    if spinup_file and os.path.isfile(spinup_file):
+        try:
+            spinup = xr.open_dataset(spinup_file)
+            cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
+            cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
+            # Uncomment these if needed
+            # soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
+            # soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
+            # if pgen['simtype'] == '2D':
+            #     soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
+            # elif pgen['simtype'] == 'TOP':
+            #     ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
+
+            # print(f"*** State variables assigned from {spinup_file} ***")
+            pass  # <- keeps the block valid if the print is commented
+
+        except KeyError as e:
+            raise KeyError(f"Missing variable in spinup file {spinup_file}: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to load spinup file {spinup_file}: {e}")
+    else:
+        # print('*** State variables assigned from parameters.py ***')
+        pass  # <- keeps the else block valid
 
     return pgen, cpydata, budata, dsdata, gisdata['cmask'], ptop, gisinfo
 
@@ -433,7 +454,7 @@ def _create_results(pgen, cmask, Nsteps):
                 var_shape.append(i)
                 var_shape.append(j)
 
-        results[var_name] = np.full(var_shape, np.NAN)
+        results[var_name] = np.full(var_shape, np.nan)
 
     return results
 

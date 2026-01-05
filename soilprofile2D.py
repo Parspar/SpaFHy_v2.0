@@ -202,7 +202,7 @@ class SoilGrid_2Dflow(object):
         S = RR
         S[np.isnan(S)] = 0.0
 
-        state0 = self.Wsto_deep + S
+        state0 = self.Wsto_deep + S # [m]
 
         # Head in four neighbouring cells
         self.HW[:,1:] = self.H[:,:-1]
@@ -482,7 +482,7 @@ class SoilGrid_2Dflow(object):
 
         print('Timestep:', self.tmstep, ', iterations:', it, ', conv1:', conv1, ', H[max_index]:', Htmp[max_index]-self.ele[max_index])
         
-        # lateral flow is calculated in two parts: one depending on previous time step
+        # lateral flow [m d-1] is calculated in two parts: one depending on previous time step
         # and other on current time step (lateral flowsee 2/2). Their weighting depends
         # on self.implic
         # lateral flow 1/2 with old heads (and old transmissivities if updated inside the loop)
@@ -513,7 +513,7 @@ class SoilGrid_2Dflow(object):
         self.HN[1:,:] = self.H[:-1,:]
         self.HS[:-1,:] = self.H[1:,:]
 
-        # lateral flow 2/2 with new heads (and new transmissivities if updated inside the loop)
+        # lateral flow 2/2 [m d-1] with new heads (and new transmissivities if updated inside the loop)
         # use self.implic here
         lateral_flow += (self.implic*(self.TrW1*(self.H - self.HW)
                         + self.TrE1*(self.H - self.HE)
