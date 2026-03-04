@@ -322,6 +322,15 @@ def org_properties(): # from MNFI
             'org_ksat': 1E-03,
             'org_beta': 6.0
             },
+        'water':{
+            'org_id': 5,
+            'org_depth': 0.05,
+            'org_poros': 0.9,
+            'org_fc': 0.3,
+            'org_rw': 0.2,
+            'org_ksat': 1E-03,
+            'org_beta': 6.0
+            },
         }
     return orgp
 
@@ -376,6 +385,16 @@ def deep_properties(): # from GTK
                 },
         'non_forest':{
             'deep_id': 0.0,
+            'deep_z': [-5.0],
+            'pF': {  # vanGenuchten water retention parameters
+                    'ThetaS': [0.43], # Launiainen et al. 2019
+                    'ThetaR': [0.05], # Launiainen et al. 2019
+                    'alpha': [0.024], # Launiainen et al. 2019
+                    'n': [1.2]}, # # Launiainen et al. 2021
+            'deep_ksat': [1E-05],
+                },
+        'water':{
+            'deep_id': 5.0,
             'deep_z': [-5.0],
             'pF': {  # vanGenuchten water retention parameters
                     'ThetaS': [0.43], # Launiainen et al. 2019
