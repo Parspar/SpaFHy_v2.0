@@ -303,7 +303,7 @@ class SoilGrid_2Dflow(object):
         Htmp1 = self.H.copy()
 
         # convergence criteria
-        crit = 1e-3  # 1e-3 seems mass balance error remains resonable
+        crit = 1e-3  # seems mass balance error remains resonable
         maxiter = 100
         update_Tr_in_loop = True
 
@@ -366,7 +366,7 @@ class SoilGrid_2Dflow(object):
 
             # Knowns: Right hand side of the eq
             Htmp = np.ravel(Htmp)
-            hs = (np.ravel(S) * dt * self.dxy**2 + alfa * Htmp
+            hs = (np.ravel(S) * self.dxy**2 / dt + alfa * Htmp
                    - np.ravel(self.Wtso1_deep) * self.dxy**2 / dt + Wsto_deep * self.dxy**2 / dt
                   + (1.-self.implic) * (TrN0*HN) + (1.-self.implic) * (TrW0*HW)
                   - (1.-self.implic) * (TrN0 + TrW0 + TrE0 + TrS0) * H
@@ -504,8 +504,8 @@ class SoilGrid_2Dflow(object):
         elif self.z_from_gis == True:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
-                    if np.isfinite(self.cmask[i,j]): 
-                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.gwl[i,j])  
+                    if np.isfinite(self.cmask[i,j]):
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.gwl[i,j])
 
         # Head in four neighbouring cells
         self.HW[:,1:] = self.H[:,:-1]
@@ -552,7 +552,7 @@ class SoilGrid_2Dflow(object):
                         #self.deepmoist[i,j] = self.gwl_to_rootmoist[i,j](self.gwl[i,j])
 
         # The difference is the return flow to bucketgrid
-        qr = np.where(self.ditch_h > -eps, Wsto_before_qr - self.Wsto_deep, 0.)
+        qr = Wsto_before_qr - self.Wsto_deep
 
         # ditches are described as constant heads so the netflow to ditches can
         # be calculated from their mass balance
@@ -576,13 +576,13 @@ class SoilGrid_2Dflow(object):
 
         results = {
                 'ground_water_level': h_out,  # [m]
-                'lateral_netflow': -lateral_flow * 1e3,  # [mm d-1]
-                'netflow_to_ditch': netflow_to_ditch * 1e3,  # [mm d-1]
-                'water_closure': mbe * 1e3,  # [mm d-1]
+                'lateral_netflow': -lateral_flow * 1e3 / dt,  # [mm d-1]
+                'netflow_to_ditch': netflow_to_ditch * 1e3 / dt,  # [mm d-1]
+                'water_closure': mbe * 1e3 / dt,  # [mm d-1]
                 #'moisture_deep': deepmoist_out,  # [m3 m-3]
                 'water_storage': Wsto_deep_out * 1e3, # [mm]
                 'return_flow': qr * 1e3, # [mm],
-                'transmissivity': Tr,
+                'transmissivity': Tr,  # [m2 d-1]
                 }
         return results
 
