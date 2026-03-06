@@ -21,9 +21,8 @@ from multiprocessing import Pool, cpu_count
 eps = np.finfo(float).eps
 
 def worker(catch, catchment, create_ncf, create_spinup, output, folder):
-    print(f'*** Starting simulation for catchment no.: {catch} ***')
+    print(f'*** Catchment no.: {catch} ***')
     outputfile = driver(catchment, catch, create_ncf=create_ncf, create_spinup=create_spinup, output=output, folder=folder)
-    print(f'*** Finished simulation for catchment no.: {catch} ***')
     return outputfile
 
 def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=False, output=True, folder=''):
@@ -37,7 +36,7 @@ def parallel_driver(catchment, catchment_no, create_ncf=False, create_spinup=Fal
         args = [(catch, catchment, create_ncf, create_spinup, output, folder) for catch in catchment_no]
         outputfile = pool.starmap(worker, args)
 
-    print('**** Finished all catchments ****')
+    print('**** FINISHED ALL RUNS ****')
 
     return outputfile
 
@@ -68,7 +67,8 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     Nsteps = len(forcing['date'])
     Nspin = (pd.to_datetime(pgen['spinup_end']) - pd.to_datetime(pgen['start_date'])).days + 1
 
-    # results dictionary to accumulate simulation results for one year at a time
+    # results dictionary to accumulate simulation results
+    # FOR ONE YEAR AT A TIME
     if create_ncf:
         save_interval = min(pgen['save_interval'], Nsteps - Nspin)
         results = _create_results(pgen, cmask, save_interval)
@@ -106,16 +106,32 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
                 description=pgen['description'],
                 gisinfo=gisinfo)
 
-    sim_type = pgen['simtype']
-    print(f'*** Running {sim_type} model ***')
+    print('*** Running model ***')
+
+    if pgen['simtype'] == '2D':
+            print('*** 2D run')
+    elif pgen['simtype'] == 'TOP':
+            print('*** TOPMODEL run')
+    elif pgen['simtype'] == '1D':
+            print('*** 1D run')
             
-    #if pgen['org_drain'] == True:
-    #        print('*** Bucket organic layer drains according to Campbell 1985')
-    #else:
-    #        print('*** Bucket organic layer as in Launiainen et al., 2019')
+    if pgen['org_drain'] == True:
+            print('*** Bucket organic layer drains according to Campbell 1985')
+    else:
+            print('*** Bucket organic layer as in Launiainen et al., 2019')
 
     interval = 0
     Nsaved = Nspin - 1
+
+    # flatten arrays
+    flatten = False
+    if flatten == True:
+        rows = pcpy['state']['LAI_conif'].shape[0]
+        cols = pcpy['state']['LAI_conif'].shape[1]
+        pcpy = flatten_2d_arrays(pcpy)
+        pbu = flatten_2d_arrays(pbu)
+        pds = flatten_2d_arrays(pds)
+        ptop = flatten_2d_arrays(ptop)
 
     # this here so that we save params
     dir_path = pgen['results_folder']
@@ -137,6 +153,11 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
             top_results, canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
         elif pgen['simtype'] == '1D':
             canopy_results, bucket_results = spa.run_timestep(forcing.isel(date=k))
+
+        # here reshape the results arrays if flattened
+        if flatten == True:
+            canopy_results = reshape_1d_to_2d(canopy_results, rows=rows, cols=cols)
+            bucket_results = reshape_1d_to_2d(bucket_results, rows=rows, cols=cols)
 
         if (k >= Nspin):  # save results after spinup done
             if pgen['simtype'] == '2D':
@@ -259,11 +280,20 @@ def preprocess_parameters(pgen, catchment, folder=''):
 
     if pgen['simtype'] == '2D':
         gisdata.update(read_ds_gisdata(pgen['gis_folder'], spatial_pspd))
-
+        
     if (pgen['spatial_cpy'] == False and
         pgen['spatial_soil'] == False and
         pgen['spatial_forcing'] == False):
         gisdata = {'cmask': np.ones((1,1))}
+    
+    # removing the grid-cell coexistence of lakes and stream parameters
+    for key in gisdata:
+        if "stream" in key:  # matches streams, streams_depth, stream_network, etc.
+            mask = np.where(gisdata['lakes'] < 0, np.nan, 1)
+            gisdata[key] = np.where(np.isnan(mask), 0, gisdata[key])   
+        #elif 'id' in key:
+        #    mask = np.where(gisdata['lakes'] < 0, np.nan, 1)
+        #    gisdata[key] = np.where(np.isnan(mask), 0, gisdata[key])         
 
      # masking the gisdata according to pgen['mask']
     if pgen['mask'] is not None:
@@ -322,6 +352,7 @@ def preprocess_parameters(pgen, catchment, folder=''):
         gisdata['xllcorner'] = gisdata['xllcorner'] + xllcorner_id * gisdata['dxy']
         gisdata['yllcorner'] = gisdata['yllcorner'] + yllcorner_id * gisdata['dxy']
 
+
     budata = preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, pgen['spatial_soil'])
 
     cpydata = preprocess_cpydata(pcpy, spatial_pcpy, gisdata, pgen['spatial_cpy'])
@@ -339,11 +370,13 @@ def preprocess_parameters(pgen, catchment, folder=''):
     gisinfo['yllcorner'] = gisdata['yllcorner']
     gisinfo['dxy'] = gisdata['dxy']
 
+    budata['cmask'] = gisdata['cmask']
+
     # overwrites the state variables with the last timestep of spinup file (if given)
-    #try:
-    #    spinup = xr.open_dataset(pgen['spinup_file'])
-    #    cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
-    #    cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
+    try:
+        spinup = xr.open_dataset(pgen['spinup_file'])
+        cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
+        cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
         #soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
         #soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
         #if pgen['simtype'] == '2D':
@@ -351,35 +384,9 @@ def preprocess_parameters(pgen, catchment, folder=''):
         #elif pgen['simtype'] == 'TOP':
         #    ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
 
-    #    print('*** State variables assigned from ', pgen['spinup_file'],  '***')
-    #except:
-    #    print('*** State variables assigned from parameters.py ***')
-
-    spinup_file = pgen.get('spinup_file', None)
-
-    if spinup_file and os.path.isfile(spinup_file):
-        try:
-            spinup = xr.open_dataset(spinup_file)
-            cpydata['w'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
-            cpydata['swe'] = np.array(spinup['canopy_water_storage'][-1]) * 1e-3
-            # Uncomment these if needed
-            # soildata['top_storage'] = np.array(spinup['bucket_water_storage_top'][-1]) * 1e-3
-            # soildata['root_storage'] = np.array(spinup['bucket_water_storage_root'][-1]) * 1e-3
-            # if pgen['simtype'] == '2D':
-            #     soildata['ground_water_level'] = np.array(spinup['soil_ground_water_level'][-1])
-            # elif pgen['simtype'] == 'TOP':
-            #     ptop['so'] = np.array(spinup['top_saturation_deficit'][-1])
-
-            # print(f"*** State variables assigned from {spinup_file} ***")
-            pass  # <- keeps the block valid if the print is commented
-
-        except KeyError as e:
-            raise KeyError(f"Missing variable in spinup file {spinup_file}: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to load spinup file {spinup_file}: {e}")
-    else:
-        # print('*** State variables assigned from parameters.py ***')
-        pass  # <- keeps the else block valid
+        print('*** State variables assigned from ', pgen['spinup_file'],  '***')
+    except:
+        print('*** State variables assigned from parameters.py ***')
 
     return pgen, cpydata, budata, dsdata, gisdata['cmask'], ptop, gisinfo
 
@@ -479,6 +486,33 @@ def _append_results(group, step_results, results, step=None):
             else:
                 results[key][step] = res
     return results
+
+
+def flatten_2d_arrays(d):
+    new_dict = {}
+    for key, value in d.items():
+        # If the value is a dictionary, recursively apply the function and add to the new dictionary
+        if isinstance(value, dict):
+            new_dict[key] = flatten_2d_arrays(value)
+        # If the value is a 2D array, flatten it and add to the new dictionary
+        elif isinstance(value, np.ndarray) and value.ndim == 2:
+            new_dict[key] = value.flatten()
+        # Otherwise, just add the value as it is
+        else:
+            new_dict[key] = value
+    return new_dict
+
+
+def reshape_1d_to_2d(results_dict, rows, cols):
+    reshaped_dict = {}
+    
+    for key, value in results_dict.items():
+        if isinstance(value, (list, np.ndarray)) and len(value) == rows * cols:
+            reshaped_dict[key] = np.array(value).reshape(rows, cols)
+        else:
+            reshaped_dict[key] = value  # Leave floats or other values unchanged
+    
+    return reshaped_dict
 
 def create_simulation_folder(pgen):
     # Get the results folder path

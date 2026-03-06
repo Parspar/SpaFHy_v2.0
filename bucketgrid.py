@@ -278,7 +278,7 @@ class BucketGrid(object):
 
         s = (self.poros_root - self.wr_root) / ((x - self.wr_root) + eps)
         Psi = -1 / self.alpha_root*(s**(1.0 / m) - 1.0)**(1.0 / n)  # alpha defines the unit (kPa)
-        #Psi[Psi==np.nan] = 0.0
+        #Psi[Psi==np.NaN] = 0.0
         Psi = 1e-3*Psi # kPa to MPa
         #Psi[Psi<-3.0] = -3.0
         
