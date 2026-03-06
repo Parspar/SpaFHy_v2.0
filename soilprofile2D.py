@@ -714,38 +714,22 @@ def transmissivity(dz, Ksat, gwl):
        gwl (float): ground water level below surface, <0 [m]
 
     Returns:
-       Qz_drain (array): drainage from each soil layer [m3 m-3 s-1]
+       Tr (array): tranmissivity [m2 s-1]
     """
+    
+    # midpoint of cell, soil surface at 0
     z = dz / 2 - np.cumsum(dz)
-    Tr = 0.0
 
-    ib = sum(dz)
-    # depth of saturated layer above impermeable bottom
-    # Hdr = min(max(0, gwl + ib), ib)  # old
-    Hdr = max(0, gwl + ib)  # not restricted to soil profile -> transmissivity increases when gwl above ground surface level
+    # saturated layer thickness [m], between [0, dz]
+    dz_sat = np.minimum(np.maximum(gwl - (z - dz / 2), 0), dz)
+    # in top cell, allow transmissivity to increases when gwl above ground surface level
+    dz_sat[0] = np.maximum(gwl - (z[0] - dz[0] / 2), 0)  
+    
+    # transmissivity of layers  [m2 s-1]
+    Trans = Ksat * dz_sat
 
-    """ drainage from saturated layers above ditch base """
-    # layers above ditch bottom where drainage is possible
-    ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -ib))
-
-    if Hdr > 0:
-        # saturated layer thickness [m]
-        dz_sat = np.maximum(gwl - (z - dz / 2), 0)
-        # transmissivity of layers  [m2 s-1]
-        Trans = Ksat * dz_sat
-
-        """ drainage from saturated layers above ditch base """
-        # layers above ditch bottom where drainage is possible
-        ix = np.intersect1d(np.where((z - dz / 2)- gwl < 0), np.where(z + dz / 2 > -ib))
-
-        if ix.size > 0:
-            dz_sat[ix[-1]] = dz_sat[ix[-1]] + (z[ix][-1] - dz[ix][-1] / 2 + ib)
-            Trans[ix[-1]] = Ksat[ix[-1]] * dz_sat[ix[-1]]
-            Tr = sum(Trans[ix])
-        
-    if Tr < 1e-16:
-        #Tr[Tr < 1e-16] = 1e-4
-        Tr = 1e-4 / 86400
+    # sum over layers
+    Tr = np.maximum(sum(Trans), 1e-4 / 86400)
 
     return Tr
 
@@ -948,40 +932,13 @@ def transmissivity_vectorized(dz, Ksat, gwl):
     # Compute midpoints of layers
     z = dz / 2 - np.cumsum(dz, axis=1)  # Shape: (n_cells, n_layers)
 
-    # Total soil thickness (impermeable boundary depth)
-    ib = np.sum(dz, axis=1, keepdims=True)  # Shape: (n_cells, 1)
-
-    # Saturated layer thickness
-    Hdr = np.maximum(0, gwl + ib)  # Shape: (n_cells, 1)
-
-    # Mask for contributing layers
-    mask = ((z - dz / 2) - gwl < 0) & ((z + dz / 2) > -ib)  # Shape: (n_cells, n_layers)
-
-    # Compute saturated thickness for each layer
-    dz_sat = np.maximum(gwl - (z - dz / 2), 0)  # Shape: (n_cells, n_layers)
+    # Compute saturated thickness for each layer, between [0, dz]
+    dz_sat = np.minimum(np.maximum(gwl - (z - dz / 2), 0), dz)  # Shape: (n_cells, n_layers)
+    # In top cell allow transmissivity to increases when gwl above ground surface level
+    dz_sat[:, 0] = np.maximum(gwl - (z[:, 0] - dz[:, 0] / 2), 0) 
 
     # Compute transmissivity of each layer
     Trans = Ksat * dz_sat  # Shape: (n_cells, n_layers)
-
-    # Find last contributing layer index
-    last_layer_ix = np.argmax(mask[:, ::-1], axis=1)  # Indices in reversed order
-    last_layer_ix = mask.shape[1] - 1 - last_layer_ix  # Convert to correct index
-
-    # Adjust last layer's saturated thickness
-    valid_cells = np.any(mask, axis=1)  # True where any layer contributes
-
-    row_idx = np.where(valid_cells)[0]  # Get valid cell indices
-    last_layer_idx = last_layer_ix[row_idx]  # Get last contributing layer indices
-
-    dz_sat[row_idx, last_layer_idx] += z[row_idx, last_layer_idx] - dz[row_idx, last_layer_idx] / 2 + ib[row_idx, 0]
-
-    # Recalculate transmissivity for last layer
-    Trans[row_idx, last_layer_idx] = Ksat[row_idx, last_layer_idx] * dz_sat[row_idx, last_layer_idx]
-
-    # Sum transmissivity across layers
-    Tr = np.where(valid_cells, np.sum(Trans * mask, axis=1), 1e-4 / 86400)  # Shape: (n_cells,)
-
-    return Tr
 
 
 def wrc(pF, theta=None, psi=None, draw_pF=False):
