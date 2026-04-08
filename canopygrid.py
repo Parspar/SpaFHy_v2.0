@@ -1,23 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 24 11:01:50 2017
+Gridded canopy and snow hydrology model for SpaFHy.
 
-@author: slauniai
+Computes water interception, evapotranspiration, and snowpack dynamics
+at daily or sub-daily timesteps for gridded (2D array) applications.
 
-******************************************************************************
-CanopyGrid:
+Main components:
+  - Phenology: seasonal LAI dynamics for deciduous species and grasses,
+    driven by degree-day accumulation and daylength.
+  - Canopy water interception and evaporation from canopy storage.
+  - Snowpack: accumulation, melt, freezing, and liquid water retention.
+  - Dry-canopy evapotranspiration: transpiration via Penman-Monteith with
+    upscaled stomatal conductance, and forest floor evaporation.
+  - Aerodynamic resistances: logarithmic above-canopy and exponential
+    within-canopy wind profiles.
 
-Gridded canopy and snow hydrology model for SpaFHy -integration
-Based on simple schemes for computing water flows and storages within vegetation
-canopy and snowpack at daily or sub-daily timesteps.
+References:
+    Launiainen et al. (2019). Hydrol. Earth Syst. Sci., 23, 3457-3480.
+    Nousu et al. (2024). Hydrol. Earth Syst. Sci., 28, 4643-4666.
+    Launiainen et al. (2016). Global Change Biol., doi:10.1111/gcb.13226.
+    Leuning et al. (2008). Water Resour. Res., 44, W10419.
+    Peltoniemi et al. (2015). Boreal Env. Res., 20, 1-20.
+    Hedstrom & Pomeroy (1998). Hydrol. Process., 12, 1611-1625.
 
-(C) Samuli Launiainen, 2016-
-
-******************************************************************************
-
-Modified by khaahti, jpnousu
-
+@authors: slauniainen, khaahti, jpnousu
 """
+
 import numpy as np
 import configparser
 from netCDF4 import Dataset
@@ -26,15 +34,32 @@ eps = np.finfo(float).eps
 class CanopyGrid():
     def __init__(self, cpara, state, dist_rad_file=None):
         """
-        initializes CanopyGrid -object
+        Initializes CanopyGrid object.
 
         Args:
-            cpara - parameter dict:
-            state - dict of initial state
-            outputs - True saves output grids to list at each timestep
+            cpara (dict): Canopy parameter dictionary. Expected top-level keys:
+                'loc'      - dict with 'lat' [deg] and 'lon' [deg]
+                'physpara' - dict of physiological parameters (amax, g1_conif,
+                            g1_decid, g1_grass, g1_shrub, kp, q50, rw, rwmin, gsoil)
+                'phenopara'- dict of phenology parameters (LAI_decid_min, ddo, ddur,
+                            sdl, sdur, tau, xo, smax, fmin)
+                'interc'   - dict with 'wmax' [mm LAI-1] and 'wmaxsnow' [mm LAI-1]
+                'snow'     - dict with 'kmelt' [mm s-1 degC-1], 'kfreeze', 'r' [-]
+                'flow'     - dict with 'zmeas' [m], 'zground' [m], 'zo_ground' [m]
 
-        Returns:
-            self - object
+            state (dict): Initial state arrays (all 2D grids). Expected keys:
+                'LAI_conif'      [m2 m-2]  conifer leaf area index
+                'LAI_decid'      [m2 m-2]  deciduous leaf area index (maximum)
+                'LAI_grass'      [m2 m-2]  grass leaf area index (maximum)
+                'LAI_shrub'      [m2 m-2]  shrub leaf area index
+                'canopy_height'  [m]       mean canopy height
+                'canopy_fraction'[-]       canopy cover fraction
+                'w'              [mm]      initial canopy water storage
+                'swe'            [mm]      initial snow water equivalent
+
+            dist_rad_file (str, optional): Path to NetCDF file containing 
+                spatially distributed radiation coefficients ('c_rad'). 
+                If None, spatially uniform radiation is used.
 
         NOTE:
             Currently the initialization assumes simulation start 1st Jan,
@@ -53,7 +78,6 @@ class CanopyGrid():
 
         # phenology
         self.phenopara = cpara['phenopara']
-        #spec_para = cpara['spec_para']
 
         # canopy parameters and state
         self.hc = state['canopy_height'] + eps
@@ -88,7 +112,7 @@ class CanopyGrid():
 
         # --- for computing aerodynamic resistances
         self.zmeas = cpara['flow']['zmeas']
-        self.zground =cpara['flow']['zground'] # reference height above ground [m]
+        self.zground = cpara['flow']['zground'] # reference height above ground [m]
         self.zo_ground = cpara['flow']['zo_ground'] # ground roughness length [m]
         self.gsoil = self.physpara['gsoil']
 
@@ -102,7 +126,6 @@ class CanopyGrid():
         # NOTE: this assumes simulations start 1st Jan each year !!!
         self.DDsum = self.W * 0.0
         self.X = self.W * 0.0
-        #self._relative_lai = self.phenopara['lai_decid_min']
         self._growth_stage = self.W * 0.0
         self._senesc_stage = self.W *0.0
 
@@ -116,35 +139,48 @@ class CanopyGrid():
     def run_timestep(self, doy, dt, Ta, Prec, Rg, Par, VPD, U=2.0, CO2=380.0, Rew=1.0, beta=1.0, P=101300.0):
         """
         Runs CanopyGrid instance for one timestep
-        IN:
-            doy - day of year
-            dt - timestep [s]
-            Ta - air temperature  [degC], scalar or (n x m) -matrix
-            prec - precipitatation rate [mm/s]
-            Rg - global radiation [Wm-2], scalar or matrix
-            Par - photos. act. radiation [Wm-2], scalar or matrix
-            VPD - vapor pressure deficit [kPa], scalar or matrix
-            U - mean wind speed at ref. height above canopy top [ms-1], scalar or matrix
-            CO2 - atm. CO2 mixing ratio [ppm]
-            Rew - relative extractable water [-], scalar or matrix
-            beta - term for soil evaporation resistance (Wliq/FC) [-]
-            P - pressure [Pa], scalar or matrix
-        OUT:
-            updated CanopyGrid instance state variables
-            flux grids PotInf, Trfall, Interc, Evap, ET, MBE [mm]
+        Args:
+            doy  (int):              day of year [1-366]
+            dt   (float):            timestep duration [s]
+            Ta   (array or float):   air temperature [degC]
+            Prec (array or float):   precipitation amount [mm per timestep]
+            Rg   (array or float):   global radiation [W m-2]
+            Par  (array or float):   photosynthetically active radiation [W m-2]
+            VPD  (array or float):   vapor pressure deficit [kPa]
+            U    (array or float):   wind speed at reference height above canopy [m s-1]
+            CO2  (float):            atmospheric CO2 mixing ratio [ppm]
+            Rew  (array or float):   relative extractable water in root zone [-]
+            beta (array or float):   relative soil conductance for floor evaporation [-]
+            P    (float):            ambient air pressure [Pa]
+
+        Returns:
+            dict with keys:
+                'potential_infiltration'  [mm]: water reaching the soil surface
+                'interception'            [mm]: water intercepted by canopy
+                'evaporation'             [mm]: evaporation/sublimation from canopy storage
+                'forestfloor_evaporation' [mm]: evaporation from forest floor
+                'transpiration'           [mm]: canopy transpiration
+                'throughfall'             [mm]: precipitation reaching field layer or snowpack
+                'snow_water_equivalent'   [mm]: total SWE (ice + liquid)
+                'water_closure'           [mm]: mass balance error (should be ~0)
+                'phenostate'              [-]:  phenology modifier (0=dormant, 1=full leaf)
+                'leaf_area_index'     [m2 m-2]: total one-sided LAI
+                'stomatal_conductance'  [m s-1]: upscaled canopy conductance
+                'degree_day_sum'        [degC]: cumulative degree-days since 1 Jan
+                'water_storage'           [mm]: canopy water storage
+                'snowfall'                [mm]: snowfall amount this timestep
+                'rainfall'                [mm]: rainfall amount this timestep
         """
+
+        flux_to_mm_d = 86400.0 / dt
+
         if self.distributed_radiation == True:
             Rg = update_distributed_radiation(rad_coeff=self.rad_coeff, doy=doy, Rg=Rg)
         # Rn = 0.7 * Rg #net radiation
         Rn = np.maximum(2.57 * self.LAI / (2.57 * self.LAI + 0.57) - 0.2,
                             0.55) * Rg  # Launiainen et al. 2016 GCB, fit to Fig 2a
-
-        # vpd limit
-        #if VPD < 0.1:
-        #    VPD = 0.1
         
         """ --- update phenology: self.ddsum & self.X ---"""
-        #self.update_daily(Ta, doy)
         self._degreeDays(Ta, doy)
         fPheno = self._photoacclim(Ta)
 
@@ -166,71 +202,38 @@ class CanopyGrid():
         #ET = Transpi + Efloor
         
         results = {
-                'potential_infiltration': PotInf,  # [mm d-1]
-                'interception': Interc,  # [mm d-1]
-                'evaporation': Evap,  # [mm d-1]
-                'forestfloor_evaporation': Efloor,  # [mm d-1]
-                'transpiration': Transpi,  # [mm d-1]
-                'throughfall': Trfall,  #[mm d-1]
-                'snow_water_equivalent': self.SWE,  # [mm]
-                'water_closure': MBE,  # [mm d-1]
-                'phenostate': fPheno,  # [-]
-                'leaf_area_index': self.LAI,  # [m2 m-2]
-                'stomatal_conductance': Gc,  # [m s-1]
-                'degree_day_sum': self.DDsum,  # [degC]
-                'fLAI': self.LAI,
-                'water_storage': self.W,
-                'snowfall': Sfall, # [mm d-1]
-                'rainfall': Rfall  # [mm d-1]
-                }
+            # fluxes: scaled to mm d-1 regardless of timestep
+            'potential_infiltration':  PotInf  * flux_to_mm_d,  # [mm d-1]
+            'interception':            Interc  * flux_to_mm_d,  # [mm d-1]
+            'evaporation':             Evap    * flux_to_mm_d,  # [mm d-1]
+            'forestfloor_evaporation': Efloor  * flux_to_mm_d,  # [mm d-1]
+            'transpiration':           Transpi * flux_to_mm_d,  # [mm d-1]
+            'throughfall':             Trfall  * flux_to_mm_d,  # [mm d-1]
+            'water_closure':           MBE     * flux_to_mm_d,  # [mm d-1]
+            'snowfall':                Sfall   * flux_to_mm_d,  # [mm d-1]
+            'rainfall':                Rfall   * flux_to_mm_d,  # [mm d-1]
+
+            # states: instantaneous values, not scaled by dt
+            'snow_water_equivalent': self.SWE,   # [mm]
+            'water_storage':         self.W,     # [mm]
+            'leaf_area_index':       self.LAI,   # [m2 m-2]
+            'stomatal_conductance':  Gc,         # [m s-1]
+            'phenostate':            fPheno,     # [-]
+            'degree_day_sum':        self.DDsum, # [degC]
+        }
 
         return results
-    '''
-    def update_daily(self, T, doy):
-        """
-        updates temperature sum, leaf-area development, phenology and
-        computes effective parameters for grid-cell
-        Args:
-            T - daily mean temperature (degC)
-            doy - day of year
-        Returns:
-            None
-        """
-
-        self._degreeDays(T, doy)
-        self._photoacclim(T)
-
-        # deciduous relative leaf-area index
-        self._lai_dynamics(doy)
-
-        # canopy effective photosynthesis-stomatal conductance parameters:
-        LAI = 0.0
-        Amax = 0.0
-        q50 = 0.0
-        g1 = 0.0
-        for pt in self.ptypes.keys():
-            if self.ptypes[pt]['lai_cycle']:
-                pt_lai = self.ptypes[pt]['LAImax'] * self._relative_lai
-            else:
-                pt_lai = self.ptypes[pt]['LAImax']
-            LAI += pt_lai
-            Amax += pt_lai * self.ptypes[pt]['amax']
-            q50 += pt_lai * self.ptypes[pt]['q50']
-            g1 += pt_lai * self.ptypes[pt]['g1']
-
-        self.LAI = LAI + eps
-
-        #print(doy, LAI, Amax / self.LAI, g1 / self.LAI)
-
-        self.physpara.update({'Amax': Amax / self.LAI, 'q50': q50 / self.LAI, 'g1': g1 / self.LAI})
-        '''
+    
 
     def _degreeDays(self, T, doy):
         """
-        Calculates and updates degree-day sum from the current mean Tair.
-        INPUT:
-            T - daily mean temperature (degC)
-            doy - day of year 1...366 (integer)
+        Updates the cumulative degree-day sum (DDsum) for the current timestep.
+        Accumulation starts above a threshold temperature of 5 degC.
+        DDsum is reset to zero at the start of each new year (doy == 1).
+
+        Args:
+            T   (array or float): daily mean air temperature [degC]
+            doy (int):            day of year [1-366]
         """
         To = 5.0  # threshold temperature
         self.DDsum = self.DDsum + np.maximum(0.0, T - To)
@@ -240,10 +243,19 @@ class CanopyGrid():
 
     def _photoacclim(self, T):
         """
-        computes new stage of temperature acclimation and phenology modifier.
-        Peltoniemi et al. 2015 Bor.Env.Res.
-        IN: object, T = daily mean air temperature
-        OUT: fPheno - phenology modifier [0...1], updates object state
+        Updates the temperature acclimation state and computes the phenology
+        modifier for stomatal conductance. Follows Peltoniemi et al. (2015)
+        Boreal Env. Res., 20, 1-20.
+
+        The acclimation state X tracks a lagged temperature signal. The
+        acclimation signal S is the excess of X above a threshold (xo).
+        fPheno scales from fmin (winter minimum) to 1 (full acclimation).
+
+        Args:
+            T (array or float): daily mean air temperature [degC]
+
+        Returns:
+            fPheno (array): phenology modifier [-], range [fmin, 1.0]
         """
 
         self.X = self.X + 1.0 / self.phenopara['tau'] * (T - self.X)  # degC
@@ -257,12 +269,10 @@ class CanopyGrid():
         Seasonal cycle of deciduous leaf area
 
         Args:
-            self - object
-            doy - day of year
+            doy (int): day of year [1-366]
 
         Returns:
-            none, updates state variables self.LAIdecid, self._growth_stage,
-            self._senec_stage
+            f (array): fractional LAI multiplier [-], ranging from lai_min to 1.0
         """
 
         lai_min = self.phenopara['LAI_decid_min']
@@ -295,40 +305,32 @@ class CanopyGrid():
 
     def dry_canopy_et(self, D, Qp, AE, Ta, Ra=25.0, Ras=250.0, CO2=380.0, Rew=1.0, beta=1.0, fPheno=1.0):
         """
-        Computes ET from 2-layer canopy in absense of intercepted precipitiation,
-        i.e. in dry-canopy conditions
-        IN:
-           self - object
-           D - vpd in kPa
-           Qp - PAR in Wm-2
-           AE - available energy in Wm-2
-           Ta - air temperature degC
-           Ra - aerodynamic resistance (s/m)
-           Ras - soil aerodynamic resistance (s/m)
-           CO2 - atm. CO2 mixing ratio (ppm)
-           Rew - relative extractable water [-]
-           beta - relative soil conductance for evaporation [-]
-           fPheno - phenology modifier [-]
-        Args:
-           Tr - transpiration rate (mm s-1)
-           Efloor - forest floor evaporation rate (mm s-1)
-           Gc - canopy conductance (integrated stomatal conductance)  (m s-1)
-        SOURCES:
-        Launiainen et al. (2016). Do the energy fluxes and surface conductance
-        of boreal coniferous forests in Europe scale with leaf area?
-        Global Change Biol.
-        Modified from: Leuning et al. 2008. A Simple surface conductance model
-        to estimate regional evaporation using MODIS leaf area index and the
-        Penman-Montheith equation. Water. Resources. Res., 44, W10419
-        Original idea Kelliher et al. (1995). Maximum conductances for
-        evaporation from global vegetation types. Agric. For. Met 85, 135-147
+        Computes transpiration and forest floor evaporation under dry-canopy
+        conditions using a two-layer Penman-Monteith approach.
 
-        Samuli Launiainen, Luke
-        Last edit: 13.6.2018: TESTING UPSCALING
+        Canopy conductance (Gc) is upscaled from leaf-level stomatal conductance
+        using LAI, light attenuation, soil moisture, CO2, and phenology responses.
+
+        Args:
+            D      (array): vapor pressure deficit [kPa]
+            Qp     (array): photosynthetically active radiation [W m-2]
+            AE     (array): available energy / net radiation [W m-2]
+            Ta     (array): air temperature [degC]
+            Ra     (float or array): canopy aerodynamic resistance [s m-1]
+            Ras    (float or array): soil aerodynamic resistance [s m-1]
+            CO2    (float): atmospheric CO2 concentration [ppm]
+            Rew    (array): relative extractable water [-]
+            beta   (array): relative soil conductance for floor evaporation [-]
+            fPheno (array): phenology modifier [-]
+
+        Returns:
+            Tr     (array): transpiration rate [mm s-1]
+            Efloor (array): forest floor evaporation rate [mm s-1]
+            Gc     (array): canopy conductance [m s-1]
         """
 
         # ---Amax and g1 as LAI -weighted average of conifers, decid, shrub and grass.
-
+        # NOTE: currently all plant types share the same amax value.
         rhoa = 101300.0 / (8.31 * (Ta + 273.15)) # mol m-3
         Amax = 1./self.LAI * (self._LAIconif * self.physpara['amax']
                 + self._LAIdecid *self.physpara['amax']
@@ -358,7 +360,6 @@ class CanopyGrid():
 
         # soil moisture response: Lagergren & Lindroth, xxxx"""
         fRew = np.minimum(1.0, np.maximum(Rew / rw, rwmin))
-        #fRew = Rew
 
         # CO2 -response of canopy conductance, derived from APES-simulations
         # (Launiainen et al. 2016, Global Change Biology). relative to 380 ppm
@@ -389,22 +390,36 @@ class CanopyGrid():
 
     def canopy_water_snow(self, dt, T, Prec, AE, D, Ra=25.0, U=2.0):
         """
-        Calculates canopy water interception and SWE during timestep dt
+        Computes canopy water interception, evaporation/sublimation, and
+        snowpack dynamics for one timestep.
+
+        Precipitation phase is partitioned into rain and snow by temperature.
+        Canopy interception follows the asymptotic approach of Hedstrom &
+        Pomeroy (1998). Snowpack tracks separate ice (SWEi) and liquid (SWEl)
+        fractions; melt and freeze follow degree-day formulations. Potential
+        infiltration is liquid water in excess of the snowpack retention capacity.
+
         Args:
-            self - object
-            dt - timestep [s]
-            T - air temperature (degC)
-            Prec - precipitation rate during (mm d-1)
-            AE - available energy (~net radiation) (Wm-2)
-            D - vapor pressure deficit (kPa)
-            Ra - canopy aerodynamic resistance (s m-1)
+            dt   (float):          timestep duration [s]
+            T    (array or float): air temperature [degC]
+            Prec (array or float): precipitation amount [mm per timestep]
+            AE   (array or float): available energy / net radiation [W m-2]
+            D    (array or float): vapor pressure deficit [kPa]
+            Ra   (array or float): canopy aerodynamic resistance [s m-1]
+            U    (array or float): wind speed at canopy height [m s-1],
+                                used for snow sublimation resistance
+
         Returns:
-            self - updated state W, Wf, SWE, SWEi, SWEl
-            Infil - potential infiltration to soil profile (mm)
-            Evap - evaporation / sublimation from canopy store (mm)
-            MBE - mass balance error (mm)
-        Samuli Launiainen & Ari Laurén 2014 - 2017
-        Last edit 12 / 2017
+            PotInf (array): potential infiltration to soil [mm]
+            Trfall (array): throughfall to field layer or snowpack [mm]
+            Evap   (array): evaporation/sublimation from canopy storage [mm]
+            Interc (array): canopy interception [mm]
+            MBE    (array): mass balance error of canopy + snowpack [mm]
+            erate  (array): potential evaporation/sublimation rate from canopy [mm]
+            Unload (array): snow unloaded from canopy due to warming [mm]
+            fS     (array): snowfall fraction of precipitation [-]
+            Sfall  (array): snowfall amount [mm]
+            Rfall  (array): rainfall amount [mm]
         """
 
         # quality of precipitation
@@ -442,8 +457,8 @@ class CanopyGrid():
         # Best et al. 2011 Geosci. Mod. Dev.
         # ri = (2/3*rhoi*r**2/Dw) / (Ce*Sh*W) == 7.68 / (Ce*Sh*W
 
-        Ce = 0.01*((self.W + eps) / Wmaxsnow)**(-0.4)  # exposure coeff (-)
-        Sh = (1.79 + 3.0*U**0.5)  # Sherwood numbner (-)
+        Ce = 0.01*((self.W + eps) / Wmaxsnow)**(-0.4)  # exposure coeff [-]
+        Sh = (1.79 + 3.0*U**0.5)  # Sherwood number [-]
 
         gi = np.where(T <= Tmin, Sh*self.W*Ce / 7.68 + eps, 1e6) # m s-1
         Lambda = np.where(T <= Tmin, Ls, Lv)
@@ -516,66 +531,20 @@ class CanopyGrid():
 """ *********** utility functions ******** """
 
 # @staticmethod
-def degreeDays(dd0, T, Tbase, doy):
-    """
-    Calculates degree-day sum from the current mean Tair.
-    INPUT:
-        dd0 - previous degree-day sum (degC)
-        T - daily mean temperature (degC)
-        Tbase - base temperature at which accumulation starts (degC)
-        doy - day of year 1...366 (integer)
-    OUTPUT:
-        x - degree-day sum (degC)
-   """
-    if doy == 1:  # reset in the beginning of the year
-        dd0 = 0.
-    return dd0 + max(0, T - Tbase)
-
-
-# @staticmethod
-def eq_evap(AE, T, P=101300.0, units='W'):
-    """
-    Calculates the equilibrium evaporation according to McNaughton & Spriggs,\
-    1986.
-    INPUT:
-        AE - Available energy (Wm-2)
-        T - air temperature (degC)
-        P - pressure (Pa)
-        units - W (Wm-2), mm (mms-1=kg m-2 s-1), mol (mol m-2 s-1)
-    OUTPUT:
-        equilibrium evaporation rate (Wm-2)
-    """
-    Mw = 18e-3  # kg mol-1
-    # latent heat of vaporization of water [J/kg]
-    L = 1e3 * (2500.8 - 2.36 * T + 1.6e-3 * T ** 2 - 6e-5 * T ** 3)
-    # latent heat of sublimation [J/kg]
-    if T < 0:
-        L = 1e3 * (2834.1 - 0.29 * T - 0.004 * T ** 2)
-
-    _, s, g = e_sat(T, P)
-
-    x = np.divide((AE * s), (s + g))  # Wm-2 = Js-1m-2
-    if units == 'mm':
-        x = x / L  # kg m-2 s-1 = mm s-1
-    elif units == 'mol':
-        x = x / L / Mw  # mol m-2 s-1
-    x = np.maximum(x, 0.0)
-    return x
-
-
-# @staticmethod
 def e_sat(T, P=101300, Lambda=2450e3):
     """
-    Computes saturation vapor pressure (Pa), slope of vapor pressure curve
-    [Pa K-1]  and psychrometric constant [Pa K-1]
-    IN:
-        T - air temperature (degC)
-        P - ambient pressure (Pa)
-        Lambda - lat heat of vapor [J/kg]
-    OUT:
-        esa - saturation vapor pressure in Pa
-        s - slope of saturation vapor pressure curve (Pa K-1)
-        g - psychrometric constant (Pa K-1)
+    Computes saturation vapor pressure, slope of the saturation vapor
+    pressure curve, and the psychrometric constant.
+
+    Args:
+        T      (array or float): air temperature [degC]
+        P      (float):          ambient pressure [Pa]
+        Lambda (float):          latent heat of vaporization [J kg-1]
+
+    Returns:
+        esa (array or float): saturation vapor pressure [Pa]
+        s   (array or float): slope of saturation vapor pressure curve [Pa K-1]
+        g   (array or float): psychrometric constant [Pa K-1]
     """
     cp = 1004.67  # J/kg/K
 
@@ -590,16 +559,19 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
     """
     Computes latent heat flux LE (Wm-2) i.e evapotranspiration rate ET (mm/s)
     from Penman-Monteith equation
-    INPUT:
-       AE - available energy [Wm-2]
-       VPD - vapor pressure deficit [Pa]
-       T - ambient air temperature [degC]
-       Gs - surface conductance [ms-1]
-       Ga - aerodynamic conductance [ms-1]
-       P - ambient pressure [Pa]
-       units - W (Wm-2), mm (mms-1=kg m-2 s-1), mol (mol m-2 s-1)
-    OUTPUT:
-       x - evaporation rate in 'units'
+    Args:
+        AE    (array or float): available energy [W m-2]
+        D     (array or float): vapor pressure deficit [Pa]
+        T     (array or float): air temperature [degC]
+        Gs    (array or float): surface (canopy or soil) conductance [m s-1]
+        Ga    (array or float): aerodynamic conductance [m s-1]
+        P     (float):          ambient pressure [Pa]
+        units (str):            output unit: 'W' (W m-2), 'mm' (mm s-1),
+                                or 'mol' (mol m-2 s-1)
+
+    Returns:
+        x (array or float): evapotranspiration rate in requested units,
+                            clipped to >= 0
     """
     # --- constants
     cp = 1004.67  # J kg-1 K-1
@@ -618,49 +590,32 @@ def penman_monteith(AE, D, T, Gs, Ga, P=101300.0, units='W'):
     x = np.maximum(x, 0.0)
     return x
 
-
-# @staticmethod
-# def aerodynamic_conductance_from_ust(Ust, U, Stanton):
-#    """
-#    computes canopy aerodynamic conductance (ms-1) from frict. velocity
-#    IN:
-#       Ustar - friction velocity (ms-1)
-#       U - mean wind speed at flux measurement heigth (ms-1)
-#       Stanton - Stanton number (kB-1) for quasi-laminar boundary layer
-#           resistance. Typically kB=1...12, use 2 for vegetation ecosystems
-#           (Verma, 1989, Garratt and Hicks, 1973)
-#    OUT:
-#       Ga - aerodynamic conductance [ms-1]
-#    """
-#    kv = 0.4  # von Karman constant
-#    ra = U / (Ust ** 2.0 + eps) + Stanton / (kv * (Ust + eps))  # sm-1
-#    Ga = 1.0 / ra  # ms-1
-#    return Ga
-
 def aerodynamics(LAI, hc, Uo, w=0.01, zm=2.0, zg=0.5, zos=0.01):
     """
     computes wind speed at ground and canopy + boundary layer conductances
     Computes wind speed at ground height assuming logarithmic profile above and
     exponential within canopy
     Args:
-        LAI - one-sided leaf-area /plant area index (m2m-2)
-        hc - canopy height (m)
-        Uo - mean wind speed at height zm (ms-1)
-        w - leaf length scale (m)
-        zm - wind speed measurement height above canopy (m)
-        zg - height above ground where Ug is computed (m)
-        zos - forest floor roughness length, ~ 0.1*roughness element height (m)
+        LAI (array):  one-sided leaf/plant area index [m2 m-2]
+        hc  (array):  canopy height [m]
+        Uo  (array or float): mean wind speed at height zm above canopy [m s-1]
+        w   (float):  leaf length scale [m]
+        zm  (float):  wind speed measurement height above canopy top [m]
+        zg  (float):  reference height above ground [m]
+        zos (float):  forest floor roughness length [m]
+
     Returns:
-        ra - canopy aerodynamic resistance (sm-1)
-        rb - canopy boundary layer resistance (sm-1)
-        ras - forest floor aerod. resistance (sm-1)
-        ustar - friction velocity (ms-1)
-        Uh - wind speed at hc (ms-1)
-        Ug - wind speed at zg (ms-1)
-    SOURCE:
-       Cammalleri et al. 2010 Hydrol. Earth Syst. Sci
-       Massman 1987, BLM 40, 179 - 197.
-       Magnani et al. 1998 Plant Cell Env.
+        ra    (array): canopy aerodynamic resistance [s m-1]
+        rb    (array): canopy boundary layer resistance [s m-1]
+        ras   (array): forest floor aerodynamic resistance [s m-1]
+        ustar (array): friction velocity [m s-1]
+        Uh    (array): wind speed at canopy top [m s-1]
+        Ug    (array): wind speed at reference height zg [m s-1]
+    References:
+        Cammalleri et al. (2010). Hydrol. Earth Syst. Sci.
+        Massman (1987). Boundary-Layer Meteorol., 40, 179-197.
+        Magnani et al. (1998). Plant Cell Environ.
+        Yi (2008). [wind attenuation coefficient]
     """
     zm = hc + zm  # m
     kv = 0.4  # von Karman constant (-)
@@ -680,14 +635,12 @@ def aerodynamics(LAI, hc, Uo, w=0.01, zm=2.0, zg=0.5, zos=0.01):
     Ug = Uh * np.exp(alpha*(zn - 1.0))
 
     # canopy aerodynamic & boundary-layer resistances (sm-1). Magnani et al. 1998 PCE eq. B1 & B5
-    #ra = 1. / (kv*ustar) * np.log((zm - d) / zom)
     ra = 1./(kv**2.0 * Uo) * np.log((zm - d) / zom) * np.log((zm - d) / zov)
     rb = 1. / LAI * beta * ((w / Uh)*(alpha / (1.0 - np.exp(-alpha / 2.0))))**0.5
 
     # soil aerodynamic resistance (sm-1)
     ras = 1. / (kv**2.0*Ug) * (np.log(zg / zos))*np.log(zg / (zosv))
 
-    #print('ra', ra, 'rb', rb)
     ra = ra + rb
     return ra, rb, ras, ustar, Uh, Ug
 
@@ -695,18 +648,22 @@ def wind_profile(LAI, hc, Uo, z, zm=2.0, zg=0.2):
     """
     Computes wind speed at ground height assuming logarithmic profile above and
     hyperbolic cosine profile within canopy
-    INPUT:
-        LAI - one-sided leaf-area /plant area index (m2m-2)
-        hc - canopy height (m)
-        Uo - mean wind speed at height zm (ms-1)
-        zm - wind speed measurement height above canopy (m)
-        zg - height above ground where U is computed
-    OUTPUT:
-        Uh - wind speed at hc (ms-1)
-        Ug - wind speed at zg (ms-1)
-    SOURCE:
-       Cammalleri et al. 2010 Hydrol. Earth Syst. Sci
-       Massman 1987, BLM 40, 179 - 197.
+    Args:
+        LAI (float):          one-sided leaf/plant area index [m2 m-2]
+        hc  (float):          canopy height [m]
+        Uo  (float):          mean wind speed at height zm above canopy [m s-1]
+        z   (array):          heights at which to compute wind speed [m]
+        zm  (float):          wind speed measurement height above canopy top [m]
+        zg  (float):          reference height above ground [m]
+
+    Returns:
+        U     (array): wind speed at each height in z [m s-1]
+        ustar (float): friction velocity [m s-1]
+        Uh    (float): wind speed at canopy top [m s-1]
+
+    References:
+        Cammalleri et al. (2010). Hydrol. Earth Syst. Sci.
+        Massman (1987). Boundary-Layer Meteorol., 40, 179-197.
     """
 
     k = 0.4  # von Karman const
@@ -738,11 +695,11 @@ def daylength(LAT, DOY):
     Computes daylength from location and day of year.
 
     Args:
-        LAT - in deg, float or arrays of floats
-        doy - day of year, float or arrays of floats
+        LAT (float or array): latitude [degrees]
+        DOY (int or array):   day of year [1-366]
 
     Returns:
-        dl - daylength (hours), float or arrays of floats
+        dl (float or array): daylength [hours]
     """
     CF = np.pi / 180.0  # conversion deg -->rad
 
@@ -761,76 +718,26 @@ def daylength(LAT, DOY):
 
     return dl
 
-def read_ini(inifile):
-    """read_ini(inifile): reads canopygrid.ini parameter file into pp dict"""
-
-    cfg = configparser.ConfigParser()
-    cfg.read(inifile)
-
-    pp = {}
-    for s in cfg.sections():
-        section = s.encode('ascii', 'ignore')
-        pp[section] = {}
-        for k, v in cfg.items(section):
-            key = k.encode('ascii', 'ignore')
-            val = v.encode('ascii', 'ignore')
-            if section == 'General':  # 'general' section
-                pp[section][key] = val
-            else:
-                pp[section][key] = float(val)
-
-    pp['General']['dt'] = float(pp['General']['dt'])
-
-    pgen = pp['General']
-    cpara = pp['CanopyGrid']
-    return pgen, cpara
-
 def update_distributed_radiation(rad_coeff, doy, Rg):
     """
+    Scales global radiation by a spatially distributed radiation coefficient.
 
+    For day 366 (leap years), the coefficient for day 365 is used as an
+    approximation.
 
-    Parameters
-    ----------
-    rad_coeff : .nc file containing variable 'c_rad' for dimensions 1) all days of year 2) lat 3) lon
-    doy : day of year as in canopygrid
-    Rg : global radiation as in forcing
+    Args:
+        rad_coeff (netCDF4.Dataset): NetCDF dataset containing variable 'c_rad'
+                                     with dimensions [doy, lat, lon]
+        doy       (int):             day of year [1-366]
+        Rg        (float):           spatially uniform global radiation [W m-2]
 
-    Returns
-    global radiation multiplied by rad_coeff of doy -> 2D radiationa array
-    -------
-
+    Returns:
+        Rg (array): spatially distributed global radiation [W m-2]
     """
+
     doy = int(doy)
     if doy <= 365:
         Rg = np.array(rad_coeff['c_rad'][doy-1,:,:]) * Rg
     elif doy == 366:
         Rg = np.array(rad_coeff['c_rad'][doy-2,:,:]) * Rg
     return Rg
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
