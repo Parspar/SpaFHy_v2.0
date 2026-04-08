@@ -299,6 +299,9 @@ def read_aux_gisdata(fpath, spatial_aux, mask=None):
     if 'lakes' in spatial_aux:
         lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['lakes']))
         gis['lakes'] = lakes
+    else:
+        lakes = np.full_like(cmask, 0.0)
+        gis['lakes'] = lakes
 
     gis.update({'dxy': cellsize})
 
