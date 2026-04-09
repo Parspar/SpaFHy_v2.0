@@ -155,13 +155,13 @@ class SoilGrid_2Dflow(object):
             )
         
         # initial water storages according to gwl
-        if self.z_from_gis == False: # soiltype-wise calculation
+        if not self.z_from_gis: # soiltype-wise calculation
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep_max[self.soiltype == key] = value(0.0)
                 self.Wsto_deep[self.soiltype == key] = value(self.gwl[self.soiltype == key]) # storage corresponding to h
             #for key, value in self.gwl_to_rootmoist.items():
             #    self.deepmoist[self.soiltype == key] = value(self.gwl[self.soiltype == key])
-        elif self.z_from_gis == True: # cell-wise calculation
+        elif self.z_from_gis: # cell-wise calculation
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
@@ -328,10 +328,10 @@ class SoilGrid_2Dflow(object):
                             H_neighbours_2d, self.H)
         
         # transmissivities based on gwl
-        if self.z_from_gis == False:
+        if not self.z_from_gis:
             for key, value in self.gwl_to_Tr.items():
                 self.Tr0[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
-        elif self.z_from_gis == True:
+        elif self.z_from_gis:
             for i in range(self.gwl_to_Tr.shape[0]):
                 for j in range(self.gwl_to_Tr.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
@@ -383,10 +383,10 @@ class SoilGrid_2Dflow(object):
                 H_for_Tr = np.where((self.ditch_h < -eps) & (H_neighbours_2d > self.ele + self.ditch_h),
                                     H_neighbours_2d, Htmp)
                 # transmissivities based on gwl
-                if self.z_from_gis == False:
+                if not self.z_from_gis:
                     for key, value in self.gwl_to_Tr.items():
                         self.Tr1[self.soiltype == key] = value(H_for_Tr[self.soiltype == key] - self.ele[self.soiltype == key])
-                elif self.z_from_gis == True:
+                elif self.z_from_gis:
                     for i in range(self.gwl_to_Tr.shape[0]):
                         for j in range(self.gwl_to_Tr.shape[1]):
                             if np.isfinite(self.cmask[i,j]): 
@@ -410,12 +410,12 @@ class SoilGrid_2Dflow(object):
                 TrS1 = TrS0.copy()
 
             # differential water capacity dSto/dh
-            if self.z_from_gis == False:
+            if not self.z_from_gis:
                 for key, value in self.gwl_to_C.items():
                     self.CC[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
                 for key, value in self.gwl_to_wsto.items():
                     self.Wtso1_deep[self.soiltype == key] = value(Htmp[self.soiltype == key] - self.ele[self.soiltype == key])
-            elif self.z_from_gis == True:
+            elif self.z_from_gis:
                 for i in range(self.gwl_to_C.shape[0]):
                     for j in range(self.gwl_to_C.shape[1]):
                         if np.isfinite(self.cmask[i,j]): 
@@ -566,10 +566,10 @@ class SoilGrid_2Dflow(object):
         self.gwl = self.H - self.ele
 
         # water storages according to new gwl
-        if self.z_from_gis == False:
+        if not self.z_from_gis:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep[self.soiltype == key] = value(self.gwl[self.soiltype == key])
-        elif self.z_from_gis == True:
+        elif self.z_from_gis:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]):
@@ -607,12 +607,12 @@ class SoilGrid_2Dflow(object):
         self.H[np.isnan(self.H)] = -999
 
         # Updating the storage according to new head
-        if self.z_from_gis == False:
+        if not self.z_from_gis:
             for key, value in self.gwl_to_wsto.items():
                 self.Wsto_deep[self.soiltype == key] = value(self.H[self.soiltype == key] - self.ele[self.soiltype == key])
             #for key, value in self.gwl_to_rootmoist.items():
             #    self.deepmoist[self.soiltype == key] = value(self.gwl[self.soiltype == key])
-        elif self.z_from_gis == True:
+        elif self.z_from_gis:
             for i in range(self.gwl_to_wsto.shape[0]):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
