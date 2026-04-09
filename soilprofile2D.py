@@ -1,9 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 17 09:59:54 2019
-@author: alauren
+2D lateral groundwater flow model for gridded simulation of deep soil water
+storage and drainage to streams in SpaFHy.
 
-Modified by khaahti & jpnousu
+Solves the 2D Darcy equation on a finite-difference grid using a sparse
+matrix system (Crank-Nicolson by default). Hydraulic head is the primary
+state variable; water storage and transmissivity are derived from
+pre-computed interpolation functions of groundwater level.
+
+Lake interiors are excluded from the solution; lake and stream boundaries
+are treated as constant-head (Dirichlet) conditions.
+
+The module also provides helper functions to pre-compute the soil column
+lookup tables (gwl ↔ Wsto, Tr, C) and the van Genuchten–Mualem water
+retention model.
+
+References:
+    Nousu et al. (2024). Hydrol. Earth Syst. Sci., 28, 4643-4666.
+    van Genuchten (1980). Soil Sci. Soc. Am. J., 44, 892-898.
+
+@authors: alauren, khaahti, jpnousu
 """
 
 import numpy as np
@@ -15,30 +31,51 @@ eps = np.finfo(float).eps
 
 class SoilGrid_2Dflow(object):
     """
-    2D soil water flow model based on Ari Lauren SUSI2D
-    Simulates deep soil water storage, and drainage to streams.
+    Gridded 2D lateral groundwater flow model based on Annamari Lauren's SUSI2D.
+
+    Simulates deep soil water storage and lateral drainage to streams and lakes
+    on a 2D raster grid. The hydraulic head H [m] is the state variable; water
+    storage, transmissivity, and differential water capacity are evaluated via
+    pre-computed scipy interpolation functions of groundwater level (gwl).
+
+    Three solver modes are available via self.implic:
+        0.0 — explicit (forward Euler)
+        1.0 — implicit (backward Euler)
+        0.5 — Crank-Nicolson (default; most stable near impermeable bottom)
     """
     def __init__(self, spara):
         """
-        Initializes SoilProfile2D:
+        Initializes the 2D groundwater flow grid.
+
         Args:
-            spara (dict):
-                'deep_id': deep soil id
-                'elevation': elevation [m]
-                'streams': stream water level [m], < 0 for streams otherwise 0
-                'lakes': lake water level [m], < 0 for streams otherwise 0
-                'dxy': cell horizontal length
-                # scipy interpolation functions describing soil behavior
-                'wtso_to_gwl'
-                'gwl_to_wsto'
-                'gwl_to_Tr'
-                'gwl_to_C'
-                'gwl_to_rootmoist'
-                # initial states
-                'ground_water_level': groundwater depth [m]
+            spara (dict): Spatial parameter dictionary. All array values share the
+                grid shape (rows, cols). Expected keys:
+
+                Spatial grids:
+                    'deep_id'            [-]    soil/peat type index (NaN outside catchment)
+                    'soiltype'           [-]    soil type index used for parameter lookup
+                    'elevation'          [m]    soil surface elevation above datum
+                    'streams'            [m]    stream/ditch water depth; negative where
+                                                stream exists, 0 or np.nan elsewhere
+                    'lakes'              [m]    lake water depth; negative inside lakes, 0 or np.nan elsewhere
+                    'deep_z'             [m]    depth to impermeable bottom (positive downward)
+                    'ground_water_level' [m]    initial groundwater level below surface (<=0)
+                    'dxy'                [m]    horizontal grid cell size (dx = dy)
+
+                Soil hydraulic lookup functions (scipy interp1d or 2D array of interp1d):
+                    'wtso_to_gwl'    gwl(Wsto)   — water storage to groundwater level
+                    'gwl_to_wsto'    Wsto(gwl)   — groundwater level to water storage [m]
+                    'gwl_to_Tr'      Tr(gwl)     — groundwater level to transmissivity [m2 d-1]
+                    'gwl_to_C'       C(gwl)      — differential water capacity dWsto/dh [m m-1]
+                    'gwl_to_rootmoist' theta(gwl) — groundwater level to root zone moisture [m3 m-3]
+
+                When 'wtso_to_gwl' is a 2D np.ndarray of interp1d objects with the
+                same shape as 'deep_id', lookup functions are applied cell-wise
+                (z_from_gis=True). Otherwise they are applied per soil type
+                (z_from_gis=False).
         """
 
-        """ deep soil """
+        # deep soil
         # soil/peat type
         self.soiltype = spara['soiltype']
         
@@ -138,7 +175,7 @@ class SoilGrid_2Dflow(object):
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
         #self.qr = np.full_like(self.gwl, 0.0)
 
-        """ parameters for 2D solution """
+        # parameters for 2D solution
         # parameters for solving
         # 0.5 seems to work better when gwl is close to impermeable bottom
         # (probably because transmissivity does not switch between 0. and > 0 as much)
@@ -172,30 +209,61 @@ class SoilGrid_2Dflow(object):
         #self.totit = 0
 
     def rolling_window(self, a, window):
+        """
+        Returns a strided view of array a with a sliding window along the last axis.
+        Used to compute geometric-mean transmissivities at cell interfaces.
+
+        Args:
+            a      (array): 2D input array.
+            window   (int): Window size (typically 2 for pairwise averaging).
+
+        Returns:
+            view (array): Shape (..., N - window + 1, window), no data copied.
+        """
+
         shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
         strides = a.strides + (a.strides[-1],)
         return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
     def run_timestep(self, dt=1.0, RR=0.0):
 
-        r""" Solves soil water storage in column assuming hydrostatic equilibrium.
+        """
+        Advances the 2D groundwater flow model by one timestep.
+
+        Solves the implicit/Crank-Nicolson finite-difference system iteratively
+        until convergence (max head change < x m) or maxiter=y is reached.
+        Transmissivity is updated inside the iteration loop. Stream/lake cells
+        are treated as constant-head boundaries when the neighbouring water table
+        is above the ditch/lake water level.
+
+        Note:
+            dt is in days. Transmissivity lookup tables are pre-converted to
+            [m2 d-1] in gwl_Wsto / gwl_Wsto_vectorized.
 
         Args:
-            dt (float): solution timestep [days!!!!]
-            rr (float/array): potential infiltration [m]
-        Returns:
-            results (dict)
+            dt  (float): Timestep duration [days]. Default 1.0 (daily).
+            RR  (array): Drainage input from BucketGrid to the saturated zone [m].
 
+        Returns:
+            dict with keys:
+                'ground_water_level'  [m]:      updated groundwater level below surface
+                'lateral_netflow'     [mm d-1]: net lateral flow (positive = outflow)
+                'netflow_to_ditch'    [mm d-1]: net flow into streams/ditches
+                'water_closure'       [mm d-1]: mass balance error (should be ~0)
+                'water_storage'       [mm]:     deep soil water storage
+                'return_flow'         [mm]:     return flow to BucketGrid (when gwl > 0)
+                'transmissivity'      [m2 d-1]: mean transmissivity of the grid
         """
+
+        
         #***********REMIND: map of array*******************
-        """
         #2D array: indices i row, j col
         #Flattened array: n from 0 to rows*cols: n=i*cols+j
         #West element: n=i*cols-1
         #East element: n=i*cols+1
         #North element: n=i*cols+j-cols
         #South element: n=i*cols-j+cols
-        """
+    
         self.tmstep += 1
 
         # for computing mass balance later, RR: drainage from bucketgrid
@@ -267,7 +335,7 @@ class SoilGrid_2Dflow(object):
             for i in range(self.gwl_to_Tr.shape[0]):
                 for j in range(self.gwl_to_Tr.shape[1]):
                     if np.isfinite(self.cmask[i,j]): 
-                        self.Tr0[i,j] = self.gwl_to_wsto[i,j](H_for_Tr[i,j] - self.ele[i,j])
+                        self.Tr0[i,j] = self.gwl_to_Tr[i,j](H_for_Tr[i,j] - self.ele[i,j])
 
         # transmissivity at all four sides of the element is computed as geometric mean of surrounding element transimissivities
         # is this actually at all four sides, or just along east-west and north-sound axes?
@@ -322,7 +390,7 @@ class SoilGrid_2Dflow(object):
                     for i in range(self.gwl_to_Tr.shape[0]):
                         for j in range(self.gwl_to_Tr.shape[1]):
                             if np.isfinite(self.cmask[i,j]): 
-                                self.Tr1[i,j] = self.gwl_to_wsto[i,j](H_for_Tr[i,j] - self.ele[i,j])            
+                                self.Tr1[i,j] = self.gwl_to_Tr[i,j](H_for_Tr[i,j] - self.ele[i,j])            
                 
                 TrTmpEW = gmean(self.rolling_window(self.Tr1, 2),-1)
                 TrTmpNS = np.transpose(gmean(self.rolling_window(np.transpose(self.Tr1), 2),-1))
@@ -523,7 +591,7 @@ class SoilGrid_2Dflow(object):
         Tr = np.nanmean([self.TrW1, self.TrE1, self.TrN1, self.TrS1], axis=0)
         Tr = np.reshape(Tr,(self.rows,self.cols))
 
-        """ new update state """
+        # new update state
         # state0 = water storage at timestep0 (including bucket drainage at timestep0)
         # Wsto_deep = water storage at timestep1
         # lateral_flow = lateral flow of each grid-cell as calculated in two parts earlier
@@ -588,22 +656,32 @@ class SoilGrid_2Dflow(object):
 
 
 def gwl_Wsto(z, pF, grid_step=-0.01, Ksat=None, root=False):
-    r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
-    function of water storage [m] and vice versa + others
+    """
+    Builds scipy interpolation functions relating groundwater level (gwl) to
+    soil column water storage, transmissivity, and differential water capacity
+    for a single soil profile (soiltype-wise lookup).
 
     Args:
-        pF (dict of arrays):
-            'ThetaS' saturated water content [m\ :sup:`3` m\ :sup:`-3`\ ]
-            'ThetaR' residual water content [m\ :sup:`3` m\ :sup:`-3`\ ]
-            'alpha' air entry suction [cm\ :sup:`-1`]
-            'n' pore size distribution [-]
-        dz (np.arrays): soil conpartment thichness, node in center [m]
+        z         (array): Depths of soil layer boundaries [m], negative downward
+                           (e.g. [-0.1, -0.3, -0.6, -1.0]).
+        pF        (dict):  Van Genuchten water retention parameters, each an array
+                           with one value per soil layer:
+                               'ThetaS' [m3 m-3]  saturated water content
+                               'ThetaR' [m3 m-3]  residual water content
+                               'alpha'  [cm-1]    air entry suction
+                               'n'      [-]        pore size distribution
+        grid_step (float): Step size for the internal gwl grid [m]. Default -0.01.
+        Ksat      (array): Saturated hydraulic conductivity per layer [m s-1].
+                           Required unless root=True.
+        root      (bool):  If True, returns only the gwl → root zone moisture
+                           function instead of the full set.
+
     Returns:
-        (dict):
-            'to_gwl': interpolated function for gwl(Wsto)
-            'to_wsto': interpolated function for Wsto(gwl)
-            'to_C'
-            'to_Tr'
+        dict with keys (unless root=True, which returns only 'to_rootmoist'):
+            'to_gwl'   callable: Wsto → gwl interpolator
+            'to_wsto'  callable: gwl → water storage [m] interpolator
+            'to_C'     callable: gwl → differential water capacity [m m-1] interpolator
+            'to_Tr'    callable: gwl → transmissivity [m2 d-1] interpolator
     """
     z = np.array(z, dtype=np.float64) # profile depths
     dz = abs(z)
@@ -651,13 +729,13 @@ def gwl_Wsto(z, pF, grid_step=-0.01, Ksat=None, root=False):
     GwlToC = interp1d(np.array(gwl), np.array(np.gradient(Wsto_deep)/np.gradient(gwl)), fill_value='extrapolate')
     GwlToTr = interp1d(np.array(gwl), np.array(Tr), fill_value='extrapolate')
     
-    plt.figure(1)
-    plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
-    plt.figure(2)
-    plt.plot(np.array(gwl), np.log10(np.array(Tr)))
-    plt.plot(np.array(gwl), np.array(Tr))
-    plt.figure(3)
-    plt.plot(np.array(gwl), np.array(Wsto_deep))
+    #plt.figure(1)
+    #plt.plot(np.array(gwl), np.array(np.gradient(Wsto_deep/np.gradient(gwl))))
+    #plt.figure(2)
+    #plt.plot(np.array(gwl), np.log10(np.array(Tr)))
+    #plt.plot(np.array(gwl), np.array(Tr))
+    #plt.figure(3)
+    #plt.plot(np.array(gwl), np.array(Wsto_deep))
 
     return {'to_gwl': WstoToGwl, 'to_wsto': GwlToWsto, 'to_C': GwlToC, 'to_Tr': GwlToTr}
 
@@ -735,24 +813,32 @@ def transmissivity(dz, Ksat, gwl):
 
 
 def gwl_Wsto_vectorized(z, pF, grid_step=-0.01, Ksat=None, root=False):
-    r""" Forms interpolated function for soil column ground water dpeth, < 0 [m], as a
-    function of water storage [m] and vice versa + others
+    """
+    Builds per-cell scipy interpolation functions relating groundwater level
+    to soil column water storage, transmissivity, and differential water
+    capacity. Used when soil depth varies spatially (z_from_gis=True).
+
+    Supports two grid_step modes:
+        float  — uniform spacing (e.g. -0.01 m)
+        'var'  — variable spacing: fine near surface (0.01 m), coarser at depth
+                 (0.05 m to -1 m, 0.3 m below -5 m); reduces memory for deep profiles (needs testing)
 
     Args:
-        - pF (np.ndarray):
-            - dict
-                - 'ThetaS' (np.ndarray): saturated water content [m\ :sup:`3` m\ :sup:`-3`\ ]
-                - 'ThetaR' (np.ndarray): residual water content [m\ :sup:`3` m\ :sup:`-3`\ ]
-                - 'alpha' (np.ndarray): air entry suction [cm\ :sup:`-1`]
-                - 'n' (np.ndarray): pore size distribution [-]
-        - z (np.ndarrays): soil compartment thichness, node in center [m]
+        z         (array or 2D array): Soil layer boundary depths [m], negative
+                                       downward. Shape (n_cells, n_layers) or (n_layers,).
+        pF        (array of dicts):    Van Genuchten parameters per cell/layer.
+                                       Each dict has keys 'ThetaS', 'ThetaR', 'alpha', 'n'.
+        grid_step (float or 'var'):    Internal gwl grid spacing. Default -0.01.
+        Ksat      (array):             Saturated hydraulic conductivity [m s-1] per
+                                       cell/layer. Required unless root=True.
+        root      (bool):              If True, returns only gwl → root zone moisture.
+
     Returns:
-        - (np.ndarray):
-            - dict
-                - 'to_gwl' (np.ndarray): interpolated function for gwl(Wsto)
-                - 'to_wsto' (np.ndarray): interpolated function for Wsto(gwl)
-                - 'to_C' (np.ndarray): interpolated function for C(Wsto)
-                - 'to_Tr' (np.ndarray): interpolated function for Tr(gwl)
+        dict with keys (unless root=True, which returns only 'to_rootmoist'):
+            'to_gwl'   list of callables: Wsto → gwl per cell
+            'to_wsto'  list of callables: gwl → water storage [m] per cell
+            'to_C'     list of callables: gwl → differential water capacity per cell
+            'to_Tr'    list of callables: gwl → transmissivity [m2 d-1] per cell
     """
     # Ensure z is a NumPy array
     z = np.array(z, dtype=np.float32)
@@ -939,6 +1025,8 @@ def transmissivity_vectorized(dz, Ksat, gwl):
 
     # Compute transmissivity of each layer
     Trans = Ksat * dz_sat  # Shape: (n_cells, n_layers)
+
+    return np.maximum(np.nansum(Trans, axis=1), 1e-4 / 86400)
 
 
 def wrc(pF, theta=None, psi=None, draw_pF=False):
