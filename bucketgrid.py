@@ -82,11 +82,11 @@ class BucketGrid(object):
         self.rw_top = spara['org_rw']       # ree parameter m3 m-3
         
         # top layer maximum storage depends on org_drain option:
-        if self.org_drain == True: # different maximum for interception and total storages
+        if self.org_drain: # different maximum for interception and total storages
             self.MaxStoTop = self.poros_top * self.D_top # maximum storage, m
             self.Ksat_top = spara['org_ksat']       # sat. hydr. cond., m s-1
             self.beta_top = spara['org_beta']       # hyd. cond. exponent, -
-        elif self.org_drain == False: # same maximum for interception and total storages
+        else: # same maximum for interception and total storages
             self.MaxStoTop = self.Fc_top * self.D_top # maximum storage, m
             
         # maximum interception storage
@@ -126,7 +126,7 @@ class BucketGrid(object):
         self.Rew = np.minimum((self.Wliq_root - self.Wp_root) / (self.Fc_root - self.Wp_root + eps), 1.0)
         
         # drainage to rootzone
-        if self.org_drain == True:
+        if self.org_drain:
             self.drain_top = np.full_like(self.Wliq_top, 0.0)
             self.drain_top[np.isnan(self.Wliq_top)] = np.nan
         
@@ -201,12 +201,12 @@ class BucketGrid(object):
         evap = np.minimum(evap, self.WatStoTop)
         self.WatStoTop -= evap
         
-        if self.org_drain == True: # drainage according to Campbell 1985
+        if self.org_drain: # drainage according to Campbell 1974
             self.Wliq_top = (self.MaxStoTop / self.D_top) * self.WatStoTop / (self.MaxStoTop + eps)
             self.drain_top = np.minimum(self.hydrCond_top() * dt, np.maximum(0.0, (self.Wliq_top - self.Fc_top))*self.D_top)
             rr = rr - interc + self.drain_top # infiltration/drainage to rootzone
             self.WatStoTop -= self.drain_top
-        elif self.org_drain == False: # organic layer as in Launiainen et al., 2019
+        else: # organic layer as in Launiainen et al., 2019
             rr = rr - interc # infiltration to rootzone
 
         # ********* compute bottom layer (root zone) water balance ***********
