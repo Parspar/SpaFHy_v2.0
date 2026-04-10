@@ -227,7 +227,7 @@ def parameters(folder=''):
             'elevation': 'processed_dem.asc', # uniform (float) OR path to grid in gispath (str) 
             'streams': 'channels.asc',
             'lakes': 'lake_mask.asc',
-            'deep_z': -15., #'soildepth.asc', #'soildepth.asc',
+            'deep_z': 'soildepth.asc', #'soildepth.asc',
             'deep_poros': 0.41,
             'deep_wr': 0.05,
             'deep_alpha': 0.024,
@@ -270,7 +270,7 @@ def auxiliary_grids():
             }
     return grids
 
-'''
+
 def deep_properties(): # this is meant to be run with soildepth.asc
     """
     Properties of soil profiles.
@@ -401,6 +401,7 @@ def deep_properties(): # this is meant to be run with soildepth.asc
         }
     }
     return deepp
+
 '''
 
 def deep_properties():
@@ -534,7 +535,7 @@ def deep_properties():
     }
     return deepp
 
-
+'''
 '''
 
 def deep_properties(): # vertically uniform soil

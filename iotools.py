@@ -637,10 +637,10 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         for key, value in deepp.items():
             nlyrs = len(value['deep_z'])
             max_nlyrs = max(max_nlyrs, nlyrs)
-        # flattening    
+        # flattening
         deep_id_f = data['deep_id'].flatten()
         deep_z = data['deep_z']
-        deep_z[deep_z < 5] = 5 # NOTE MINIMUM IS 5M DEPTH!
+        deep_z[deep_z < 5] = 5. # NOTE MINIMUM IS 5M DEPTH!
         deep_z_f = deep_z.flatten()
         # creating the arrays
         deep_zs = np.full((len(deep_id_f), max_nlyrs), np.nan)
@@ -674,14 +674,13 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
                 # Replace last layer. Cannot be smaller than smallest assigned 'z' in parameters
                 deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])
                 # Cannot be smaller than -30.
-                #deep_zs[mask, nlyrs - 1] = np.maximum(deep_zs[mask, nlyrs - 1], -30.)
                 deep_ksats[mask, :nlyrs] = value['deep_ksat']
                 deep_pFs[mask] = value['pF']
 
         mask = np.isfinite(deep_zs[:,0])
         ifs_v = gwl_Wsto_vectorized(deep_zs[mask], deep_pFs[mask], -0.2, deep_ksats[mask])
         ifs_r = gwl_Wsto_vectorized(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True)
-
+        
         temp_to_gwl[mask] = ifs_v['to_gwl']
         temp_to_wsto[mask] = ifs_v['to_wsto']
         temp_to_C[mask] = ifs_v['to_C']
