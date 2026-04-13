@@ -462,19 +462,19 @@ class SoilGrid_2Dflow(object):
 
             #Htmp1 = np.fmax(self.bedrock_h, Htmp1) # limit to bedrock
 
-            # testing, limit change
-            #if np.any(np.abs(Htmp1-Htmp)) > 0.5:
-                #print('Difference greater than 0.5')
-
-            max_index_print = np.unravel_index(np.argmax(np.abs(Htmp1 - Htmp)),(self.rows,self.cols))
-            Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
-            Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
-            
-            #print('\t', 'iterations:', it,
-            #        ' max_index:', max_index_print,
-            #        ' H[max_index]', Htmp_print[max_index_print]-self.ele[max_index_print], 
-            #        ' H1[max_index]', Htmp1_print[max_index_print]-self.ele[max_index_print])
-
+            # Diagnose cells with large head change before clamping
+            large_diff = np.abs(Htmp1 - Htmp) > 0.5
+            if np.any(large_diff):
+                large_diff_2d = np.reshape(large_diff, (self.rows, self.cols))
+                Htmp_2d  = np.reshape(Htmp,  (self.rows, self.cols))
+                Htmp1_2d = np.reshape(Htmp1, (self.rows, self.cols))
+                problem_indices = np.argwhere(large_diff_2d)
+                print(f'Timestep: {self.tmstep}, it: {it}, cells with |dH|>0.5m: {len(problem_indices)}')
+                for idx in problem_indices[:5]:  # print at most 5 cells
+                    i, j = idx
+                    print(f'  [{i},{j}] gwl: {Htmp_2d[i,j]-self.ele[i,j]:.3f} -> {Htmp1_2d[i,j]-self.ele[i,j]:.3f} m'
+                          f', ditch_h: {self.ditch_h[i,j]:.3f}'
+                          f', Tr: {self.Tr1[i,j]:.4f} m2/d')
 
             Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
 
@@ -490,14 +490,14 @@ class SoilGrid_2Dflow(object):
             else:
                 Htmp = Htmp1.copy()
 
-            if np.any(np.abs(Htmp1-Htmp)) > 0.5:
-                Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
-                Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
-                print('Difference greater than 0.5')
-                print('\t', 'iterations:', it, ' con1:', conv1, 
-                      ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
-                      ' H[max_index]', Htmp_print[max_index]-self.ele[max_index], 
-                      ' H1[max_index]', Htmp1_print[max_index]-self.ele[max_index])
+            #if np.any(np.abs(Htmp1-Htmp)) > 0.5:
+            #    Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
+            #    Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
+            #    print('Difference greater than 0.5')
+            #    print('\t', 'iterations:', it, ' con1:', conv1, 
+            #          ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
+            #          ' H[max_index]', Htmp_print[max_index]-self.ele[max_index], 
+            #          ' H1[max_index]', Htmp1_print[max_index]-self.ele[max_index])
 
             Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
@@ -506,39 +506,6 @@ class SoilGrid_2Dflow(object):
                 print('\t', 'iterations:', it, ' con1:', conv1, 
                       ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
                       ' H[max_index]', Htmp[max_index]-self.ele[max_index])
-                
-                Htmp_N_temp = Htmp[(max_index[0]-1, max_index[1])]
-                Htmp_S_temp = Htmp[(max_index[0]+1, max_index[1])]
-                Htmp_W_temp = Htmp[(max_index[0], max_index[1]-1)]
-                Htmp_E_temp = Htmp[(max_index[0], max_index[1]+1)]
-
-                H_N_temp = Htmp[(max_index[0]-1, max_index[1])] - self.ele[(max_index[0]-1, max_index[1])]
-                H_S_temp = Htmp[(max_index[0]+1, max_index[1])] - self.ele[(max_index[0]+1, max_index[1])]
-                H_W_temp = Htmp[(max_index[0], max_index[1]-1)] - self.ele[(max_index[0], max_index[1]-1)]
-                H_E_temp = Htmp[(max_index[0], max_index[1]+1)] - self.ele[(max_index[0], max_index[1]+1)]
-
-                TrN1_temp = np.reshape(TrN1,(self.rows,self.cols))[(max_index[0]-1, max_index[1])]
-                TrS1_temp = np.reshape(TrS1,(self.rows,self.cols))[(max_index[0]+1, max_index[1])]
-                TrW1_temp = np.reshape(TrW1,(self.rows,self.cols))[(max_index[0], max_index[1]-1)]
-                TrE1_temp = np.reshape(TrE1,(self.rows,self.cols))[(max_index[0], max_index[1]+1)]
-
-                #print('Max Htmp1-Htmp', np.max(np.abs(Htmp1-Htmp)))
-                print('Htmp of max_index:', Htmp[max_index])
-                print('Htmp of N neighbor:', Htmp_N_temp)
-                print('Htmp of S neighbor:', Htmp_S_temp)
-                print('Htmp of W neighbor:', Htmp_W_temp)
-                print('Htmp of E neighbor:', Htmp_E_temp)
-
-                print('H of max_index:', Htmp[max_index] - self.ele[max_index])
-                print('H of N neighbor:', H_N_temp)
-                print('H of S neighbor:', H_S_temp)
-                print('H of W neighbor:', H_W_temp)
-                print('H of E neighbor:', H_E_temp)                
-
-                print('Tr of N neighbor:', TrN1_temp)
-                print('Tr of S neighbor:', TrS1_temp)
-                print('Tr of W neighbor:', TrW1_temp)
-                print('Tr of E neighbor:', TrE1_temp)
 
             if conv1 < crit:
                 break
