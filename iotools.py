@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jun 30 10:34:37 2016
+Input/output utilities for SpaFHy.
 
-@author: slauniai & khaahti
+Provides functions for:
+    - Reading GIS raster inputs (ESRI ASCII grid) for canopy, soil, soilprofile2D and TOPMODEL
+    - Preprocessing spatial parameter dictionaries for model initialization
+    - Reading and formatting meteorological forcing data
+    - Initializing and writing NetCDF4 output files
+    - Stitching multiple sub-catchment NetCDF results into a single file
+    - Utility ASCII grid read/write functions
 
+@authors: slauniai, khaahti, jpnousu
 """
 import numpy as np
 import pandas as pd
@@ -37,30 +44,38 @@ def initialize_parameters(catchment, folder):
     aux = parameters_module.auxiliary_grids()
 
 
-def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):    
+def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
     """
-    reads gis-data grids and returns numpy 2d-arrays
+    Reads bucket (soil) GIS raster grids and returns numpy 2D arrays.
+
     Args:
-        fpath - relative path to data folder (str)
-        plotgrids - True plots
+        fpath        (str):  Path to the GIS data folder.
+        spatial_pbu  (dict): Flags indicating which fields to read spatially
+                             (True = read from raster, False = use scalar).
+        mask         :       Unused; reserved for future masking support.
+        plotgrids   (bool):  If True, plots the loaded grids.
+
     Returns:
-        gis - dict of gis-data rasters
-            org_id
-            root_id
+        gis (dict): Loaded raster arrays and grid metadata:
+            'org_id'     [-]  organic layer soil class index
+            'root_id'    [-]  root zone soil class index
+            'dxy'        [m]  cell size
+            'xllcorner'  [m]  lower-left x coordinate
+            'yllcorner'  [m]  lower-left y coordinate
     """
-    
+
     fpath = os.path.join(workdir, fpath)
 
     gis = {}
 
     # soil classification
     if 'org_id' in spatial_pbu:
-        if spatial_pbu['org_id'] == True:
+        if spatial_pbu['org_id']:
             org_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['org_id']))
             gis['org_id'] = org_id
-    
+
     if 'root_id' in spatial_pbu:
-        if spatial_pbu['root_id'] == True:        
+        if spatial_pbu['root_id']:
             root_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['root_id']))
             gis['root_id'] = root_id
 
@@ -80,18 +95,22 @@ def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
 
 def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
     """
-    reads gis-data grids and returns numpy 2d-arrays
-    Args:
-        fpath - relative path to data folder (str)
-        plotgrids - True plots
-    Returns:
-        gis - dict of gis-data rasters
-            LAI_pine, LAI_spruce - pine and spruce LAI (m2m-2)
-            LAI_conif - conifer total annual max LAI (m2m-2)
-            LAI_dedid - deciduous annual max LAI (m2m-2)
-            canopy_fraction - canopy closure (-)
-            canopy_height - mean stand height (m)
+    Reads canopy GIS raster grids and returns numpy 2D arrays.
 
+    Args:
+        fpath        (str):  Path to the GIS data folder.
+        spatial_pcpy (dict): Flags indicating which fields to read spatially.
+        mask         :       Unused; reserved for future masking support.
+        plotgrids   (bool):  If True, plots the loaded grids.
+
+    Returns:
+        gis (dict): Loaded raster arrays:
+            'canopy_height'   [m]       mean stand height
+            'canopy_fraction' [-]       canopy closure fraction
+            'LAI_conif'       [m2 m-2]  conifer annual max LAI
+            'LAI_decid'       [m2 m-2]  deciduous annual max LAI
+            'LAI_shrub'       [m2 m-2]  shrub LAI (derived as 0.1 * LAI_conif if not provided)
+            'LAI_grass'       [m2 m-2]  grass LAI (derived as 0.5 * LAI_decid if not provided)
     """
 
     fpath = os.path.join(workdir, fpath)
@@ -100,41 +119,41 @@ def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
     
     # tree height [m]
     if 'canopy_height' in spatial_pcpy:
-        if spatial_pcpy['canopy_height'] == True:
+        if spatial_pcpy['canopy_height']:
             canopy_height, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['canopy_height']))
             gis['canopy_height'] = canopy_height
-        
+
     # canopy closure [-]
     if 'canopy_fraction' in spatial_pcpy:
-        if spatial_pcpy['canopy_fraction'] == True:
+        if spatial_pcpy['canopy_fraction']:
             canopy_fraction, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['canopy_fraction']))
             gis['canopy_fraction'] = canopy_fraction
 
     if 'LAI_conif' in spatial_pcpy:
-        if spatial_pcpy['LAI_conif'] == True:
+        if spatial_pcpy['LAI_conif']:
             LAI_conif, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_conif']))
             LAI_shrub = 0.1 * LAI_conif
             gis['LAI_conif'] = LAI_conif
             gis['LAI_shrub'] = LAI_shrub
 
     if 'LAI_decid' in spatial_pcpy:
-        if spatial_pcpy['LAI_decid'] == True:
+        if spatial_pcpy['LAI_decid']:
             LAI_decid, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_decid']))
             LAI_grass = 0.5 * LAI_decid
             gis['LAI_decid'] = LAI_decid
-            gis['LAI_grass'] = LAI_grass        
+            gis['LAI_grass'] = LAI_grass
 
     if 'LAI_shrub' in spatial_pcpy:
-        if spatial_pcpy['LAI_shrub'] == True:
+        if spatial_pcpy['LAI_shrub']:
             LAI_shrub, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_shrub']))
-            gis['LAI_shrub'] = LAI_shrub        
+            gis['LAI_shrub'] = LAI_shrub
 
     if 'LAI_grass' in spatial_pcpy:
-        if spatial_pcpy['LAI_grass'] == True:
+        if spatial_pcpy['LAI_grass']:
             LAI_grass, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pcpy['state']['LAI_grass']))
-            gis['LAI_grass'] = LAI_grass 
-    
-    if plotgrids is True:
+            gis['LAI_grass'] = LAI_grass
+
+    if plotgrids:
 
         plt.figure()
         #plt.subplot(221); plt.imshow(LAI_pine+LAI_spruce); plt.colorbar();
@@ -148,43 +167,51 @@ def read_cpy_gisdata(fpath, spatial_pcpy, mask=None, plotgrids=False):
 
 def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
     """
-    reads gis-data grids and returns numpy 2d-arrays
+    Reads deep soil GIS raster grids and returns numpy 2D arrays.
+
     Args:
-        fpath - relative path to data folder (str)
-        plotgrids - True plots
+        fpath        (str):  Path to the GIS data folder.
+        spatial_pspd (dict): Flags indicating which fields to read spatially.
+        mask         :       Unused; reserved for future masking support.
+        plotgrids   (bool):  If True, plots the loaded grids.
+
     Returns:
-        gis - dict of gis-data rasters
-            deep_id
-            elevation
-            lakes
-            streams
+        gis (dict): Loaded raster arrays and grid metadata:
+            'deep_id'      [-]  deep soil type index
+            'deep_z'       [m]  depth to impermeable bottom
+            'elevation'    [m]  surface DEM
+            'streams'      [m]  stream/ditch water depth (negative where present)
+            'stream_depth' [m]  spatially varying stream depth if available
+            'lakes'        [m]  lake depth (negative where present)
+            'dxy'          [m]  cell size
+            'xllcorner'    [m]  lower-left x coordinate
+            'yllcorner'    [m]  lower-left y coordinate
     """
     fpath = os.path.join(workdir, fpath)
 
     gis = {}
-    
+
     # deep soil layer
     if 'deep_id' in spatial_pspd:
-        if spatial_pspd['deep_id'] == True:
+        if spatial_pspd['deep_id']:
             deep_id, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_id']))
             gis['deep_id'] = deep_id
 
     # soil depth
     if 'deep_z' in spatial_pspd:
-        if spatial_pspd['deep_z'] == True:
+        if spatial_pspd['deep_z']:
             deep_z, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['deep_z']))
             gis['deep_z'] = deep_z
 
     # dem
     if 'elevation' in spatial_pspd:
-        if spatial_pspd['elevation'] == True:
+        if spatial_pspd['elevation']:
             elevation, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['elevation']))
             gis['elevation'] = elevation
 
-
     # streams
     if 'streams' in spatial_pspd:
-        if spatial_pspd['streams'] == True:
+        if spatial_pspd['streams']:
             streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['streams']))
             if isinstance(pspd['stream_depth'], float):
                 streams[(np.isfinite(streams)) & (streams != 0.0)] = pspd['stream_depth']
@@ -194,7 +221,7 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
                 streams[streams != -1.0] = 0.0
 
     if 'stream_depth' in spatial_pspd:
-        if spatial_pspd['stream_depth'] == True:
+        if spatial_pspd['stream_depth']:
             stream_depth, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_depth']))
             streams = stream_depth.copy()
             streams[~np.isfinite(streams)] = 0.0
@@ -235,22 +262,20 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
 
     gis['streams'] = streams
     gis['stream_depth'] = stream_depth
-    
+
     # lakes if available
     if 'lakes' in spatial_pspd:
-        if spatial_pspd['lakes'] == True:        
+        if spatial_pspd['lakes']:
             lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['lakes']))
             lakes[np.isfinite(lakes)] = -1.0
-            #akes[lakes == np.nan] = 0.0
-            #lakes = np.where(lakes == 0, np.nan, -1.0)
     else:
         print('*** No lakes file ***')
         lakes = np.full_like(deep_id, 0.0)
-    gis['lakes'] = lakes    
+    gis['lakes'] = lakes
     xllcorner = int(re.findall(r'\d+', info[2])[0])
     yllcorner = int(re.findall(r'\d+', info[3])[0])
 
-    if plotgrids is True:
+    if plotgrids:
         plt.figure()
         plt.subplot(311); plt.imshow(deep_id); plt.colorbar(); plt.title('soiltype')
         plt.subplot(312); plt.imshow(elevation); plt.colorbar(); plt.title('elevation')
@@ -263,40 +288,43 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
 
 def read_top_gisdata(fpath, spatial_ptop, mask=None, plotgrids=False):
     """
-    reads gis-data grids and returns numpy 2d-arrays
-    Args:
-        fpath - relative path to data folder (str)
-        plotgrids - True plots
-    Returns:
-        gis - dict of gis-data rasters
-        flowacc - flow accumulation raster
-        slope - slope raster
-        twi - topographic wetness index
-        cmask - catchment mask
+    Reads TOPMODEL GIS raster grids and returns numpy 2D arrays.
 
+    Args:
+        fpath        (str):  Path to the GIS data folder.
+        spatial_ptop (dict): Flags indicating which fields to read spatially.
+        mask         :       Unused; reserved for future masking support.
+        plotgrids   (bool):  If True, plots the loaded grids.
+
+    Returns:
+        gis (dict): Loaded raster arrays and grid metadata:
+            'flowacc' [m]   flow accumulation per unit contour length
+            'slope'   [deg] local slope
+            'twi'     [-]   topographic wetness index
+            'dxy'     [m]   cell size
     """
     fpath = os.path.join(workdir, fpath)
 
     gis = {}
-    
+
     # flow accumulation
     if 'flow_accumulation' in spatial_ptop:
-        if spatial_ptop['flow_accumulation'] == True:        
+        if spatial_ptop['flow_accumulation']:
             flowacc, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['flow_accumulation']))
             gis['flowacc'] = flowacc
-        
+
     # slope
     if 'slope' in spatial_ptop:
-        if spatial_ptop['slope'] == True:                
+        if spatial_ptop['slope']:
             slope, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['slope']))
             gis['slope'] = slope
 
     if 'twi' in spatial_ptop:
-        if spatial_ptop['twi'] == True:                        
+        if spatial_ptop['twi']:
             twi, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, ptop['twi']))
             gis['twi'] = twi
-    
-    if plotgrids is True:
+
+    if plotgrids:
         plt.figure()
         plt.subplot(311); plt.imshow(slope); plt.colorbar(); plt.title('soiltype')
         plt.subplot(312); plt.imshow(twi); plt.colorbar(); plt.title('elevation')
@@ -307,7 +335,22 @@ def read_top_gisdata(fpath, spatial_ptop, mask=None, plotgrids=False):
     return gis
 
 def read_aux_gisdata(fpath, spatial_aux, mask=None):
+    """
+    Reads auxiliary GIS raster grids (catchment mask, streams, lakes).
 
+    Args:
+        fpath       (str):  Path to the GIS data folder.
+        spatial_aux (dict): Keys indicating which auxiliary grids to load
+                            ('cmask', 'streams', 'lakes').
+        mask        :       Unused; reserved for future masking support.
+
+    Returns:
+        gis (dict): Loaded raster arrays and grid metadata:
+            'cmask'   [-]  catchment mask (1 inside, NaN outside)
+            'streams' [-]  stream locations
+            'lakes'   [-]  lake locations
+            'dxy'     [m]  cell size
+    """
     fpath = os.path.join(workdir, fpath)
 
     gis = {}
@@ -322,6 +365,9 @@ def read_aux_gisdata(fpath, spatial_aux, mask=None):
 
     if 'lakes' in spatial_aux:
         lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, aux['lakes']))
+        gis['lakes'] = lakes
+    else:
+        lakes = np.full_like(cmask, 0.0)
         gis['lakes'] = lakes
 
     gis.update({'dxy': cellsize})
@@ -368,14 +414,22 @@ def read_spatial_forcing(fpath):
 
 def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
     """
-    creates input dictionary for initializing SoilGrid
+    Builds the input parameter dictionary for BucketGrid initialization.
+
+    Merges scalar parameter defaults with spatial raster data, then fills
+    per-soil-type hydraulic properties from orgp and rootp lookup tables.
+
     Args:
-        soil parameters
-        soiltype parameters
-        gisdata
-            cmask
-            soilclass
-        spatial
+        pbu        (dict): Bucket parameter defaults (scalar values).
+        spatial_pbu (dict): Flags: True = read field from gisdata, False = use scalar.
+        orgp       (dict): Organic layer hydraulic properties keyed by soil type.
+        rootp      (dict): Root zone hydraulic properties keyed by soil type.
+        gisdata    (dict): GIS raster arrays including 'org_id', 'root_id', 'dxy'.
+        spatial    (bool): If True, fills per-soil-type properties from orgp/rootp.
+
+    Returns:
+        data (dict): Fully populated parameter arrays (same grid shape as gisdata)
+                     ready for BucketGrid.__init__().
     """
     # create dict for initializing soil profile.
     # copy pbu into sdata and make each value np.array(np.shape(cmask))
@@ -387,9 +441,9 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
     mask = np.isfinite(gisdata['org_id'])
 
     for key in data:
-        if spatial_data[key] == True:
+        if spatial_data[key]:
             data[key] = gisdata[key]
-        if spatial_data[key] == False:
+        else:
             uni_value = data[key]
             data[key] = np.full_like(gridshape, np.nan)
             data[key][mask] = uni_value  # Assign uni_value only where the mask is True
@@ -404,25 +458,25 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
         if ~np.isnan(value['org_id']):
             org_ids.append(value['org_id'])
     
-    if set(root_ids) >= set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist()):
-        # no problems
-        print('*** Defined root soil IDs:',set(root_ids), 'Used root soil IDs:',
-              set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    else:
-        print('*** Defined root soil IDs:', set(root_ids),  'Used root soil IDs:',
-              set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    #    raise ValueError("Root soil id in inputs not specified in parameters.py")
+    # --- Root soil IDs check ---
+    used_root_ids = set(np.unique(data['root_id'][np.isfinite(gisdata['org_id'])]).tolist())
+    defined_root_ids = set(root_ids)
 
-    if set(org_ids) >= set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist()):
-        # no problems
-        print('*** Defined organic soil IDs:',set(org_ids), 'Used organic soil IDs:',
-              set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    else:
-        print('*** Defined organic soil IDs:', set(org_ids), 'Used organic soil IDs:',
-              set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist()), '***')
-    #    raise ValueError("Org soil id in inputs not specified in parameters.py")
+    if not defined_root_ids >= used_root_ids:
+        raise ValueError(
+            f"Root soil IDs missing in parameters. Defined: {defined_root_ids}, Used: {used_root_ids}"
+        )
 
-    if spatial == True:
+    # --- Organic soil IDs check ---
+    used_org_ids = set(np.unique(data['org_id'][np.isfinite(gisdata['org_id'])]).tolist())
+    defined_org_ids = set(org_ids)
+
+    if not defined_org_ids >= used_org_ids:
+        raise ValueError(
+            f"Organic soil IDs missing in parameters. Defined: {defined_org_ids}, Used: {used_org_ids}"
+        )
+
+    if spatial:
         for key, value in orgp.items():
             t = value['org_id']
             yx = np.where(data['org_id'] == t)
@@ -433,7 +487,7 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
             data['org_ksat'][yx] = value['org_ksat']
             data['org_beta'][yx] = value['org_beta']
 
-    if spatial == True:
+    if spatial:
         for key, value in rootp.items():
             t = value['root_id']
             yx = np.where(data['root_id'] == t)
@@ -453,29 +507,37 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
 
 def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     """
-    creates input dictionary for initializing SoilGrid
+    Builds the input parameter dictionary for SoilGrid_2Dflow initialization
+    using soiltype-wise (uniform per soil class) interpolation functions.
+
+    Merges scalar defaults with spatial rasters, assigns per-soil-type
+    hydraulic lookup functions from gwl_Wsto.
+
     Args:
-        soil parameters
-        soiltype parameters
-        gisdata
-            cmask
-            soilclass
-        spatial
+        pspd        (dict): Deep soil parameter defaults.
+        spatial_pspd (dict): Flags: True = read from gisdata, False = use scalar.
+        deepp       (dict): Per-soil-type hydraulic properties and pF curves.
+        gisdata     (dict): GIS raster arrays including 'deep_id', 'elevation',
+                            'streams', 'lakes', 'dxy'.
+        spatial     (bool): If True, fills spatial arrays from gisdata.
+
+    Returns:
+        data (dict): Fully populated parameter arrays ready for
+                     SoilGrid_2Dflow.__init__(), including scipy interp1d
+                     lookup functions keyed by soil type.
     """
-    # create dict for initializing soil profile.
-    # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = pspd.copy()
     spatial_data = spatial_pspd.copy()
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
-   
+
     for key in data:
-        if spatial_data[key] == True:
+        if spatial_data[key]:
             data[key] = gisdata[key]
-        if spatial_data[key] == False:
+        else:
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
-    
-    if spatial == False:
+
+    if not spatial:
         data['deep_id'] = pspd['deep_id']
     else:
         data['deep_id'] = gisdata['deep_id']
@@ -486,14 +548,13 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     deep_ids = []
     for key, value in deepp.items():
         deep_ids.append(value['deep_id'])
-        
-    if set(deep_ids) >= set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()):
-        # no problems
-        print('*** Defined deep soil IDs:',set(deep_ids), 'Used soil IDs:',
-              set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-    else:
-        print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-        #raise ValueError("Deep soil id in inputs not specified in parameters.py")
+
+    used_ids = set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist())
+    defined_ids = set(deep_ids)
+    if not defined_ids >= used_ids:
+        raise ValueError(
+            f"Deep soil IDs missing. Defined: {defined_ids}, Used: {used_ids}"
+        )
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
     data.update({'deep_z': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
@@ -521,39 +582,45 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
     data['dxy'] = gisdata['dxy']
 
-    for key in data.keys():
-        print('key:', key)
-        print('data[key]', data[key])
-
     return data
 
 
 def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     """
-    creates input dictionary for initializing SoilGrid
+    Builds the input parameter dictionary for SoilGrid_2Dflow initialization
+    using cell-wise (spatially varying) interpolation functions.
+
+    When spatial_pspd['deep_z'] is True, soil depth varies per grid cell and
+    gwl_Wsto_vectorized is used to build per-cell lookup functions. Otherwise
+    falls back to soiltype-wise gwl_Wsto (same as preprocess_dsdata).
+
     Args:
-        soil parameters
-        soiltype parameters
-        gisdata
-            cmask
-            soilclass
-        spatial
+        pspd         (dict): Deep soil parameter defaults.
+        spatial_pspd (dict): Flags: True = read from gisdata, False = use scalar.
+        deepp        (dict): Per-soil-type hydraulic properties and pF curves.
+        gisdata      (dict): GIS raster arrays including 'deep_id', 'deep_z',
+                             'elevation', 'streams', 'lakes', 'dxy'.
+        spatial      (bool): If True, fills spatial arrays from gisdata.
+
+    Returns:
+        data (dict): Fully populated parameter arrays ready for
+                     SoilGrid_2Dflow.__init__(), including scipy interp1d
+                     lookup functions (per cell or per soil type depending on
+                     spatial_pspd['deep_z']).
     """
-    # create dict for initializing soil profile.
-    # copy pbu into sdata and make each value np.array(np.shape(cmask))
     data = pspd.copy()
     spatial_data = spatial_pspd.copy()
 
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
-   
+
     for key in data:
-        if spatial_data[key] == True:
+        if spatial_data[key]:
             data[key] = gisdata[key]
-        if spatial_data[key] == False:
+        else:
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
 
-    if spatial == False:
+    if not spatial:
         data['deep_id'] = pspd['deep_id']
     else:
         data['deep_id'] = gisdata['deep_id']
@@ -564,19 +631,17 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     deep_ids = []
     for key, value in deepp.items():
         deep_ids.append(value['deep_id'])
-        
-    if set(deep_ids) >= set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()):
-        # no problems
-        print('*** Defined deep soil IDs:',set(deep_ids), 'Used soil IDs:',
-              set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-    else:
-        print(set(deep_ids),set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist()))
-        #raise ValueError("Deep soil id in inputs not specified in parameters.py")
+
+    used_ids = set(np.unique(data['deep_id'][np.isfinite(gisdata['deep_id'])]).tolist())
+    defined_ids = set(deep_ids)
+    if not defined_ids >= used_ids:
+        raise ValueError(
+            f"Deep soil IDs missing. Defined: {defined_ids}, Used: {used_ids}"
+        )
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
-    if spatial_data['deep_z'] == False:
-        data.update({'deep_z': np.full(np.shape(gisdata['deep_id']), np.nan)})
+    if not spatial_data['deep_z']:
         for key, value in deepp.items():
             c = value['deep_id']
             ix = np.where(data['deep_id'] == c)
@@ -593,16 +658,17 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         data['gwl_to_Tr'] = {soiltype: deepp[soiltype]['to_Tr'] for soiltype in deepp.keys()}
         data['gwl_to_rootmoist'] = {soiltype: deepp[soiltype]['to_rootmoist'] for soiltype in deepp.keys()}
 
-    elif spatial_data['deep_z'] == True:
+    elif spatial_data['deep_z']:
         # we have data['deep_id'] and data['z']
         max_nlyrs = 0    
         for key, value in deepp.items():
             nlyrs = len(value['deep_z'])
             max_nlyrs = max(max_nlyrs, nlyrs)
-        # flattening    
+        # flattening
         deep_id_f = data['deep_id'].flatten()
-        deep_z_f = data['deep_z'].flatten()
-        deep_z_f[deep_z_f < 5] = 5 # NOTE MINIMUM IS 5M DEPTH!
+        deep_z = data['deep_z']
+        deep_z[deep_z < 5] = 5. # NOTE MINIMUM IS 5M DEPTH!
+        deep_z_f = deep_z.flatten()
         # creating the arrays
         deep_zs = np.full((len(deep_id_f), max_nlyrs), np.nan)
         deep_ksats = np.full((len(deep_id_f), max_nlyrs), np.nan)
@@ -635,14 +701,13 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
                 # Replace last layer. Cannot be smaller than smallest assigned 'z' in parameters
                 deep_zs[mask, nlyrs - 1] = np.minimum(np.abs(deep_z_f[mask])*-1, deep_zs[mask, nlyrs - 1])
                 # Cannot be smaller than -30.
-                #deep_zs[mask, nlyrs - 1] = np.maximum(deep_zs[mask, nlyrs - 1], -30.)
                 deep_ksats[mask, :nlyrs] = value['deep_ksat']
                 deep_pFs[mask] = value['pF']
 
         mask = np.isfinite(deep_zs[:,0])
         ifs_v = gwl_Wsto_vectorized(deep_zs[mask], deep_pFs[mask], -0.2, deep_ksats[mask])
         ifs_r = gwl_Wsto_vectorized(value['deep_z'][:2], {key: value['pF'][key][:2] for key in value['pF'].keys()}, root=True)
-
+        
         temp_to_gwl[mask] = ifs_v['to_gwl']
         temp_to_wsto[mask] = ifs_v['to_wsto']
         temp_to_C[mask] = ifs_v['to_C']
@@ -664,28 +729,30 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
 def preprocess_cpydata(pcpy, spatial_pcpy, gisdata, spatial=True):
     """
-    creates input dictionary for initializing CanopyGrid
+    Builds the input parameter dictionary for CanopyGrid initialization.
+
+    Replaces scalar values in pcpy['state'] with spatial raster arrays from
+    gisdata wherever spatial_pcpy flags are True.
+
     Args:
-        canopy parameters
-        gisdata
-            cmask
-            LAI_pine, LAI_spruce - pine and spruce LAI (m2m-2)
-            LAI_conif - conifer total annual max LAI (m2m-2)
-            LAI_dedid - deciduous annual max LAI (m2m-2)
-            canopy_fraction - canopy closure (-)
-            canopy_height - mean stand height (m)
-            (lat, lon)
-        spatial
+        pcpy        (dict): Canopy parameter dict; 'state' sub-dict holds
+                            initial state fields (LAI, canopy_height, etc.).
+        spatial_pcpy (dict): Flags: True = read field from gisdata, False = use scalar.
+        gisdata     (dict): GIS raster arrays (LAI_conif, LAI_decid, LAI_shrub,
+                            LAI_grass, canopy_height, canopy_fraction).
+        spatial     (bool): Unused; retained for interface consistency.
+
+    Returns:
+        pcpy (dict): Updated canopy parameter dict with spatial arrays in 'state'.
     """
-    # inputs for CanopyGrid initialization: update pcpy using spatial data
     data = pcpy['state'].copy()
     spatial_data = spatial_pcpy.copy()
     gridshape = np.ones(shape=gisdata['LAI_conif'].shape)
 
     for key in data:
-        if spatial_data[key] == True:
+        if spatial_data[key]:
             data[key] = gisdata[key]
-        if spatial_data[key] == False:
+        else:
             uni_value = data[key]
             data[key] = np.full_like(gridshape, uni_value)
 
@@ -695,15 +762,20 @@ def preprocess_cpydata(pcpy, spatial_pcpy, gisdata, spatial=True):
 
 def preprocess_topdata(ptop, spatial_ptop, gisdata, spatial=True):
     """
-    creates input dictionary for initializing CanopyGrid
+    Builds the input parameter dictionary for Topmodel_Homogenous initialization.
+
+    Inserts spatial raster arrays from gisdata into the ptop dict.
+
     Args:
-        topmodel parameters as in parameters.py 'pgen' and:
-        gisdata
-        flowacc - flow accumulation raster
-        slope - slope raster
-        twi - topographic wetness index
-        cmask - catchment mask
-            (lat, lon)
+        ptop        (dict): TOPMODEL parameter dict (from parameters_*.ptopmodel()).
+        spatial_ptop (dict): Flags indicating which fields are spatial (unused here;
+                             all GIS fields are always inserted).
+        gisdata     (dict): GIS raster arrays: 'slope', 'flowacc', 'twi', 'dxy',
+                            and optionally 'lat', 'lon'.
+        spatial     (bool): Unused; retained for interface consistency.
+
+    Returns:
+        ptop (dict): Updated TOPMODEL parameter dict with spatial arrays inserted.
     """
     # inputs for topmodel initialization: update ptop using spatial data
     
@@ -838,20 +910,28 @@ def read_HESS2019_weather(start_date, end_date, sourcefile, CO2=380.0, U=2.0, ID
 
 def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
     """
-    reads FMI OBSERVED daily weather data from file
-    IN:
-        ID - sve catchment ID. set ID=0 if all data wanted
-        start_date - 'yyyy-mm-dd'
-        end_date - 'yyyy-mm-dd'
-        sourcefile - optional
-        CO2 - atm. CO2 concentration (float), optional
-    OUT:
-        fmi - pd.dataframe with datetimeindex
-            fmi columns:['ID','Kunta','aika','lon','lat','T','Tmax','Tmin',
-                         'Prec','Rg','h2o','dds','Prec_a','Par',
-                         'RH','esa','VPD','doy']
-            units: T, Tmin, Tmax, dds[degC], VPD, h2o,esa[kPa],
-            Prec, Prec_a[mm], Rg,Par[Wm-2],lon,lat[deg]
+    Reads FMI observed daily weather data from file.
+
+    Computes VPD from temperature and vapour pressure if not already present.
+
+    Args:
+        start_date (str):   Start date 'yyyy-mm-dd'.
+        end_date   (str):   End date 'yyyy-mm-dd'.
+        sourcefile (str):   Path to the CSV forcing file.
+        U         (float):  Default wind speed [m s-1] if not in file. Default 2.0.
+        ID          (int):  Unused; retained for interface consistency.
+        CO2       (float):  Atmospheric CO2 concentration [ppm]. Default 380.
+
+    Returns:
+        fmi (pd.DataFrame): Daily forcing with DatetimeIndex and columns:
+            'air_temperature'        [degC]
+            'precipitation'          [mm d-1]
+            'global_radiation'       [W m-2]
+            'vapor_pressure_deficit' [kPa]
+            'par'                    [W m-2]
+            'wind_speed'             [m s-1]
+            'CO2'                    [ppm]
+            'doy'                    [-]
     """
 
     # OmaTunniste;OmaItä;OmaPohjoinen;Kunta;siteid;vuosi;kk;paiva;longitude;latitude;t_mean;t_max;t_min;
@@ -868,7 +948,7 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
     # -H2O partial pressure (hPa)
 
     sourcefile = os.path.join(sourcefile)
-    print('*** Simulation forced with:', sourcefile)
+    #print('*** Simulation forced with:', sourcefile)
     ID = int(ID)
 
     # import forcing data
@@ -911,14 +991,23 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
 
 def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
     """
-    netCDF4 format output file initialization
+    Initializes a NetCDF4 output file for the main simulation results.
+
+    Creates dimensions (time, lat, lon), coordinate variables, and empty
+    data variables for all entries listed in pgen['variables'].
 
     Args:
-        variables (list): list of variables to be saved in netCDF4
-        cmask
-        filepath: path for saving results
-        filename: filename
-        description: description
+        pgen        (dict): General parameters; uses 'variables', 'end_date',
+                            'spatial_forcing'.
+        cmask      (array): Catchment mask defining grid shape.
+        filepath     (str): Directory path for the output file.
+        filename     (str): Output filename (e.g. '20240101_results.nc').
+        description  (str): Description string written to file metadata.
+        gisinfo     (dict): Grid info with 'xllcorner', 'yllcorner', 'dxy'.
+
+    Returns:
+        ncf (Dataset): Open netCDF4 Dataset handle.
+        ff    (str):   Full path to the created file.
     """
     from netCDF4 import Dataset, date2num
     from datetime import datetime
@@ -993,14 +1082,23 @@ def initialize_netcdf(pgen, cmask, filepath, filename, description, gisinfo):
 
 def initialize_netcdf_spinup(pgen, cmask, filepath, filename, description, gisinfo):
     """
-    netCDF4 format output spinup file initialization
+    Initializes a NetCDF4 output file for saving end-of-spinup model state.
+
+    Saves a single timestep (the last day of the spinup period) for the
+    state variables needed to restart a simulation. The filename '_spinup.nc'
+    suffix is added automatically.
 
     Args:
-        variables (list): list of variables to be saved in netCDF4
-        cmask
-        filepath: path for saving results
-        filename: filename, spinup notion automatically added
-        description: description
+        pgen        (dict): General parameters; uses 'simtype', 'end_date'.
+        cmask      (array): Catchment mask defining grid shape.
+        filepath     (str): Directory path for the output file.
+        filename     (str): Base filename (suffix replaced with '_spinup.nc').
+        description  (str): Description string written to file metadata.
+        gisinfo     (dict): Grid info with 'xllcorner', 'yllcorner', 'dxy'.
+
+    Returns:
+        ncf (Dataset): Open netCDF4 Dataset handle.
+        ff    (str):   Full path to the created file.
     """
     from netCDF4 import Dataset, date2num
     from datetime import datetime
@@ -1014,8 +1112,8 @@ def initialize_netcdf_spinup(pgen, cmask, filepath, filename, description, gisin
     yllcorner = gisinfo['yllcorner']
     cellsize = gisinfo['dxy']
 
-    xcoords = np.arange(xllcorner, (xllcorner + (lon_shape*cellsize)), cellsize)
-    ycoords = np.arange(yllcorner, (yllcorner + (lat_shape*cellsize)), cellsize)
+    xcoords = np.linspace(xllcorner, xllcorner + (lon_shape - 1) * cellsize, lon_shape)
+    ycoords = np.linspace(yllcorner, yllcorner + (lat_shape - 1) * cellsize, lat_shape)
     ycoords = np.flip(ycoords)
 
     if not os.path.exists(filepath):
@@ -1096,12 +1194,13 @@ def initialize_netcdf_spinup(pgen, cmask, filepath, filename, description, gisin
 
 def write_ncf(results, ncf, steps=None):
     """
-    Writes model simultaion results in netCDF4-file
+    Writes model simulation results to an open NetCDF4 file.
 
     Args:
-        index (int): model loop index
-        results (dict): calculation results from group
-        ncf (object): netCDF4-file handle
+        results (dict):          Result arrays keyed by variable name.
+        ncf     (Dataset):       Open netCDF4 Dataset handle.
+        steps   (tuple or None): (start, end) time indices for writing a slice.
+                                 If None, writes the full array.
     """
 
     keys = results.keys()
@@ -1127,12 +1226,15 @@ def write_ncf(results, ncf, steps=None):
 
 def write_ncf_spinup(results, pgen, ncf_spinup, steps=None):
     """
-    Writes model simultaion results in netCDF4-file
+    Writes the final spinup state to an open NetCDF4 spinup file.
+
+    Saves only the last timestep of each state variable, based on simtype.
 
     Args:
-        index (int): model loop index
-        results (dict): calculation results
-        ncf (object): netCDF4-file handle
+        results    (dict):    Result arrays keyed by variable name.
+        pgen       (dict):    General parameters; uses 'simtype'.
+        ncf_spinup (Dataset): Open netCDF4 Dataset handle for the spinup file.
+        steps      :          Unused; retained for interface consistency.
     """
 
 
@@ -1182,27 +1284,28 @@ def write_ncf_spinup(results, pgen, ncf_spinup, steps=None):
 
 def read_AsciiGrid(fname, setnans=True):
     """
-    reads AsciiGrid format in fixed format as below:
+    Reads an ESRI ASCII raster grid file.
+
+    Expected file format:
         ncols         750
         nrows         375
         xllcorner     350000
         yllcorner     6696000
         cellsize      16
         NODATA_value  -9999
-        -9999 -9999 -9999 -9999 -9999
-        -9999 4.694741 5.537514 4.551162
-        -9999 4.759177 5.588773 4.767114
-    IN:
-        fname - filename (incl. path)
-    OUT:
-        data - 2D numpy array
-        info - 6 first lines as list of strings
-        (xloc,yloc) - lower left corner coordinates (tuple)
-        cellsize - cellsize (in meters?)
-        nodata - value of nodata in 'data'
-    Samuli Launiainen Luke 7.9.2016
+        <data rows>
+
+    Args:
+        fname    (str):  Full path to the .asc or .dat file.
+        setnans (bool):  If True, replaces NODATA values with np.nan. Default True.
+
+    Returns:
+        data     (array): 2D numpy array of raster values.
+        info     (list):  First 6 header lines as strings.
+        (xloc, yloc) (tuple): Lower-left corner coordinates [m].
+        cellsize (float): Cell size [m].
+        nodata   (float): NoData value (np.nan if setnans=True).
     """
-    import numpy as np
     fid = open(fname, 'r')
     info = fid.readlines()[0:6]
     fid.close()
@@ -1217,7 +1320,7 @@ def read_AsciiGrid(fname, setnans=True):
     # read rest to 2D numpy array
     data = np.loadtxt(fname, skiprows=6)
 
-    if setnans is True:
+    if setnans:
         data[data == nodata] = np.nan
         nodata = np.nan
 
@@ -1227,16 +1330,15 @@ def read_AsciiGrid(fname, setnans=True):
 
 
 def write_AsciiGrid(fname, data, info, fmt='%.18e'):
-    """ writes AsciiGrid format txt file
-    IN:
-        fname - filename
-        data - data (numpy array)
-        info - info-rows (list, 6rows)
-        fmt - output formulation coding
-
-    Samuli Launiainen Luke 7.9.2016
     """
-    import numpy as np
+    Writes a 2D numpy array to an ESRI ASCII raster grid file.
+
+    Args:
+        fname (str):   Full path for the output file.
+        data (array):  2D numpy array to write (NaN values replaced by nodata).
+        info  (list):  6-line header list from read_AsciiGrid.
+        fmt    (str):  Format string for numpy.savetxt. Default '%.18e'.
+    """
 
     # replace nans with nodatavalue according to info
     nodata = int(info[-1].split(' ')[-1])
@@ -1277,14 +1379,22 @@ def read_results(outputfile):
 
 def create_input_GIS(fpath, plotgrids=False):
     """
+    Reads raw Finnish forest inventory rasters, converts them to model inputs,
+    and writes the results as ESRI ASCII grid files to fpath/inputs/.
 
+    Converts needle/leaf biomass to LAI using species-specific SLA values,
+    clips ditch spacing to [20, 200] m, and masks all grids to peat areas only.
+
+    Args:
+        fpath      (str):  Path to the folder containing raw input rasters.
+        plotgrids (bool):  If True, plots all output grids. Default False.
     """
     fpath = os.path.join(workdir, fpath)
 
     # specific leaf area (m2/kg) for converting leaf mass to leaf area
     SLA = {'pine': 6.8, 'spruce': 4.7, 'decid': 14.0}  # Härkönen et al. 2015 BER 20, 181-195
 
-    # mask, cmask == 1, np.NaN outside
+    # mask, cmask == 1, np.nan outside
     cmask, _, pos, cellsize, _ = read_AsciiGrid(os.path.join(fpath, 'cmask.asc'))
 
     # latitude, longitude arrays
@@ -1403,7 +1513,7 @@ def create_input_GIS(fpath, plotgrids=False):
                 i+=1
 
     fpath = os.path.join(fpath, 'inputs')
-    if os.path.isdir(fpath) == False:
+    if not os.path.isdir(fpath):
         os.mkdir(fpath)
 
     for key, gdata in GisData.items():
@@ -1411,7 +1521,16 @@ def create_input_GIS(fpath, plotgrids=False):
 
 def rw_FMI_files(sourcefiles, out_path, plot=False):
     """
-    reads and writes FMI interpolated daily weather data
+    Reads multiple FMI interpolated daily weather CSV files, splits them by
+    site, and writes one file per site to out_path.
+
+    Args:
+        sourcefiles (list): List of paths to FMI CSV source files.
+        out_path     (str): Output directory path.
+        plot        (bool): If True, plots each site's time series. Default False.
+
+    Returns:
+        fmi (pd.DataFrame): Combined dataframe of all sites and dates.
     """
     frames = []
     for sourcefile in sourcefiles:
@@ -1470,7 +1589,19 @@ def rw_FMI_files(sourcefiles, out_path, plot=False):
 
 
 def stitch_result_nc_files(root_directory, output_file, plot=False):
-    """Processes NetCDF files in the given directory, extracts global lat/lon, time, and variables, and creates a new file."""
+    """
+    Merges multiple sub-catchment NetCDF result files into a single file.
+
+    Walks root_directory recursively to find all .nc files, determines the
+    union of lat/lon extents, and fills a new output NetCDF with data from
+    each sub-catchment file. Cells not covered by any file remain NaN.
+
+    Args:
+        root_directory (str):  Root folder containing sub-catchment result .nc files.
+        output_file    (str):  Path for the merged output .nc file.
+        plot          (bool):  If True, plots bucket_moisture_root for each file
+                               and the final merged result. Default False.
+    """
     
     import xarray as xr
 

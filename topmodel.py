@@ -1,48 +1,52 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun 02 15:14:11 2017
-@author: slauniai
+TOPMODEL implementation for catchment-scale groundwater and streamflow
+simulation in SpaFHy.
 
-******************************************************************************
-TopModel (Beven & Kirkby) -implementation for SpatHy -integration
-Topmodel() allows spatially varying soil depths and transmissivity
-Topmodel_Homogenous() assumes constant properties and hydrologic similarity \n
-retermined from TWI = log (a / tan(b))
-(C) Samuli Launiainen, 2016-
+Topmodel_Homogenous assumes spatially uniform effective soil depth (m) and
+saturated hydraulic conductivity (ko), with hydrologic similarity determined
+from the topographic wetness index (TWI = log(a / tan(b))).
 
-Modified by jpnousu
+The catchment average saturation deficit S [m] is the single state variable.
+Baseflow follows an exponential recession; return flow (saturation excess)
+occurs where the local deficit s becomes negative.
 
-******************************************************************************
+References:
+    Beven, K.J. & Kirkby, M.J. (1979). A physically based, variable contributing
+        area model of basin hydrology. Hydrol. Sci. Bull., 24(1), 43-69.
+    Launiainen et al. (2019). Hydrol. Earth Syst. Sci., 23, 3457-3480.
+    Nousu et al. (2024). Hydrol. Earth Syst. Sci., 28, 4643-4666.
+    Tyystjärvi et al. (2022). For. Ecol. Manage., 522, 120447.
+
+@authors: slauniai, jpnousu
 """
 
 import numpy as np
-import sys
-from scipy.ndimage import maximum_filter
-import matplotlib.pyplot as plt
 eps = np.finfo(float).eps  # machine epsilon
 
 class Topmodel_Homogenous():
     def __init__(self, pp, S_initial=None):
         """
-        sets up Topmodel for the catchment assuming homogenous
-        effective soil depth 'm' and sat. hydr. conductivity 'ko'.
-        This is the 'classic' version of Topmodel where hydrologic similarity\
-        index is TWI = log(a / tan(b)).
+        Initializes TOPMODEL assuming homogeneous effective soil depth and
+        saturated hydraulic conductivity. Hydrologic similarity is determined
+        from TWI = log(a / tan(b)).
 
         Args:
-            pp - parameter dict with keys:
-                dt - timestep [s]
-                ko - soil transmissivity at saturation [m/s]
-                m -  effective soil depth (m), i.e. decay factor of Ksat with depth
-                twi_cutoff - max allowed twi -index
-                so - initial catchment average saturation deficit (m)
-            cmask - catchment mask, 1 = catchment_cell
-            cellarea - gridcell area [m2]
-            flowacc - flow accumulation per unit contour length (m)
-            slope - local slope (deg)
-            S_initial - initial storage deficit, overrides that in 'pp'
+            pp (dict): Parameter dictionary with keys:
+                'dt'          [s]     timestep duration
+                'dxy'         [m]     grid cell size
+                'ko'          [m s-1] saturated hydraulic conductivity
+                'm'           [m]     effective soil depth (transmissivity decay factor)
+                'twi_cutoff'  [%]     percentile used to clip the upper tail of the
+                                      TWI distribution (removes stream network outliers)
+                'so'          [m]     initial catchment average saturation deficit
+                'twi'         [-]     2D array of topographic wetness index values
+                'flowacc'     [m]     2D array of flow accumulation per unit contour length
+                'slope'       [deg]   2D array of local slope
+            S_initial (float, optional): Initial catchment average saturation deficit [m].
+                Overrides pp['so'] if provided.
         """
-        if not S_initial:
+        if S_initial is None:
             S_initial = pp['so']
 
         # importing grids from parameters
@@ -64,36 +68,17 @@ class Topmodel_Homogenous():
         self.qr = np.full_like(cmask, 0.0)
         
 
-        """
-        local and catchment average hydrologic similarity indices (xi=twi, X).
-        Set xi > twi_cutoff equal to cutoff value to remove tail of twi-distribution.
-        This concerns mainly the stream network cells. 'Outliers' in twi-distribution are
-        problem for streamflow prediction
-        """
+        # local and catchment average hydrologic similarity indices (xi=twi, X).
+        # Set xi > twi_cutoff equal to cutoff value to remove the tail of the
+        # TWI distribution. This mainly affects stream network cells, where
+        # outlier TWI values degrade streamflow predictions.
 
-        # twi
-        #twi = twi*cmask
-        #bina = len(np.arange(np.sort(twi.flatten()[~np.isnan(twi.flatten())])[0], np.sort(twi.flatten()[~np.isnan(twi.flatten())])[-1], 0.5))     
-        #n, bins, patches = plt.hist((twi).flatten(), bins=bina, alpha=0.5, label='raw')
-        # calculates twi-value corresponding to twi_cutoff percentile
-        #clim = np.percentile(twi[twi > 0], pp['twi_cutoff'])
-        # cuts the tail but assigns the exceeding values to the 'twi_cutoff' quantile
-        #twi[twi > clim] = clim
-        # second way to cut the tail and assign the exceeded values into distribution median
-        #xi[xi > clim] = np.nanmedian(xi)
-        
-        #bina = len(np.arange(np.sort(twi.flatten()[~np.isnan(twi.flatten())])[0], np.sort(twi.flatten()[~np.isnan(twi.flatten())])[-1], 0.5))      
-        #n, bins, patches = plt.hist((twi).flatten(), bins=bina, alpha=0.5, label='cut')
-        #plt.legend()
-        #plt.title('TWI')
-        
         # local indices
         self.xi = twi
 
         # apply cutoff
         clim = np.percentile(self.xi[self.xi > 0], pp['twi_cutoff'])
         self.xi[self.xi > clim] = clim
-        #self.xi = xi
 
         # catchment average indice
         self.X = 1.0 / self.CatchmentArea*np.nansum(self.xi*self.CellArea)
@@ -109,30 +94,49 @@ class Topmodel_Homogenous():
 
     def local_s(self, Smean):
         """
-        computes local storage deficit s [m] from catchment average
+        Computes local storage deficit from the catchment average deficit.
+
+        Args:
+            Smean (float): Catchment average saturation deficit [m].
+
+        Returns:
+            s (array): Local saturation deficit [m] at each grid cell.
         """
         s = Smean + self.M*(self.X - self.xi)
-        return s    
-    
+        return s
+
     def subsurfaceflow(self):
-        """subsurface flow to stream network (per unit catchment area)"""
+        """
+        Computes subsurface (base)flow to the stream network based on the
+        current catchment average saturation deficit.
+
+        Returns:
+            Qb (float): Baseflow per unit catchment area [m per timestep].
+        """
         Qb = self.Qo*np.exp(-self.S / (self.M + eps))
         return Qb
 
     def run_timestep(self, R):
         """
-        runs a timestep, updates saturation deficit and returns fluxes
+        Runs one timestep: updates catchment average saturation deficit and
+        returns catchment-scale water balance fluxes.
+
         Args:
-            R - recharge [m per unit catchment area] during timestep
-        OUT:
-            Qb - baseflow [m per unit area]
-            Qr - returnflow [m per unit area]
-            qr - distributed returnflow [m]
-            fsat - saturated area fraction [-]
-        Note:
-            R is the mean drainage [m] from bucketgrid.
+            R (float): Recharge to the saturated zone [m per unit catchment area]
+                per timestep. Typically the spatial mean of BucketGrid drainage.
+
+        Returns:
+            dict with keys:
+                'baseflow'                [mm]: subsurface flow to stream network
+                'returnflow'              [mm]: catchment average saturation-excess return flow
+                'local_returnflow'        [mm]: gridded return flow
+                'drainage_in'             [mm]: recharge input (R)
+                'water_closure'           [mm]: mass balance error (should be ~0)
+                'saturation_deficit'       [m]: updated catchment average saturation deficit
+                'local_saturation_deficit'[mm]: gridded local saturation deficit
+                'saturated_area'           [-]: fraction of catchment that is saturated
+                'storage_change'          [mm]: change in saturated zone storage
         """
-        #print(R)
         # initial conditions
         So = self.S
         s = self.local_s(So)
@@ -160,7 +164,6 @@ class Topmodel_Homogenous():
         ix = np.where(s <= 0)
 
         fsat = len(ix[0])*self.CellArea / self.CatchmentArea
-        del ix
 
         # check mass balance
         dS = (So - self.S)
@@ -173,7 +176,7 @@ class Topmodel_Homogenous():
                 'returnflow': Qr * 1e3, #[mm d-1]
                 'local_returnflow': self.qr * 1e3, # [mm]
                 'drainage_in': R * 1e3, #[mm d-1]
-                'water_closure': mbe * 1e3, #
+                'water_closure': mbe * 1e3,  # [mm]
                 'saturation_deficit': self.S, # [m]
                 'local_saturation_deficit': s * 1e3, # [mm]
                 'saturated_area': fsat, #[-],
@@ -185,12 +188,26 @@ class Topmodel_Homogenous():
     
 def twi(flowacc, dxy, slope_rad, twi_method):
     """
-    computes TWI according to standard method (twi) (Launiainen et al. 2019) or
-    as saga wetness index (swi, Tyystjärvi et al. 2022) 
+    Computes the topographic wetness index (TWI) grid.
+
+    Supports two methods:
+        'twi': Standard TWI (Launiainen et al. 2019):
+               TWI = log(a / (dxy * tan(slope)))
+        'swi': SAGA wetness index (Tyystjärvi et al. 2022), which modifies the
+               specific catchment area using a slope-dependent correction to
+               better represent wetness in flat terrain.
+
+    Args:
+        flowacc   (array): Flow accumulation per unit contour length [m].
+        dxy       (float): Grid cell size [m].
+        slope_rad (array): Local slope [radians].
+        twi_method  (str): Method to use; either 'twi' or 'swi'.
+
+    Returns:
+        xi (array): Topographic wetness index [-].
     """
     
     from scipy.ndimage import maximum_filter
-    import numpy as np
     eps = np.finfo(float).eps  # machine epsilon
     
     if twi_method == 'twi':
