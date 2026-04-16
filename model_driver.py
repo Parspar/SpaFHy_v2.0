@@ -66,6 +66,7 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     forcing = preprocess_forcing(pgen)
     Nsteps = len(forcing['date'])
     Nspin = (pd.to_datetime(pgen['spinup_end']) - pd.to_datetime(pgen['start_date'])).days + 1
+    pds['spinup_steps'] = Nspin
 
     # results dictionary to accumulate simulation results
     # FOR ONE YEAR AT A TIME

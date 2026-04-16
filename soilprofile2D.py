@@ -83,10 +83,11 @@ class SoilGrid_2Dflow(object):
         self.cmask = np.full_like(spara['deep_id'], np.nan)
         self.cmask[np.isfinite(spara['deep_id'])] = 1.0
 
-        # stream parameters (currently np.nan for non-streams) 
+        # stream parameters (currently np.nan for non-streams)
         self.ditch_l = spara['stream_length'] # total stream length
         self.ditch_w = spara['stream_width'] # average stream width
         self.ditch_d = spara['stream_distance'] # average distance to stream (only for stream grid-cells)
+        self.ditch_d = np.where(self.ditch_d > 0.0, self.ditch_d, 1.0)  # avoid division by zero in S_dd
 
         # interpolated functions for soil column groundwater depth vs. water storage, transmissivity etc.
         self.wsto_to_gwl = spara['wtso_to_gwl']
@@ -97,6 +98,13 @@ class SoilGrid_2Dflow(object):
 
         # initial h (= gwl) and boundaries [m]
         self.ditch_h = spara['streams']
+        self.ditch_h[~np.isfinite(spara['deep_id'])] = 0.
+        # deactivate ditch cells with incomplete stream geometry (missing length, width or distance)
+        # to avoid NaN in S_dd computation
+        ditch_incomplete = (self.ditch_h < -1e-6) & (np.isnan(self.ditch_l) | np.isnan(self.ditch_w) | np.isnan(self.ditch_d))
+        self.ditch_h[ditch_incomplete] = 0.0
+        if np.any(ditch_incomplete):
+            print(f'  WARNING: {np.sum(ditch_incomplete)} ditch cell(s) deactivated due to incomplete stream geometry')
         self.lake_h = spara['lakes']
         self.gwl = spara['ground_water_level']
         # soil surface elevation and hydraulic head [m]
@@ -210,6 +218,7 @@ class SoilGrid_2Dflow(object):
         self.Tr1 = np.zeros((self.rows,self.cols))
         self.Wtso1_deep = np.zeros((self.rows,self.cols))
         self.tmstep = 0
+        self.spinup_steps = spara.get('spinup_steps', 0)
         self.conv99 = 99
         #self.totit = 0
 
@@ -299,26 +308,26 @@ class SoilGrid_2Dflow(object):
         ele = np.ravel(self.ele)
 
         # ditch drainage [m] - outside iteration loop to avoid ditch switching on and off during iteration
-        Ksat = 1E-04 * 86400.
+        Ksat = 1E-05 * 86400.
         S_dd = np.where((ditch_h < -eps) & (ele + ditch_h < H), 
                         Ksat * ditch_l * ditch_w / ditch_d * (H - (ele + ditch_h)) * dt / self.dxy**2,
-                        0.0)
+                        0.0) # should this be capped so that it doesn't exceed the gwl - ditch_h?
         
         # testing Di Ciacci et al., 2019
-        M = 0.1 # thickness of channel bed [m]
-        Ksb = 1E-03 * 86400. # hydraulic conductivity of channel bed [m/d]
-        Khor = 1E-05 * 86400. # aquifer horizontal hydraulic conductivity [m/d]
-        Kver = 1E-06 * 86400. # aquifer vertical hydraulic conductivity [m/d]
-        Keq = np.sqrt(Khor*Kver) # aquifer radial hydraulic conductivity [m/d]
-        D = 5. # thickness of the aquifer [m]
-        u = ditch_w * 1.2 # wetted perimeter length [m]
-        res_sb = M / Ksb * ditch_w * ditch_l
-        res_aqh = (3 * ditch_d * self.dxy - self.dxy**2) / (24 * ditch_d * Khor * D * ditch_l)
-        res_aqr = (np.log(D/u) / (np.pi * Keq) * ditch_l)
+        #M = 0.1 # thickness of channel bed [m]
+        #Ksb = 1E-03 * 86400. # hydraulic conductivity of channel bed [m/d]
+        #Khor = 1E-05 * 86400. # aquifer horizontal hydraulic conductivity [m/d]
+        #Kver = 1E-06 * 86400. # aquifer vertical hydraulic conductivity [m/d]
+        #Keq = np.sqrt(Khor*Kver) # aquifer radial hydraulic conductivity [m/d]
+        #D = 5. # thickness of the aquifer [m]
+        #u = ditch_w * 1.2 # wetted perimeter length [m]
+        #res_sb = M / Ksb * ditch_w * ditch_l
+        #res_aqh = (3 * ditch_d * self.dxy - self.dxy**2) / (24 * ditch_d * Khor * D * ditch_l)
+        #res_aqr = (np.log(D/u) / (np.pi * Keq) * ditch_l)
         
-        S_dd = np.where((ditch_h < -eps) & (ele + ditch_h < H), 
-                        ((H - (ele + ditch_h)) / (res_sb + res_aqh + res_aqr)) * dt / self.dxy**2,
-                        0.0)
+        #S_dd = np.where((ditch_h < -eps) & (ele + ditch_h < H), 
+        #                ((H - (ele + ditch_h)) / (res_sb + res_aqh + res_aqr)) * dt / self.dxy**2,
+        #                0.0)
         
         # Lakes
         # calculate mean H of neighboring nodes to find out whether lake is active (constant head)
@@ -400,9 +409,13 @@ class SoilGrid_2Dflow(object):
         Htmp = self.H.copy()
         Htmp1 = self.H.copy()
 
-        # convergence criteria
-        crit = 1e-3  # seems mass balance error remains resonable
+        # convergence criteria: looser during spin-up, tighter afterwards
+        crit = 1e-2 if self.tmstep <= self.spinup_steps else 1e-3
+        # implicit solution for spinup, crank-nicholson afterwards
+        self.implic = 1.0 if self.tmstep <= self.spinup_steps else 0.5
+
         maxiter = 100
+        #update_Tr_in_loop = self.tmstep > self.spinup_steps
         update_Tr_in_loop = True
 
         for it in range(maxiter):
@@ -485,6 +498,29 @@ class SoilGrid_2Dflow(object):
                     if k+self.cols < self.n:  # south node
                         a_s[k] = 0
 
+            # Guard against singular matrix: NaN in RHS
+            bad_rhs = ~np.isfinite(hs)
+            if np.any(bad_rhs):
+                terms = {
+                    'S':        np.ravel(S) * self.dxy**2 / dt,
+                    'alfa*Htmp': alfa * Htmp,
+                    'S_dd':     S_dd * self.dxy**2 / dt,
+                    'Wtso1':    np.ravel(self.Wtso1_deep) * self.dxy**2 / dt,
+                    'Wsto':     Wsto_deep * self.dxy**2 / dt,
+                    'lateral':  (1.-self.implic) * (TrN0*HN + TrW0*HW + TrE0*HE + TrS0*HS
+                                                    - (TrN0+TrW0+TrE0+TrS0)*H),
+                }
+                nan_terms = [name for name, arr in terms.items() if np.any(~np.isfinite(arr[bad_rhs]))]
+                bad_2d = np.argwhere(np.reshape(bad_rhs, (self.rows, self.cols)))
+                print(f'  WARNING: {np.sum(bad_rhs)} cell(s) with NaN rhs at timestep {self.tmstep}, it {it}, NaN in: {nan_terms}')
+                for idx in bad_2d[:3]:
+                    i, j = idx
+                    k = i * self.cols + j
+                    print(f'    [{i},{j}] Htmp={Htmp[k]:.3f}, ele={self.ele[i,j]:.3f}, gwl={Htmp[k]-self.ele[i,j]:.3f}'
+                          f', alfa={alfa[k]:.4g}, Wsto={Wsto_deep[k]:.4g}, Wtso1={np.ravel(self.Wtso1_deep)[k]:.4g}')
+                a_d[bad_rhs] = 1.0
+                hs[bad_rhs] = Htmp[bad_rhs]
+
             A = diags([a_d, a_w, a_e, a_n, a_s], [0, -1, 1, -self.cols, self.cols],format='csc')
 
             # Solve: A*Htmp1 = hs
@@ -499,14 +535,18 @@ class SoilGrid_2Dflow(object):
                 Htmp_2d  = np.reshape(Htmp,  (self.rows, self.cols))
                 Htmp1_2d = np.reshape(Htmp1, (self.rows, self.cols))
                 problem_indices = np.argwhere(large_diff_2d)
-                print(f'Timestep: {self.tmstep}, it: {it}, cells with |dH|>0.5m: {len(problem_indices)}')
-                for idx in problem_indices[:5]:  # print at most 5 cells
+                print(f'Timestep: {self.tmstep}, it: {it+1}, cells with |dH|>0.5m: {len(problem_indices)}')
+                for idx in problem_indices[:2]:  # print at most 5 cells
                     i, j = idx
                     print(f'  [{i},{j}] gwl: {Htmp_2d[i,j]-self.ele[i,j]:.3f} -> {Htmp1_2d[i,j]-self.ele[i,j]:.3f} m'
                           f', ditch_h: {self.ditch_h[i,j]:.3f}'
+                          f', S_dd: {S_dd[i*self.cols+j]:.4f} m'
                           f', Tr: {self.Tr1[i,j]:.4f} m2/d')
-
-            Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
+                    
+            if self.tmstep <= self.spinup_steps:
+                Htmp1 = np.where(np.abs(Htmp1-Htmp)> 2.0, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
+            if self.tmstep > self.spinup_steps:
+                Htmp1 = np.where(np.abs(Htmp1-Htmp)> 0.5, Htmp + 0.5*np.sign(Htmp1-Htmp), Htmp1)
 
             conv1 = np.max(np.abs(Htmp1 - Htmp))
                       
@@ -519,15 +559,6 @@ class SoilGrid_2Dflow(object):
                 Htmp = 0.5*Htmp1+0.5*Htmp
             else:
                 Htmp = Htmp1.copy()
-
-            #if np.any(np.abs(Htmp1-Htmp)) > 0.5:
-            #    Htmp_print = np.reshape(Htmp,(self.rows,self.cols))
-            #    Htmp1_print = np.reshape(Htmp1,(self.rows,self.cols))
-            #    print('Difference greater than 0.5')
-            #    print('\t', 'iterations:', it, ' con1:', conv1, 
-            #          ' max_index:', max_index, ' self.ditch_h[max_index]', self.ditch_h[max_index],
-            #          ' H[max_index]', Htmp_print[max_index]-self.ele[max_index], 
-            #          ' H1[max_index]', Htmp1_print[max_index]-self.ele[max_index])
 
             Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
@@ -542,10 +573,13 @@ class SoilGrid_2Dflow(object):
             # end of iteration loop
         if it == 99:
             self.conv99 +=1
-        #self.totit += it
         Htmp = np.reshape(Htmp,(self.rows,self.cols))
 
-        print('Timestep:', self.tmstep, ', iterations:', it, ', conv1:', conv1, ', H[max_index]:', Htmp[max_index]-self.ele[max_index])
+        i, j = max_index
+        print(f'Timestep: {self.tmstep}, iterations: {it}, worst conv1: {conv1:.4f} m'
+              f' at [{i},{j}] gwl: {Htmp[i,j]-self.ele[i,j]:.3f} m'
+              f', ditch_h: {self.ditch_h[i,j]:.3f}'
+              f', Tr: {self.Tr1[i,j]:.4f} m2/d')
         
         # lateral flow [m d-1] is calculated in two parts: one depending on previous time step
         # and other on current time step (lateral flowsee 2/2). Their weighting depends
