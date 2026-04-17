@@ -120,7 +120,7 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     else:
             print('*** Bucket organic layer as in Launiainen et al., 2019')
     
-    if pgen['overland_flow']:
+    if pgen.get('overland_flow', False):
             print('*** Overland flow routing with BucketOLFGrid ***')
     else:
             print('*** No overland flow routing with BucketGrid ***')
