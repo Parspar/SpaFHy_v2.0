@@ -9,7 +9,6 @@ Created on Fri Oct 28 16:18:57 2016
 import numpy as np
 import pandas as pd
 from canopygrid import CanopyGrid
-from bucketgrid import BucketGrid
 from topmodel import Topmodel_Homogenous as Topmodel
 from soilprofile2D import SoilGrid_2Dflow as SoilGrid
 
@@ -100,6 +99,10 @@ class SpaFHy():
         
 
         """--- initialize BucketGrid ---"""
+        if pgen.get('overland_flow', False):
+            from bucketolfgrid import BucketOLFGrid as BucketGrid
+        else:
+            from bucketgrid import BucketGrid
         self.bu = BucketGrid(pbu, pgen['org_drain'])
 
         """--- initialize CanopyGrid ---"""

@@ -115,10 +115,15 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     elif pgen['simtype'] == '1D':
             print('*** 1D run')
             
-    if pgen['org_drain'] == True:
+    if pgen['org_drain']:
             print('*** Bucket organic layer drains according to Campbell 1985')
     else:
             print('*** Bucket organic layer as in Launiainen et al., 2019')
+    
+    if pgen['overland_flow']:
+            print('*** Overland flow routing with BucketOLFGrid ***')
+    else:
+            print('*** No overland flow routing with BucketGrid ***')
 
     interval = 0
     Nsaved = Nspin - 1
