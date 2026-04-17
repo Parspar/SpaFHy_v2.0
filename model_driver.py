@@ -66,6 +66,7 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     forcing = preprocess_forcing(pgen)
     Nsteps = len(forcing['date'])
     Nspin = (pd.to_datetime(pgen['spinup_end']) - pd.to_datetime(pgen['start_date'])).days + 1
+    pds['spinup_steps'] = Nspin
 
     # results dictionary to accumulate simulation results
     # FOR ONE YEAR AT A TIME
@@ -367,6 +368,7 @@ def preprocess_parameters(pgen, catchment, folder=''):
 
     if pgen['simtype'] == '2D':
         dsdata = preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, pgen['spatial_soil'])
+        dsdata['ditch_boundary'] = pgen.get('ditch_boundary', 'Dirichlet')
     else:
         dsdata = pspd.copy() # dummy
         

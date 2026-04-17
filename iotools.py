@@ -246,12 +246,36 @@ def read_ds_gisdata(fpath, spatial_pspd, mask=None, plotgrids=False):
             stream_depth, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_depth']))
             streams = stream_depth.copy()
             streams[~np.isfinite(streams)] = 0.0
-            stream_depth[~np.isfinite(stream_depth)] = 0.0
+            #stream_depth[~np.isfinite(stream_depth)] = 0.0
             gis['stream_depth'] = stream_depth
         else:
             stream_depth = pspd['stream_depth']
 
-    if not (('streams' in spatial_pspd and spatial_pspd['streams']) or
+    if 'stream_length' in spatial_pspd:
+        if spatial_pspd['stream_length'] == True:
+            stream_length, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_length']))
+            #stream_length[~np.isfinite(stream_length)] = 0.0
+            gis['stream_length'] = stream_length
+        else:
+            stream_length = pspd['stream_length']
+
+    if 'stream_distance' in spatial_pspd:
+        if spatial_pspd['stream_distance'] == True:
+            stream_distance, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_distance']))
+            #stream_distance[~np.isfinite(stream_distance)] = 0.0
+            gis['stream_distance'] = stream_distance
+        else:
+            stream_distance = pspd['stream_distance']
+
+    if 'stream_width' in spatial_pspd:
+        if spatial_pspd['stream_width'] == True:
+            stream_width, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pspd['stream_width']))
+            #stream_width[~np.isfinite(stream_width)] = 0.0
+            gis['stream_width'] = stream_width
+        else:
+            stream_width = pspd['stream_width']
+
+    if not (('streams' in spatial_pspd and spatial_pspd['streams']) or 
         ('stream_depth' in spatial_pspd and spatial_pspd['stream_depth'])):
         print('*** No stream file ***')
         streams = np.full_like(deep_id, 0.0)
@@ -530,12 +554,15 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     spatial_data = spatial_pspd.copy()
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
 
-    for key in data:
-        if spatial_data[key]:
-            data[key] = gisdata[key]
+    for key in list(data.keys()):
+        if spatial_data.get(key, False):
+            if key in gisdata:
+                data[key] = gisdata[key]
+            else:
+                data.pop(key)  # spatial key not loaded (e.g. optional stream geometry)
         else:
-            uni_value = data[key]
-            data[key] = np.full_like(gridshape, uni_value)
+            if isinstance(data[key], (int, float)):
+                data[key] = np.full_like(gridshape, data[key])
 
     if not spatial:
         data['deep_id'] = pspd['deep_id']
@@ -557,11 +584,13 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         )
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
+    data.update({'deep_z': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
     for key, value in deepp.items():
         c = value['deep_id']
         ix = np.where(data['deep_id'] == c)
         data['soiltype'][ix] = key
+        data['deep_z'][ix] = value['deep_z']
         # interpolation function between wsto and gwl
         value.update(gwl_Wsto(value['deep_z'], value['pF'], value['deep_ksat']))
         # interpolation function between root_wsto and gwl
@@ -611,12 +640,15 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
 
-    for key in data:
-        if spatial_data[key]:
-            data[key] = gisdata[key]
+    for key in list(data.keys()):
+        if spatial_data.get(key, False):
+            if key in gisdata:
+                data[key] = gisdata[key]
+            else:
+                data.pop(key)  # spatial key not loaded (e.g. optional stream geometry)
         else:
-            uni_value = data[key]
-            data[key] = np.full_like(gridshape, uni_value)
+            if isinstance(data[key], (int, float)):
+                data[key] = np.full_like(gridshape, data[key])
 
     if not spatial:
         data['deep_id'] = pspd['deep_id']
@@ -639,11 +671,12 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
-    if not spatial_data['deep_z']:
+    if not spatial_data.get('deep_z', False):
         for key, value in deepp.items():
             c = value['deep_id']
             ix = np.where(data['deep_id'] == c)
             data['soiltype'][ix] = key
+            data['deep_z'][ix] = value['deep_z']
             # interpolation function between wsto and gwl
             value.update(gwl_Wsto(value['deep_z'], value['pF'], -0.01, value['deep_ksat']))
             # interpolation function between root_wsto and gwl
@@ -716,8 +749,10 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
         data['gwl_to_C'] = temp_to_C.reshape(gridshape.shape)
         data['gwl_to_Tr'] = temp_to_Tr.reshape(gridshape.shape)
         data['gwl_to_rootmoist'] = temp_to_rootmoist.reshape(gridshape.shape)
+        data['deep_z'] = deep_z_f.reshape(data['deep_z'].shape)
 
     data['lakes'] = np.where(data['lakes'] < -eps, pspd['lake_depth'], 0)
+
     data['dxy'] = gisdata['dxy']
 
     return data
