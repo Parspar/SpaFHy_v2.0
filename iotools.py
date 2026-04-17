@@ -68,6 +68,27 @@ def read_bu_gisdata(fpath, spatial_pbu, mask=None, plotgrids=False):
 
     gis = {}
 
+    # overlandflow
+    if 'flowacc' in spatial_pbu:
+        if spatial_pbu['flowacc']:
+            flowacc, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['flowacc']))
+            gis['flowacc'] = flowacc
+
+    if 'fdir' in spatial_pbu:
+        if spatial_pbu['fdir']:
+            fdir, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['fdir']))
+            gis['fdir'] = fdir
+
+    if 'streams' in spatial_pbu:
+        if spatial_pbu['streams']:
+            streams, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['streams']))
+            gis['streams'] = streams
+
+    if 'lakes' in spatial_pbu:
+        if spatial_pbu['lakes']:
+            lakes, info, _, cellsize, _ = read_AsciiGrid(os.path.join(fpath, pbu['lakes']))
+            gis['lakes'] = lakes
+
     # soil classification
     if 'org_id' in spatial_pbu:
         if spatial_pbu['org_id']:
@@ -501,6 +522,9 @@ def preprocess_budata(pbu, spatial_pbu, orgp, rootp, gisdata, spatial=True):
             data['root_wr'][yx] = value['root_wr']
 
     data['dxy'] = gisdata['dxy']
+    for key in ('flowacc', 'fdir', 'streams', 'lakes'):
+        if key in gisdata:
+            data[key] = gisdata[key]
 
     return data
 

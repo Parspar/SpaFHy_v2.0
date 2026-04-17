@@ -20,7 +20,8 @@ def parameters(folder=''):
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
             'spatial_soil': True,  # if False uses soil_id, stream_depth from psp
             'spatial_deep': True,
-            'org_drain': True, # organic layer drainage True/False            
+            'org_drain': True, # organic layer drainage True/False
+            'overland_flow': True, # use BucketOLFGrid (overland flow routing) True/False
             'topmodel': True,
             # else needs soil_id.dat, stream_depth.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
@@ -68,6 +69,7 @@ def parameters(folder=''):
                     #['bucket_pond_storage', 'pond storage [m]'],
                     ['bucket_moisture_top', 'volumetric water content of moss layer [m3 m-3]'],
                     ['bucket_moisture_root', 'volumetric water content of rootzone [m3 m-3]'],
+                    ['bucket_lateral_netflow', 'lateral overland netflow [mm d-1]'],
                     #['bucket_psi_root', 'soil water potential of rootzone [MPa]'],                    
                     #['bucket_potential_infiltration', 'potential infiltration [mm d-1]'],
                     ['bucket_surface_runoff', 'surface runoff [mm d-1]'],
@@ -199,6 +201,11 @@ def parameters(folder=''):
     # soil profile (bucket)
     pbu = {
             # soil profile, following properties are used if spatial_soil = False
+            # overlandflow model
+            'flowacc': 'flow_accumulation_d8.asc',
+            'fdir': 'flowp_d8.asc',
+            'streams': 'channels.asc',
+            'lakes': 'lake_mask.asc',
             # organic moss-humus layer
             'org_id': 'soil.asc', # uniform (float) OR path to grid in gispath (str)       
             'org_depth': 0.05, # depth of organic top layer (m)
