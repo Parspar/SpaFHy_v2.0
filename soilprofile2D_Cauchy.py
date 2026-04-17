@@ -83,15 +83,11 @@ class SoilGrid_2Dflow(object):
         self.cmask = np.full_like(spara['deep_id'], np.nan)
         self.cmask[np.isfinite(spara['deep_id'])] = 1.0
 
-        self.ditch_boundary = spara.get('ditch_boundary', 'Dirichlet')
-
-        if self.ditch_boundary == 'Cauchy':
-            # stream geometry needed for Cauchy flux (currently np.nan for non-streams)
-            self.ditch_l = spara['stream_length']  # total stream length
-            self.ditch_w = spara['stream_width']   # average stream width
-            self.ditch_d = spara['stream_distance']  # average distance to stream
-            self.ditch_d = np.where(self.ditch_d > 0.0, self.ditch_d, 1.0)  # avoid division by zero in S_dd
-            self.stream_ksat = spara.get('stream_ksat', 1E-05) * 86400.  # [m d-1]
+        # stream parameters (currently np.nan for non-streams)
+        self.ditch_l = spara['stream_length'] # total stream length
+        self.ditch_w = spara['stream_width'] # average stream width
+        self.ditch_d = spara['stream_distance'] # average distance to stream (only for stream grid-cells)
+        self.ditch_d = np.where(self.ditch_d > 0.0, self.ditch_d, 1.0)  # avoid division by zero in S_dd
 
         # interpolated functions for soil column groundwater depth vs. water storage, transmissivity etc.
         self.wsto_to_gwl = spara['wtso_to_gwl']
@@ -102,16 +98,14 @@ class SoilGrid_2Dflow(object):
 
         # initial h (= gwl) and boundaries [m]
         self.ditch_h = spara['streams']
-        self.lake_h = spara['lakes']
         self.ditch_h[~np.isfinite(spara['deep_id'])] = 0.
-
-        if self.ditch_boundary == 'Cauchy':
-            # deactivate ditch cells with incomplete stream geometry (missing length, width or distance)
-            # to avoid NaN in S_dd computation
-            ditch_incomplete = (self.ditch_h < -1e-6) & (np.isnan(self.ditch_l) | np.isnan(self.ditch_w) | np.isnan(self.ditch_d))
-            self.ditch_h[ditch_incomplete] = 0.0
-            if np.any(ditch_incomplete):
-                print(f'  WARNING: {np.sum(ditch_incomplete)} ditch cell(s) deactivated due to incomplete stream geometry')
+        # deactivate ditch cells with incomplete stream geometry (missing length, width or distance)
+        # to avoid NaN in S_dd computation
+        ditch_incomplete = (self.ditch_h < -1e-6) & (np.isnan(self.ditch_l) | np.isnan(self.ditch_w) | np.isnan(self.ditch_d))
+        self.ditch_h[ditch_incomplete] = 0.0
+        if np.any(ditch_incomplete):
+            print(f'  WARNING: {np.sum(ditch_incomplete)} ditch cell(s) deactivated due to incomplete stream geometry')
+        self.lake_h = spara['lakes']
         self.gwl = spara['ground_water_level']
         # soil surface elevation and hydraulic head [m]
         self.ele = spara['elevation']
@@ -140,10 +134,6 @@ class SoilGrid_2Dflow(object):
                         lake_boundary[i,j] = 1       
 
         self.lake_interior[(lake_boundary != 1) & (self.lake_h < -eps)] = 1 # saving lake interior array
-
-        if self.ditch_boundary == 'Dirichlet':
-            # merge lake levels into ditch_h so both are treated as constant-head boundaries
-            self.ditch_h[self.lake_h < -eps] = self.lake_h[self.lake_h < -eps]
 
         # nan to lake interiors (lake interiors should not be solved)
         self.soiltype[self.lake_interior == 1] = np.nan
@@ -310,21 +300,18 @@ class SoilGrid_2Dflow(object):
         H = np.ravel(self.H)
         Wsto_deep = np.ravel(self.Wsto_deep)
         ditch_h = np.ravel(self.ditch_h)
+        ditch_l = np.ravel(self.ditch_l)
+        ditch_w = np.ravel(self.ditch_w)
+        ditch_d = np.ravel(self.ditch_d)
         lake_h = np.ravel(self.lake_h)
         lake_interior = np.ravel(self.lake_interior)
         ele = np.ravel(self.ele)
 
-        if self.ditch_boundary == 'Cauchy':
-            ditch_l = np.ravel(self.ditch_l)
-            ditch_w = np.ravel(self.ditch_w)
-            ditch_d = np.ravel(self.ditch_d)
-            stream_ksat = np.ravel(self.stream_ksat)
-            # ditch drainage [m] - outside iteration loop to avoid ditch switching on and off during iteration
-            S_dd = np.where((ditch_h < -eps) & (ele + ditch_h < H),
-                            stream_ksat * ditch_l * ditch_w / ditch_d * (H - (ele + ditch_h)) * dt / self.dxy**2,
-                            0.0)
-        else:
-            S_dd = np.zeros_like(H)
+        # ditch drainage [m] - outside iteration loop to avoid ditch switching on and off during iteration
+        Ksat = 1E-05 * 86400.
+        S_dd = np.where((ditch_h < -eps) & (ele + ditch_h < H), 
+                        Ksat * ditch_l * ditch_w / ditch_d * (H - (ele + ditch_h)) * dt / self.dxy**2,
+                        0.0) # should this be capped so that it doesn't exceed the gwl - ditch_h?
         
         # testing Di Ciacci et al., 2019
         #M = 0.1 # thickness of channel bed [m]
@@ -342,45 +329,41 @@ class SoilGrid_2Dflow(object):
         #                ((H - (ele + ditch_h)) / (res_sb + res_aqh + res_aqr)) * dt / self.dxy**2,
         #                0.0)
         
-        # Boundary condition cells: lakes only for Cauchy; ditches+lakes for Dirichlet
-        if self.ditch_boundary == 'Cauchy':
-            bc_h = lake_h          # flat array
-            bc_h_2d = self.lake_h  # 2D array
-        else:
-            bc_h = ditch_h
-            bc_h_2d = self.ditch_h
-
-        # calculate mean H of neighboring non-BC nodes to determine whether BC is active
-        # done outside iteration loop to avoid boundary switching during iteration
-        H_neighbours = bc_h.copy()
-        for k in np.where(bc_h < -eps)[0]:
+        # Lakes
+        # calculate mean H of neighboring nodes to find out whether lake is active (constant head)
+        # from previous timestep to avoid switching boundary/no-boundary during iteration
+        H_neighbours = lake_h.copy()
+        for k in np.where(lake_h < -eps)[0]:
             H_ave = 0
             n_neigh = 0
-            if k%self.cols != 0 and bc_h[k-1] > -eps:
+            if k%self.cols != 0 and lake_h[k-1] > -eps: # west non-lake neighbor
                     H_ave += H[k-1]
                     n_neigh += 1
-            if (k+1)%self.cols != 0 and bc_h[k+1] > -eps:
+            if (k+1)%self.cols != 0 and lake_h[k+1] > -eps: # east non-lake neighbor
                     H_ave += H[k+1]
                     n_neigh += 1
-            if k-self.cols >= 0 and bc_h[k-self.cols] > -eps:
+            if k-self.cols >= 0 and  lake_h[k-self.cols] > -eps: # north non-lake neighbor
                     H_ave += H[k-self.cols]
                     n_neigh += 1
-            if k+self.cols < self.n and bc_h[k+self.cols] > -eps:
+            if k+self.cols < self.n and lake_h[k+self.cols] > -eps: # south non-lake neighbor
                     H_ave += H[k+self.cols]
                     n_neigh += 1
             if n_neigh > 0:
-                H_neighbours[k] = H_ave / n_neigh
-            else:
-                H_neighbours[k] = ele[k] + bc_h[k] + eps
+                H_neighbours[k] = H_ave / n_neigh  # average of neighboring non-lake nodes
+            else:  # corners or nodes surrounded by lakes dont have neighbors, given its ditch depth
+                H_neighbours[k] = ele[k] + lake_h[k] + eps
 
-        # lake interiors do not have neighbours
+        # lake interior do not have neighbours
         for k in np.where(lake_interior == 1)[0]:
             H_neighbours[k] = ele[k] + lake_h[k] + eps
+        
+        H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols)) # 2D array of lakes' neighbouring land cells' average hydraulic head
 
-        H_neighbours_2d = np.reshape(H_neighbours,(self.rows,self.cols))
-
-        # Transmissivity: for active BC nodes use mean H of neighbours, not the (possibly deep) BC level
-        H_for_Tr = np.where((bc_h_2d < -eps) & (H_neighbours_2d > self.ele + bc_h_2d),
+        # Transmissivity of previous timestep [m2 d-1]
+        # for lake nodes that are active, transmissivity calculated based on mean H of
+        # neighboring nodes, not lake depth which would restrict tranmissivity too much
+        # Whole profile depth still considered, but I think that is the usual way..
+        H_for_Tr = np.where((self.lake_h < -eps) & (H_neighbours_2d > self.ele + self.lake_h),
                             H_neighbours_2d, self.H)
         
         # transmissivities based on gwl
@@ -440,7 +423,7 @@ class SoilGrid_2Dflow(object):
                 # transmissivity [m2 d-1] to neighbouring cells with HTmp1
                 # for lake nodes that are active, transmissivity calculated based on mean H of
                 # neighboring nodes, not lake depth which would restrict transmissivity too much
-                H_for_Tr = np.where((bc_h_2d < -eps) & (H_neighbours_2d > self.ele + bc_h_2d),
+                H_for_Tr = np.where((self.lake_h < -eps) & (H_neighbours_2d > self.ele + self.lake_h),
                                     H_neighbours_2d, Htmp)
                 # transmissivities based on gwl
                 if not self.z_from_gis:
@@ -500,10 +483,11 @@ class SoilGrid_2Dflow(object):
                   - (1.-self.implic) * (TrN0 + TrW0 + TrE0 + TrS0) * H
                   + (1.-self.implic) * (TrE0*HE) + (1.-self.implic) * (TrS0*HS))
 
-            # Constant-head boundary cells (lakes for Cauchy; ditches+lakes for Dirichlet)
-            for k in np.where(bc_h < -eps)[0]:
-                if H_neighbours[k] > ele[k] + bc_h[k]:
-                    hs[k] = ele[k] + bc_h[k]
+            # Lakes
+            for k in np.where(lake_h < -eps)[0]:
+                # update a_x and hs when lake as constant head
+                if H_neighbours[k] > ele[k] + lake_h[k]: # average of neighboring H above lake depth
+                    hs[k] = ele[k] + lake_h[k]
                     a_d[k] = 1
                     if k%self.cols != 0:  # west node
                         a_w[k-1] = 0
@@ -621,6 +605,8 @@ class SoilGrid_2Dflow(object):
                 for j in range(self.gwl_to_wsto.shape[1]):
                     if np.isfinite(self.cmask[i,j]):
                         self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.gwl[i,j])
+                    if np.isfinite(self.cmask[i,j]):
+                        self.Wsto_deep[i,j] = self.gwl_to_wsto[i,j](self.gwl[i,j])
 
         # Head in four neighbouring cells
         self.HW[:,1:] = self.H[:,:-1]
@@ -648,8 +634,8 @@ class SoilGrid_2Dflow(object):
         # Let's limit head to 0 and assign rest as return flow to bucketgrid
         Wsto_before_qr = self.Wsto_deep.copy()
 
-        # restrict gwl: cap land cells at 0, cap BC cells at their water level
-        self.gwl = np.where(bc_h_2d < -eps, np.minimum(self.gwl, bc_h_2d), np.minimum(0.0, self.gwl))
+        # restricting gwl to 0 on land and, and to minimum of gwl and lake_h in lakes
+        self.gwl = np.where(self.lake_h < -eps, np.minimum(self.gwl, self.lake_h), np.minimum(0.0, self.gwl))
         self.H = self.gwl + self.ele
         self.H[np.isnan(self.H)] = -999
 
@@ -669,66 +655,40 @@ class SoilGrid_2Dflow(object):
         # The difference is the return flow to bucketgrid
         qr = Wsto_before_qr - self.Wsto_deep
 
+        # Lakes are described as constant heads so the netflow to lakes can
+        # be calculated from their mass balance [m]  !? does not work if head below lake ?!
+        netflow_to_lake = np.where((self.lake_h < -eps) & (H_neighbours_2d > self.ele + self.lake_h),  # active lake cells
+                                    state0 - np.reshape(S_dd,(self.rows,self.cols))  # ditches in lake cells?
+                                    - self.Wsto_deep - qr - lateral_flow * dt, 0.0)
+
         # air volume
         self.airv_deep = np.maximum(0.0, self.Wsto_deep_max - self.Wsto_deep)
+        
+        # mass balance error [m] - now calculated also for lake cells which is relevant when H < lake_h
+        mbe = (state0 - np.reshape(S_dd,(self.rows,self.cols)) - self.Wsto_deep - qr - lateral_flow * dt
+               - netflow_to_lake * dt)
+        mbe = np.where(self.lake_h < -eps, 0.0, mbe)
 
-        if self.ditch_boundary == 'Cauchy':
-            # Lakes are constant-head: netflow to lake from mass balance
-            netflow_to_lake = np.where(
-                (self.lake_h < -eps) & (H_neighbours_2d > self.ele + self.lake_h),
-                state0 - np.reshape(S_dd,(self.rows,self.cols)) - self.Wsto_deep - qr - lateral_flow * dt,
-                0.0)
+        # outputs multiplied by cmask
+        h_out = self.gwl.copy() * self.cmask
+        lateral_flow = lateral_flow * self.cmask
+        netflow_to_lake = netflow_to_lake * self.cmask
+        netflow_to_ditch = np.reshape(S_dd,(self.rows,self.cols)) * self.cmask
+        mbe = mbe * self.cmask
+        #deepmoist_out = self.deepmoist.copy() * self.cmask
+        Wsto_deep_out = self.Wsto_deep.copy() * self.cmask
 
-            # mass balance error [m]
-            mbe = (state0 - np.reshape(S_dd,(self.rows,self.cols)) - self.Wsto_deep - qr - lateral_flow * dt
-                   - netflow_to_lake * dt)
-            mbe = np.where(self.lake_h < -eps, 0.0, mbe)
-
-            # outputs multiplied by cmask
-            h_out = self.gwl.copy() * self.cmask
-            lateral_flow = lateral_flow * self.cmask
-            netflow_to_lake = netflow_to_lake * self.cmask
-            netflow_to_ditch = np.reshape(S_dd,(self.rows,self.cols)) * self.cmask
-            mbe = mbe * self.cmask
-            Wsto_deep_out = self.Wsto_deep.copy() * self.cmask
-
-            results = {
-                    'ground_water_level': h_out,  # [m]
-                    'lateral_netflow': -lateral_flow * 1e3 / dt,  # [mm d-1]
-                    'netflow_to_ditch': netflow_to_ditch * 1e3 / dt,  # [mm d-1]
-                    'netflow_to_lake': netflow_to_lake * 1e3 / dt,  # [mm d-1]
-                    'water_closure': mbe * 1e3 / dt,  # [mm d-1]
-                    'water_storage': Wsto_deep_out * 1e3,  # [mm]
-                    'return_flow': qr * 1e3,  # [mm]
-                    'transmissivity': Tr,  # [m2 d-1]
-                    }
-
-        else:  # Dirichlet: ditches+lakes are constant-head, netflow_to_ditch from mass balance
-            netflow_to_ditch = np.where(self.ditch_h < -eps,
-                                        state0 - self.Wsto_deep - lateral_flow * dt, 0.0)
-            netflow_to_ditch += np.where(self.ditch_h < -eps, Wsto_before_qr - self.Wsto_deep, 0.)
-
-            # mass balance error [m]
-            mbe = (state0 - self.Wsto_deep - qr - lateral_flow * dt)
-            mbe = np.where(self.ditch_h < -eps, 0.0, mbe)
-
-            # outputs multiplied by cmask
-            h_out = self.gwl.copy() * self.cmask
-            lateral_flow = lateral_flow * self.cmask
-            netflow_to_ditch = netflow_to_ditch * self.cmask
-            mbe = mbe * self.cmask
-            Wsto_deep_out = self.Wsto_deep.copy() * self.cmask
-
-            results = {
-                    'ground_water_level': h_out,  # [m]
-                    'lateral_netflow': -lateral_flow * 1e3 / dt,  # [mm d-1]
-                    'netflow_to_ditch': netflow_to_ditch * 1e3 / dt,  # [mm d-1]
-                    'water_closure': mbe * 1e3 / dt,  # [mm d-1]
-                    'water_storage': Wsto_deep_out * 1e3,  # [mm]
-                    'return_flow': qr * 1e3,  # [mm]
-                    'transmissivity': Tr,  # [m2 d-1]
-                    }
-
+        results = {
+                'ground_water_level': h_out,  # [m]
+                'lateral_netflow': -lateral_flow * 1e3 / dt,  # [mm d-1]
+                'netflow_to_ditch': netflow_to_ditch * 1e3 / dt,  # [mm d-1]
+                'netflow_to_lake': netflow_to_lake * 1e3 / dt,  # [mm d-1]
+                'water_closure': mbe * 1e3 / dt,  # [mm d-1]
+                #'moisture_deep': deepmoist_out,  # [m3 m-3]
+                'water_storage': Wsto_deep_out * 1e3, # [mm]
+                'return_flow': qr * 1e3, # [mm],
+                'transmissivity': Tr,  # [m2 d-1]
+                }
         return results
 
 

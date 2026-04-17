@@ -12,9 +12,9 @@ def parameters(folder=''):
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # 1D, TOP, 2D,
             'start_date': '2013-01-01',  # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2015-09-01', # 2017-09-01,
+            'end_date': '2016-12-31', # 2017-09-01,
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2014-09-01',  # '2015-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2014-01-01',  # '2015-09-01', for tests: '2020-09-01' results after this are saved in result file
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -22,6 +22,7 @@ def parameters(folder=''):
             'spatial_deep': True,
             'org_drain': True, # organic layer drainage True/False
             'overland_flow': True, # use BucketOLFGrid (overland flow routing) True/False
+            'ditch_boundary': 'Cauchy',  # ditch boundary condition: 'Cauchy' (flux) or 'Dirichlet' (constant head)
             'topmodel': True,
             # else needs soil_id.dat, stream_depth.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
@@ -241,6 +242,7 @@ def parameters(folder=''):
             'stream_distance': 'channels_distance.asc', # average distance to stream
             'stream_length': 'channels_length.asc', # total stream length
             'stream_width': 'channels_width.asc', # average stream width
+            'stream_ksat': 1E-05,  # hydraulic conductivity of stream/ditch bed [m s-1] (Cauchy BC only)
             'lakes': 'lake_mask.asc',
             'deep_z': 'soildepth.asc',
             'deep_poros': 0.41,

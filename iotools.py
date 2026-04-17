@@ -554,12 +554,15 @@ def preprocess_dsdata(pspd, spatial_pspd, deepp, gisdata, spatial=True):
     spatial_data = spatial_pspd.copy()
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
 
-    for key in data:
-        if spatial_data[key]:
-            data[key] = gisdata[key]
+    for key in list(data.keys()):
+        if spatial_data.get(key, False):
+            if key in gisdata:
+                data[key] = gisdata[key]
+            else:
+                data.pop(key)  # spatial key not loaded (e.g. optional stream geometry)
         else:
-            uni_value = data[key]
-            data[key] = np.full_like(gridshape, uni_value)
+            if isinstance(data[key], (int, float)):
+                data[key] = np.full_like(gridshape, data[key])
 
     if not spatial:
         data['deep_id'] = pspd['deep_id']
@@ -637,12 +640,15 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     gridshape = np.ones(shape=gisdata['deep_id'].shape)
 
-    for key in data:
-        if spatial_data[key]:
-            data[key] = gisdata[key]
+    for key in list(data.keys()):
+        if spatial_data.get(key, False):
+            if key in gisdata:
+                data[key] = gisdata[key]
+            else:
+                data.pop(key)  # spatial key not loaded (e.g. optional stream geometry)
         else:
-            uni_value = data[key]
-            data[key] = np.full_like(gridshape, uni_value)
+            if isinstance(data[key], (int, float)):
+                data[key] = np.full_like(gridshape, data[key])
 
     if not spatial:
         data['deep_id'] = pspd['deep_id']
@@ -665,7 +671,7 @@ def preprocess_dsdata_vec(pspd, spatial_pspd, deepp, gisdata, spatial=True):
 
     data.update({'soiltype': np.empty(np.shape(gisdata['deep_id']),dtype=object)})
 
-    if not spatial_data['deep_z']:
+    if not spatial_data.get('deep_z', False):
         for key, value in deepp.items():
             c = value['deep_id']
             ix = np.where(data['deep_id'] == c)
