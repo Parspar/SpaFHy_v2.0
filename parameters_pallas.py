@@ -11,29 +11,30 @@ def parameters(folder=''):
 
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # groundwater conceptualizations: '1D', 'TOP' or '2D',
-            'start_date': '2018-01-01', # '2011-01-01', for tests: '2020-01-01'
-            'end_date': '2019-12-31', # 2021-12-31,
+            'start_date': '2019-01-01', # spin-up starts here
+            'end_date': '2025-12-31', # forcing covers through 2026-03
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2018-12-31',  # '2013-09-01', for tests: '2020-09-01' results after this are saved in result file
+            'spinup_end': '2021-12-31',  # results after this date are saved -> output covers 2022-01-01..2025-12-31
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
             'spatial_soil': True,  # if False uses soil_id, stream_depth from psp
             'spatial_deep': True,
-            'org_drain': True, # organic layer drainage True/False            
+            'org_drain': True, # organic layer drainage True/False
+            'overland_flow': True, # use BucketOLFGrid (overland flow routing) True/False
             'topmodel': True,
             # else needs soil_id.dat, stream_depth.dat
             'spatial_forcing': False,  # if False uses forcing from forcing file with pgen['forcing_id'] and cpy['loc']
             'spatial_radiation_file': None, # if spatial radiation file, otherwise None
             # else needs Ncoord.dat, Ecoord.dat, forcing_id.dat
             'gis_folder': str(pathlib.Path(folder+r'/gis/pallasjarvi_16')),
-            'forcing_file': str(pathlib.Path(folder+r'/forcing/FORCING.csv')),
+            'forcing_file': str(pathlib.Path(folder+r'/forcing/Forcings of Pallasjärvi.csv')),
             'forcing_id': 0,  # used if spatial_forcing == False
             'ncf_file': time.strftime('%Y%m%d%H%M') + r'.nc',  # timestamp to result file name to avoid saving problem when running repeatedly
             'cmask' : 'catchment_mask.asc',
             'mask': 'cmask', # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
-            'results_folder': str(pathlib.Path(folder+r'/results')),
+            'results_folder': str(pathlib.Path(folder).parent / 'outputs'),
             'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
@@ -193,6 +194,11 @@ def parameters(folder=''):
     # soil profile (bucket)
     pbu = {
             # soil profile, following properties are used if spatial_soil = False
+            # overland flow routing (BucketOLFGrid)
+            'flowacc': 'flowacc_d8.asc',
+            'fdir': 'flowdir_d8.asc',
+            'streams': 'channels.asc',
+            'lakes': 'lakes.asc',
             # organic moss-humus layer
             'org_id': 'maintype_mnfi.asc', # uniform (float) OR path to grid in gispath (str)       
             'org_depth': 0.05, # depth of organic top layer (m)
@@ -558,29 +564,29 @@ def root_properties(): # from MNFI
                  'root_n': 1.32,
                  'root_wr': 0.10,
                  },
-            'rocky': # NEEDS PARAMETERS
+            'rocky': # calibration start values: skeletal fell soil; see docs/calibration_notes.md
                 {
                  'root_id': 7,
-                 'root_poros': 0.9,
-                 'root_fc': 0.31,
-                 'root_wp': 0.11,
-                 'root_ksat': 1e-06,
+                 'root_poros': 0.40, # was 0.9 (peat-like placeholder); coarse/skeletal till, rock-fragment reduced
+                 'root_fc': 0.12, # very low retained water (below xeric)
+                 'root_wp': 0.04,
+                 'root_ksat': 1e-04, # skeletal/coarse, drains very fast
                  'root_beta': 4.0,
-                 'root_alpha': 8.54,
-                 'root_n': 1.32,
-                 'root_wr': 0.10,
+                 'root_alpha': 3.8, # affects psi output only
+                 'root_n': 1.45, # coarsest retention
+                 'root_wr': 0.02,
                  },
-            'fjeld_conif': # NEEDS PARAMETERS
+            'fjeld_conif': # calibration start values: fell coniferous podzol; see docs/calibration_notes.md
                 {
                  'root_id': 8,
-                 'root_poros': 0.9,
-                 'root_fc': 0.31,
-                 'root_wp': 0.11,
-                 'root_ksat': 1e-06,
+                 'root_poros': 0.45, # was 0.9 (peat-like placeholder); coarse mineral till
+                 'root_fc': 0.18, # low storage, between sub-xeric and xeric
+                 'root_wp': 0.06,
+                 'root_ksat': 8e-05, # well-drained
                  'root_beta': 4.0,
-                 'root_alpha': 8.54,
-                 'root_n': 1.32,
-                 'root_wr': 0.10,
+                 'root_alpha': 3.8, # affects psi output only
+                 'root_n': 1.35, # steeper retention than mesic (coarser)
+                 'root_wr': 0.02,
                  },
             'fjeld_birch': # NEEDS PARAMETERS
                 {

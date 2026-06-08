@@ -6,13 +6,15 @@ gridded application in SpaFHy.
 Cells are processed sequentially in flow-accumulation order (low to high).
 Within each cell two steps execute in order:
 
-  1. Overland flow: excess pond storage above MaxPondSto is routed to the D8
-     downslope neighbour. Water body cells drain all pond storage directly to
-     the ditch network.
-
-  2. Bucket water balance: vertical processes (interception, evaporation,
+  1. Bucket water balance: vertical processes (interception, evaporation,
      transpiration, Campbell gravitational drainage) are solved using the
-     pond storage that remains after step 1 as an additional water input.
+     pond storage received from upstream as an additional water input. Any
+     excess that the soil cannot hold accumulates in pond storage (no MaxPond
+     cap at this point).
+
+  2. Overland flow: pond storage above MaxPond is routed to the D8 downslope
+     neighbour. Water body cells drain all pond storage directly as surface
+     runoff (to the ditch/stream network).
 
 Processing cells from lowest to highest flow accumulation ensures that water
 routed from an upstream cell is immediately available for infiltration when
