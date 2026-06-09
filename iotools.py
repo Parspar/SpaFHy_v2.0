@@ -985,6 +985,15 @@ def read_FMI_weather(start_date, end_date, sourcefile, U=2.0, ID=1, CO2=380.0):
     fmi = pd.read_csv(sourcefile, sep=';', header='infer', index_col=0,
                       parse_dates=True ,encoding="ISO-8859-1")
 
+    # Some forcing files use '-' (or blanks) as a missing-value marker. A single
+    # such token makes pandas read the whole column as text (object dtype), which
+    # later breaks arithmetic like 0.5 * fmi['radiation']. Coerce every column to
+    # numeric (markers -> NaN) and fill short gaps by linear interpolation so the
+    # forcing stays numeric and continuous.
+    for col in fmi.columns:
+        fmi[col] = pd.to_numeric(fmi[col], errors='coerce')
+    fmi = fmi.interpolate(method='linear', limit_direction='both')
+
     if 'PAR' not in fmi.columns:
         fmi['PAR'] = 0.5 * fmi['radiation']
 
