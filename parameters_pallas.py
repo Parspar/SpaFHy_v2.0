@@ -12,9 +12,9 @@ def parameters(folder=''):
     pgen = {'description': 'final_run',  # description written in result file
             'simtype': '2D', # groundwater conceptualizations: '1D', 'TOP' or '2D',
             'start_date': '2019-01-01', # spin-up starts here
-            'end_date': '2025-12-31', # forcing covers through 2026-03
+            'end_date': '2019-02-15', # SHORT TEST RUN (full run: '2025-12-31')
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2021-12-31',  # results after this date are saved -> output covers 2022-01-01..2025-12-31
+            'spinup_end': '2019-01-15',  # SHORT TEST: 15-day spin-up, results saved 2019-01-16..2019-02-15 (full run: '2021-12-31')
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
