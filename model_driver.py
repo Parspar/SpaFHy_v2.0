@@ -59,8 +59,12 @@ def driver(catchment, catchment_no, create_ncf=False, create_spinup=False, outpu
     # new directory for results files
     results_folder = create_simulation_folder(pgen)
     pgen['results_folder'] = results_folder
-    results_file = os.path.join(results_folder, pgen['ncf_file'])
-    pgen['ncf_file'] = results_file
+    # Keep pgen['ncf_file'] as a bare filename. initialize_netcdf()/
+    # initialize_netcdf_spinup() join filepath (results_folder) + filename
+    # themselves. Pre-joining results_folder here caused a duplicated path
+    # (../outputs/run/../outputs/run/file.nc) whenever results_folder was
+    # relative; with an absolute results_folder os.path.join happened to hide
+    # the bug.
 
     # load and process forcing data
     forcing = preprocess_forcing(pgen)
