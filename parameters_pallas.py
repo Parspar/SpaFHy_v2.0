@@ -9,12 +9,12 @@ import time
 
 def parameters(folder=''):
 
-    pgen = {'description': 'final_run',  # description written in result file
+    pgen = {'description': 'spinup2019-2021_prod2022-2025',  # description written in result file (also used in output folder name)
             'simtype': '2D', # groundwater conceptualizations: '1D', 'TOP' or '2D',
             'start_date': '2019-01-01', # spin-up starts here
-            'end_date': '2019-02-15', # SHORT TEST RUN (full run: '2025-12-31')
+            'end_date': '2025-12-31', # PRODUCTION RUN: full simulation end
             #'spinup_file': r'F:\SpaFHy_2D_2021/testcase_input_202304051037_spinup.nc',
-            'spinup_end': '2019-01-15',  # SHORT TEST: 15-day spin-up, results saved 2019-01-16..2019-02-15 (full run: '2021-12-31')
+            'spinup_end': '2021-12-31',  # PRODUCTION: 2019-01-01..2021-12-31 spin-up; results saved 2022-01-01..2025-12-31 (1461 days)
             'dt': 86400.0,
             'spatial_cpy': True,  # if False uses parameters from cpy['state']
             # else needs cf.dat, hc.dat, LAI_decid.dat, LAI_spruce.dat, LAI_pine.dat, (cmask.dat)
@@ -35,7 +35,7 @@ def parameters(folder=''):
             'mask': 'cmask', # 'cmask/streams', 'cmask', 'streams', None
             #'results_folder': r'/scratch/project_2000908/nousu/SpaFHy_RESULTS',
             'results_folder': str(pathlib.Path(folder).parent / 'outputs'),
-            'save_interval': 366, # interval for writing results to file (decreases need for memory during computation)
+            'save_interval': 30, # interval for writing results to file (decreases need for memory during computation); 30 keeps the float64 in-memory buffer small enough for 10 parallel subcatchments on a Puhti node (does not change final output size)
             'variables':[ # list of output variables (rows can be commented away if not all variables are of interest)
                     ['parameters_lai_conif', 'leaf area index of conifers [m2 m-2]'],
                     ['parameters_lai_decid_max', 'leaf area index of decidious trees [m2 m-2]'],
